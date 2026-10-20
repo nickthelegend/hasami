@@ -11,3 +11,6 @@ dist/
 !.env.example
 CLAUDE.md
 .DS_Store
+hasami.egg-info/
+MUJOCO_LOG.TXT
+deployments/runs/*.mp4
