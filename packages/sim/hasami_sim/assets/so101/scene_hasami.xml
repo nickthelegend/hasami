@@ -1,0 +1,53 @@
+<mujoco model="hasami_tabletop">
+  <!-- SO-101 (TheRobotStudio, Apache-2.0) on a tabletop with three cubes and a tray. -->
+  <include file="so101_new_calib.xml" />
+
+  <option timestep="0.002" integrator="implicitfast" cone="elliptic" impratio="10" />
+
+  <visual>
+    <headlight diffuse="0.55 0.55 0.55" ambient="0.35 0.35 0.35" specular="0 0 0" />
+    <global offwidth="1280" offheight="960" azimuth="150" elevation="-28" />
+    <quality shadowsize="4096" />
+  </visual>
+
+  <asset>
+    <texture type="2d" name="wood" builtin="flat" rgb1="0.86 0.82 0.76" width="64" height="64" />
+    <material name="table" texture="wood" rgba="0.86 0.82 0.76 1" reflectance="0.05" />
+    <material name="tray" rgba="0.18 0.20 0.24 1" />
+  </asset>
+
+  <worldbody>
+    <light pos="0.25 -0.3 0.9" dir="-0.2 0.3 -1" directional="true" castshadow="true" diffuse="0.6 0.6 0.6" />
+    <geom name="table" type="plane" size="0.6 0.6 0.02" material="table" friction="1 0.005 0.0001" />
+
+    <!-- Overhead camera the perception stack sees: looks straight down at the workspace. -->
+    <camera name="overhead" pos="0.23 0 0.62" fovy="52" mode="fixed" xyaxes="0 -1 0 1 0 0" />
+    <!-- A three-quarter camera for the demo video only. -->
+    <camera name="demo" pos="0.62 -0.42 0.38" xyaxes="0.58 0.81 0 -0.36 0.26 0.9" fovy="45" />
+
+    <body name="red_cube" pos="0.235 0.075 0.0125">
+      <freejoint name="red_cube" />
+      <geom name="red_cube" type="box" size="0.0125 0.0125 0.0125" rgba="0.87 0.16 0.16 1" mass="0.02"
+            friction="1.6 0.02 0.002" solref="0.004 1" />
+    </body>
+    <body name="green_cube" pos="0.2 -0.07 0.0125">
+      <freejoint name="green_cube" />
+      <geom name="green_cube" type="box" size="0.0125 0.0125 0.0125" rgba="0.16 0.7 0.32 1" mass="0.02"
+            friction="1.6 0.02 0.002" solref="0.004 1" />
+    </body>
+    <body name="blue_cube" pos="0.27 -0.02 0.0125">
+      <freejoint name="blue_cube" />
+      <geom name="blue_cube" type="box" size="0.0125 0.0125 0.0125" rgba="0.18 0.36 0.9 1" mass="0.02"
+            friction="1.6 0.02 0.002" solref="0.004 1" />
+    </body>
+
+    <!-- Tray: a floor and four low walls, fixed to the table. -->
+    <body name="tray" pos="0.17 0.17 0">
+      <geom name="tray_floor" type="box" size="0.05 0.05 0.003" pos="0 0 0.003" material="tray" />
+      <geom name="tray_wall_n" type="box" size="0.05 0.003 0.012" pos="0 0.047 0.012" material="tray" />
+      <geom name="tray_wall_s" type="box" size="0.05 0.003 0.012" pos="0 -0.047 0.012" material="tray" />
+      <geom name="tray_wall_e" type="box" size="0.003 0.05 0.012" pos="0.047 0 0.012" material="tray" />
+      <geom name="tray_wall_w" type="box" size="0.003 0.05 0.012" pos="-0.047 0 0.012" material="tray" />
+    </body>
+  </worldbody>
+</mujoco>
