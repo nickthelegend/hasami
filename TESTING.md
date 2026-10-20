@@ -34,5 +34,6 @@ export HF_HOME="/Volumes/Extreme SSD/.cache/huggingface"   # where SAM 2.1 weigh
 physics: **90/90 in the tray, 0 neighbouring cubes disturbed**. Yaw estimate over 60 randomised cubes:
 max error 1.76 deg, mean 0.18 deg (SAM masks).
 
-Demo run (`scripts/run_demo.py --seed 2`, record `deployments/runs/20261020T220740405Z.json`): 3/3 in the
-tray, place error 4.9-7.2 mm, SAM IoU mean 0.73 (min 0.63, the tray).
+Demo run (`scripts/run_demo.py`, record `deployments/runs/20261020T221658918Z.json`, after the scene was
+relit): 3/3 in the tray, place error 4.9-8.4 mm, SAM 2.1 IoU mean 0.86 (min 0.71). The suite was re-run
+after the relight: `53 passed, 1 skipped in 23.95s`.
