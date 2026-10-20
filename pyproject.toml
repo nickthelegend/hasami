@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hasami"
+version = "0.1.0"
+description = "Muse plans, SAM sees, an SO-101 picks: language-driven pick-and-place on a simulated (or real) SO-101 arm."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Nivesh Gajengi" }]
+requires-python = ">=3.11"
+dependencies = [
+  "mujoco>=3.2",
+  "numpy>=1.26",
+  "pillow>=10",
+  "torch>=2.2",
+  "transformers>=4.56",
+  "openai>=1.40",
+  "pydantic>=2.6",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "mcp>=2.0",
+  "imageio>=2.34",
+  "imageio-ffmpeg>=0.5",
+]
+
+[project.optional-dependencies]
+# The real SO-101 follower arm. Not needed for the simulator.
+robot = ["lerobot[feetech]"]
+dev = ["pytest>=8", "httpx2"]
+
+[project.scripts]
+hasami-server = "hasami_server.__main__:main"
+hasami-mcp = "hasami_mcp.__main__:main"
+
+[tool.setuptools]
+packages = [
+  "hasami_sim",
+  "hasami_perception",
+  "hasami_planner",
+  "hasami_core",
+  "hasami_robot",
+  "hasami_server",
+  "hasami_mcp",
+]
+
+[tool.setuptools.package-dir]
+hasami_sim = "packages/sim/hasami_sim"
+hasami_perception = "packages/perception/hasami_perception"
+hasami_planner = "packages/planner/hasami_planner"
+hasami_core = "packages/core/hasami_core"
+hasami_robot = "packages/robot/hasami_robot"
+hasami_server = "packages/server/hasami_server"
+hasami_mcp = "packages/mcp/hasami_mcp"
+
+[tool.setuptools.package-data]
+hasami_sim = ["assets/so101/*.xml", "assets/so101/LICENSE", "assets/so101/assets/*.stl"]
+hasami_perception = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "live: calls a real external API (skipped unless its key is set)",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
