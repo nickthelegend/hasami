@@ -6,6 +6,7 @@ a pick only succeeds if the jaws actually hold the cube while the arm lifts it.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -18,6 +19,7 @@ SCENE = ASSETS / "scene_hasami.xml"
 ARM_JOINTS = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll"]
 GRIPPER = "gripper"
 GRIPPER_OPEN = 1.2
+GRIPPER_PRE_GRASP = 0.5  # ~40 mm between the jaw tips: room for a 25 mm cube without a wide sweep
 GRIPPER_CLOSED = -0.17
 DOWN = np.array([0.0, 0.0, -1.0])
 
@@ -41,6 +43,9 @@ class Arm:
     frames: list[np.ndarray] = field(default_factory=list)
     record_camera: str | None = None
     record_every: int = 20
+    record_size: tuple[int, int] = (640, 480)  # (width, height) of recorded frames
+    # If set, recorded frames go here (e.g. a video writer) instead of piling up in `frames`.
+    frame_sink: Callable[[np.ndarray], None] | None = None
     _renderer: mujoco.Renderer | None = None
     _steps: int = 0
     clearance: float = 0.005  # gap left on the fixed-finger side; the moving jaw closes it
@@ -103,7 +108,11 @@ class Arm:
             mujoco.mj_step(self.model, self.data)
             self._steps += 1
             if self.record_camera and self._steps % self.record_every == 0:
-                self.frames.append(self.render(self.record_camera))
+                img = self.render(self.record_camera, *self.record_size)
+                if self.frame_sink is not None:
+                    self.frame_sink(img)
+                else:
+                    self.frames.append(img)
 
     def settle(self, n: int = 200) -> None:
         self.step(n)
@@ -244,9 +253,23 @@ class Arm:
         return ok
 
     def pick_place(self, pick_xy: tuple[float, float], place_xy: tuple[float, float], yaw: float = 0.0,
-                   object_height: float = 0.025, hover: float = 0.065) -> list[StepLog]:
-        """Pick the box at pick_xy (centre, from perception) and drop it at place_xy."""
-        log: list[StepLog] = []
+                   object_height: float = 0.025, hover: float = 0.065,
+                   on_log: Callable[[StepLog], None] | None = None, open_to: float = GRIPPER_OPEN) -> list[StepLog]:
+        """Pick the box at pick_xy (centre, from perception) and drop it at place_xy.
+
+        `on_log`, if given, is called with each StepLog as soon as its phase is final.
+        `open_to` is how far the jaws open before the grasp and on release. Fully open (the default)
+        the moving jaw sweeps about 100 mm sideways as it closes; GRIPPER_PRE_GRASP leaves about 40 mm
+        between the jaws, enough for a 25 mm cube, so neighbouring objects stay out of its path.
+        """
+        log: list[StepLog] = _NotifyList(on_log) if on_log else []
+        self._pick_place(log, pick_xy, place_xy, yaw, object_height, hover, open_to)
+        if isinstance(log, _NotifyList):
+            log.flush()
+        return list(log)
+
+    def _pick_place(self, log: list[StepLog], pick_xy: tuple[float, float], place_xy: tuple[float, float],
+                    yaw: float, object_height: float, hover: float, open_to: float) -> list[StepLog]:
         half = object_height / 2
         center = np.array([pick_xy[0], pick_xy[1], half])
         site, roll_pick = self.grasp_pose(center, yaw, half)
@@ -254,7 +277,7 @@ class Arm:
         above = np.array([site[0], site[1], hover])
         drop_center = np.array([place_xy[0], place_xy[1], half])
         drop_site, roll_place = self.grasp_pose(drop_center, 0.0, half)
-        self.set_gripper(GRIPPER_OPEN, 200)
+        self.set_gripper(open_to, 200)
         if not self.go("above object", above, roll_pick, log):
             return log
         if not self.go("descend", grasp, roll_pick, log, steps=500):
@@ -268,13 +291,31 @@ class Arm:
         ]:
             if not self.go(phase, tgt, roll, log, steps=900):
                 return log
-        self.set_gripper(GRIPPER_OPEN)
+        self.set_gripper(open_to)
         log.append(StepLog("open jaws", [round(float(v), 4) for v in drop_site], [round(float(v), 4) for v in self.gripper_pos()], 0.0, True))
         # The object is already placed; a sloppy retreat is logged but does not fail the run.
         self.go("retreat", np.array([drop_site[0], drop_site[1], hover + 0.02]), roll_place, log)
         log[-1].ok = True
         self.settle(400)
         return log
+
+
+class _NotifyList(list):
+    """A list that reports each appended StepLog. The previous entry is reported when the next one
+    arrives (and the last one on flush), because pick_place may still adjust an entry after appending."""
+
+    def __init__(self, callback: Callable[[StepLog], None]):
+        super().__init__()
+        self._callback = callback
+
+    def append(self, item: StepLog) -> None:
+        if self:
+            self._callback(self[-1])
+        super().append(item)
+
+    def flush(self) -> None:
+        if self:
+            self._callback(self[-1])
 
 
 def in_tray(arm: Arm, name: str, tray: str = "tray", half: float = 0.044) -> bool:
