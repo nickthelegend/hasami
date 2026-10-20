@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hasami — Muse plans, SAM sees, an SO-101 picks</title>
+    <meta name="description" content="Say what you want moved. Muse plans from the camera frame, SAM segments each object, depth turns the mask into a grasp, and an SO-101 arm does it. Running on the official SO-101 MuJoCo model." />
+    <meta name="theme-color" content="#1b1622" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%2338f2c4'/%3E%3Cg fill='none' stroke='%2304241c' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 6h8'/%3E%3Cpath d='M13.5 6v4L9 16v9'/%3E%3Cpath d='M18.5 6v4l4.5 6v9'/%3E%3C/g%3E%3Crect x='13' y='18.5' width='6' height='6' rx='1.2' fill='%2304241c'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root { --font: 'Space Grotesk', system-ui, sans-serif; --mono: 'JetBrains Mono', ui-monospace, monospace;
+        --deep: #1b1622; --deep-text: #1b1622; --accent: #38f2c4; --accent-ink: #04241c; --tint: #e3fbf4; --tint-2: #efeaff;
+        --paper: #ffffff; --ink: #1b1622; --muted: #665e72; --line: rgba(27, 22, 34, .08); --line-strong: rgba(27, 22, 34, .22);
+        --lilac: #8b74e8; color-scheme: light; }
+      /* landing-kit base: Polaris-grade structure. Each page sets the theme variables and its own font. */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.55 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+code,.mono{font-family:var(--mono);font-size:.86em;letter-spacing:0;overflow-wrap:anywhere}
+.wrap{max-width:1360px;margin:0 auto;padding:0 40px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* type */
+.h-hero{font-weight:500;font-size:clamp(46px,6.3vw,96px);line-height:.95;letter-spacing:-.05em;margin:0}
+.h-sec{font-weight:500;font-size:clamp(36px,4.6vw,68px);line-height:1;letter-spacing:-.045em;margin:0}
+.h-card{font-weight:500;font-size:clamp(26px,2.4vw,36px);line-height:1.05;letter-spacing:-.035em;margin:0}
+.lead{font-size:clamp(18px,1.5vw,21px);line-height:1.4;letter-spacing:-.02em}
+.muted{color:var(--muted)}
+.strong{color:var(--ink)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 24px;border-radius:999px;font:500 17px/1 var(--font);letter-spacing:-.02em;text-decoration:none;border:0;cursor:pointer;white-space:nowrap;transition:transform .25s cubic-bezier(.2,.7,.2,1),background .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn svg{width:18px;height:18px}
+.btn-accent{background:var(--accent);color:var(--accent-ink)}
+.btn-white{background:#fff;color:var(--deep)}
+.btn-dark{background:var(--deep);color:#fff}
+.btn-outline{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.btn-ghost-light{background:transparent;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.btn-sm{height:44px;padding:0 18px;font-size:16px}
+
+/* nav: links left, logo centre, actions right */
+.nav{position:absolute;inset:0 0 auto 0;z-index:30}
+.nav .wrap{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:100px}
+.nav ul{display:flex;gap:28px;list-style:none;margin:0;padding:0}
+.nav ul a{text-decoration:none;font-size:17px;letter-spacing:-.02em;opacity:.92}
+.nav ul a:hover{opacity:1}
+.nav .act{display:flex;justify-content:flex-end;align-items:center;gap:18px}
+.nav .act>a:not(.btn){text-decoration:none;font-size:17px}
+.logo{display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:600;font-size:24px;letter-spacing:-.04em}
+.logo svg{width:30px;height:30px}
+.nav.on-dark{color:#fff}
+.nav.on-light{color:var(--ink)}
+
+/* hero shells */
+.hero{position:relative;isolation:isolate;overflow:hidden}
+.hero-bleed{min-height:max(720px,100svh);padding-top:140px;background:var(--deep);color:#fff;display:flex;align-items:flex-end}
+.hero-bleed .wrap{width:100%;padding-bottom:56px;display:grid;grid-template-columns:1.25fr 1fr;align-items:end;gap:40px}
+.hero-bleed .h-hero{max-width:11ch}
+.hero-bleed .lead{max-width:34ch;margin:26px 0 34px;color:rgba(255,255,255,.86)}
+.hero-centre{background:var(--deep);color:#fff;padding:168px 0 0;text-align:center}
+.hero-centre .h-hero{max-width:14ch;margin:0 auto}
+.hero-centre .lead{max-width:44ch;margin:26px auto 36px;color:rgba(255,255,255,.82)}
+.hero-centre .cta{justify-content:center}
+.hero-split{background:var(--deep);color:#fff;padding:150px 0 90px}
+.hero-split .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center}
+.hero-split .lead{max-width:38ch;margin:26px 0 34px;color:rgba(255,255,255,.84)}
+.hero-light{background:var(--paper);color:var(--ink);padding:160px 0 40px}
+.hero-light .h-hero{max-width:13ch;color:var(--deep-text)}
+.hero-light .lead{max-width:44ch;margin:26px 0 34px;color:var(--muted)}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+.glow{position:absolute;z-index:-1;border-radius:50%;filter:blur(10px);pointer-events:none}
+
+/* floating white widget (hero) */
+.widget{justify-self:end;width:min(100%,360px);background:#fff;color:var(--deep-text);border-radius:28px;padding:24px;box-shadow:0 40px 80px -30px rgba(0,0,0,.55)}
+.widget .w-top{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.widget .w-title{font-weight:500;font-size:26px;letter-spacing:-.04em}
+.tag{display:inline-flex;align-items:center;height:28px;padding:0 11px;border-radius:999px;font-size:13px;font-weight:500;letter-spacing:-.01em;white-space:nowrap}
+.tag-deep{background:var(--deep);color:var(--accent)}
+.tag-tint{background:var(--tint);color:var(--deep-text)}
+.tag-accent{background:var(--accent);color:var(--accent-ink)}
+.tag-no{background:#fde2e1;color:#b42318}
+.tag-ok{background:#dcf5e7;color:#14714b}
+.widget .w-note{font-size:14px;color:#6b7280;margin-top:14px}
+
+/* built-on strip */
+.built{padding:100px 0 40px;text-align:center}
+.built .pill{display:inline-block;padding:10px 26px;border-radius:999px;background:var(--tint);color:var(--deep-text);font-size:20px;letter-spacing:-.02em}
+.marquee{overflow:hidden;margin-top:44px;-webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.marquee .track{display:flex;gap:64px;width:max-content;animation:mq 34s linear infinite}
+.marquee span{display:inline-flex;align-items:center;gap:12px;font-weight:500;font-size:32px;letter-spacing:-.04em;color:var(--deep-text);white-space:nowrap}
+.marquee span i{width:26px;height:26px;border-radius:8px;background:var(--deep-text);opacity:.85;display:inline-block}
+@keyframes mq{to{transform:translateX(-50%)}}
+
+/* sections */
+section{padding:110px 0}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;margin-bottom:56px}
+.sec-head .h-sec{color:var(--deep-text);max-width:16ch}
+.sec-head p{max-width:46ch;margin:18px 0 0}
+.intro{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:end}
+.intro .h-sec{color:var(--deep-text)}
+.intro .copy p{margin:0 0 18px;color:var(--muted)}
+.intro .copy p b{color:var(--deep-text);font-weight:500}
+
+/* bento cards */
+.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.card{position:relative;border-radius:28px;padding:32px;min-height:420px;gap:28px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+.c-tint{background:var(--tint);color:var(--deep-text)}
+.c-tint-2{background:var(--tint-2);color:var(--deep-text)}
+.c-deep{background:var(--deep);color:#fff}
+.c-deep .h-card{color:var(--accent)}
+.c-accent{background:var(--accent);color:var(--accent-ink)}
+.card p{margin:12px 0 0;font-size:16px;line-height:1.45}
+.c-deep p{color:rgba(255,255,255,.72)}
+.ui{background:#fff;color:var(--deep-text);border-radius:22px;padding:22px;box-shadow:0 24px 50px -28px rgba(0,0,0,.35)}
+.ui .big{font-weight:500;font-size:44px;letter-spacing:-.05em;line-height:1}
+.ui .big small{font-size:16px;letter-spacing:-.01em;color:#6b7280;margin-left:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips span{height:40px;display:inline-flex;align-items:center;padding:0 16px;border-radius:999px;background:var(--tint);color:var(--deep-text);font-size:16px;letter-spacing:-.02em}
+.chips span.on{background:var(--deep);color:#fff}
+.bar{display:flex;height:12px;border-radius:4px;overflow:hidden;gap:3px;margin-top:22px}
+.bar i{display:block}
+
+/* dark proof / FAQ section */
+.dark{background:var(--deep);color:#fff}
+.dark .h-sec{color:var(--accent)}
+.dark .muted{color:rgba(255,255,255,.62)}
+.faq{display:grid;grid-template-columns:1fr 1fr;gap:60px}
+.faq details{border-top:1px solid rgba(255,255,255,.14);padding:26px 0}
+.faq details:last-child{border-bottom:1px solid rgba(255,255,255,.14)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:20px;font-weight:500;font-size:clamp(22px,2vw,30px);letter-spacing:-.035em;color:var(--accent)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'+';font-weight:300;font-size:32px;line-height:1}
+.faq details[open] summary::after{content:'–'}
+.faq details p{margin:16px 0 0;color:rgba(255,255,255,.72);font-size:18px;max-width:52ch}
+
+/* evidence list */
+.ev{border-radius:28px;overflow:hidden;background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+.ev .row{display:grid;grid-template-columns:1fr auto 130px;gap:18px;align-items:center;padding:18px 26px;border-top:1px solid var(--line);font-size:16px}
+.ev .row:first-child{border-top:0}
+.ev .row a{font-family:var(--mono);font-size:14px;text-align:right;color:var(--deep-text)}
+.dark .ev{background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.dark .ev .row{border-color:rgba(255,255,255,.08)}
+.dark .ev .row a{color:var(--accent)}
+
+/* stat row */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.stat{border-radius:24px;padding:28px;background:var(--tint)}
+.stat b{display:block;font-weight:500;font-size:clamp(40px,4vw,60px);letter-spacing:-.05em;line-height:1;color:var(--deep-text)}
+.stat span{display:block;margin-top:12px;color:var(--muted);font-size:16px}
+
+/* centred CTA */
+.talk{padding:130px 0 120px;text-align:center;background:linear-gradient(180deg,var(--paper) 0%,var(--tint) 100%)}
+.talk .h-sec{color:var(--deep-text);margin:0 auto}
+.talk p{max-width:46ch;margin:22px auto 34px;color:var(--muted)}
+.talk pre{display:inline-block;text-align:left;margin:0 0 30px;padding:18px 24px;border-radius:18px;background:var(--deep);color:var(--accent);font:400 15px/1.7 var(--mono);max-width:100%;overflow-x:auto}
+
+/* footer */
+.foot{background:var(--tint);padding:0 40px 40px}
+.foot .box{max-width:1360px;margin:0 auto;background:var(--deep);color:#fff;border-radius:40px;padding:56px 48px 40px;display:grid;grid-template-columns:1.2fr 1fr;gap:40px}
+.foot p{color:rgba(255,255,255,.62);max-width:44ch;margin:22px 0 0}
+.foot nav{display:flex;flex-wrap:wrap;gap:12px 36px;align-content:start}
+.foot nav a{text-decoration:none;font-size:18px;letter-spacing:-.02em}
+.foot .legal{grid-column:1/-1;display:flex;justify-content:space-between;gap:20px;padding-top:40px;color:rgba(255,255,255,.55);font-size:14px}
+
+/* reveal: transform only, so content is never hidden */
+.rv{animation:rv 1s cubic-bezier(.2,.7,.2,1) both}
+.rv.d1{animation-delay:.08s}.rv.d2{animation-delay:.16s}.rv.d3{animation-delay:.26s}.rv.d4{animation-delay:.36s}
+@keyframes rv{from{transform:translateY(22px)}to{transform:none}}
+
+@media (max-width:1024px){
+  .wrap{padding:0 24px}
+  .nav ul{display:none}
+  .nav .wrap{grid-template-columns:auto 1fr;height:84px}
+  .nav .logo{order:-1}
+  .hero-bleed .wrap,.hero-split .wrap,.intro,.faq{grid-template-columns:1fr}
+  .widget{justify-self:start}
+  .bento{grid-template-columns:1fr 1fr}
+  .bento .card:first-child{grid-column:span 2;min-height:0}
+  .stats{grid-template-columns:1fr 1fr}
+  .foot .box{grid-template-columns:1fr}
+  .sec-head{flex-direction:column;align-items:flex-start}
+}
+@media (max-width:640px){
+  body{font-size:16px}
+  .wrap{padding:0 16px}
+  section{padding:76px 0}
+  .nav .act>a:not(.btn){display:none}
+  .hero-bleed{min-height:auto;padding-top:120px}
+  .hero-bleed .wrap{padding-bottom:36px}
+  .hero-centre{padding-top:130px}
+  .hero-split{padding:124px 0 64px}
+  .hero-light{padding-top:120px}
+  .bento{grid-template-columns:1fr}
+  .bento .card:first-child{grid-column:auto}
+  .card{min-height:0;padding:24px;gap:28px}
+  .stats{grid-template-columns:1fr 1fr;gap:12px}
+  .stat{padding:20px}
+  .ev .row{grid-template-columns:1fr;gap:6px;padding:16px 18px}
+  .ev .row a{text-align:left}
+  .marquee span{font-size:24px}
+  .talk{padding:90px 0}
+  .foot{padding:0 12px 12px}
+  .foot .box{padding:36px 22px 26px;border-radius:28px}
+  .foot .legal{flex-direction:column}
+  .btn{height:48px;padding:0 20px;font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.rv,.marquee .track{animation:none}.btn{transition:none}}
+
+      /* Hasami: the real demo-camera render is the hero; the widget replays one pick, step by step */
+      .hero-bleed { background: var(--deep); }
+      /* Desktop: the arm, cubes and tray sit in the gap between the headline and the widget, vignetted into the plum */
+      .scene { position: absolute; z-index: -1; top: 92px; height: min(720px, calc(100% - 150px)); aspect-ratio: 1120 / 810; right: calc(max(0px, (100vw - 1360px) / 2) + 214px);
+        -webkit-mask-image: radial-gradient(closest-side at 54% 50%, #000 58%, transparent 100%); mask-image: radial-gradient(closest-side at 54% 50%, #000 58%, transparent 100%); }
+      .hero-bleed::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgba(27, 22, 34, .9) 0%, rgba(27, 22, 34, .55) 28%, rgba(27, 22, 34, 0) 46%); }
+      .scene img { width: 100%; height: 100%; object-fit: cover; }
+      .cap { position: absolute; z-index: 2; right: calc(max(0px, (100vw - 1360px) / 2) + 40px); top: 104px; display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; background: rgba(255, 255, 255, .08); color: rgba(255, 255, 255, .78); font: 400 12px var(--mono); letter-spacing: 0; }
+      .cap i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+      .hero-bleed .h-hero { max-width: 10ch; }
+      .hero-bleed .h-hero em { font-style: normal; color: var(--accent); }
+      .kana { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 22px; font: 500 14px var(--mono); letter-spacing: 0; color: rgba(255, 255, 255, .7); }
+      .kana b { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(56, 242, 196, .14); color: var(--accent); font: 500 18px var(--font); }
+      /* hero widget: the loop */
+      .loop { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
+      .loop li { display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center; padding: 11px 13px; border-radius: 16px; background: #f5f3f7; font-size: 15px; letter-spacing: -.02em; opacity: .35; transition: opacity .5s, background .5s; }
+      .loop li.on { opacity: 1; }
+      .loop li.done { background: var(--tint); }
+      .loop li.key { background: var(--tint-2); }
+      .loop .n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #fff; font: 500 12px var(--mono); }
+      .loop li.done .n { background: var(--deep); color: var(--accent); }
+      .loop li.key .n { background: var(--deep); color: #c9bcff; }
+      .loop code { font-size: 11.5px; color: #6b6577; text-align: right; }
+      .loop .say { font-weight: 500; }
+      .shot { position: relative; margin-top: 14px; border-radius: 16px; overflow: hidden; aspect-ratio: 880 / 520; background: #f3efdc; }
+      .shot img { width: 100%; height: 100%; }
+      .mk { position: absolute; transform: translate(-50%, -50%); width: 24px; height: 24px; display: grid; place-items: center; font: 500 11px/1 var(--mono); box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .6); transition: transform .5s cubic-bezier(.3, 1.6, .5, 1); }
+      .mk-pick { left: 47%; top: 35.8%; border-radius: 50%; background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 0 3px rgba(4, 36, 28, .85); }
+      .mk-place { left: 20.9%; top: 66.9%; border-radius: 7px; background: var(--deep); color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+      .mk.pre { transform: translate(-50%, -50%) scale(0); }
+      .verdict { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 12px 14px; border-radius: 16px; background: var(--accent); color: var(--accent-ink); font-weight: 500; letter-spacing: -.02em; transition: opacity .5s; }
+      .verdict.pre { opacity: .25; }
+      .verdict code { font-size: 11.5px; }
+      /* how it works: four stages */
+      .four { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: s; }
+      .stage { counter-increment: s; position: relative; border-radius: 28px; padding: 26px; display: flex; flex-direction: column; gap: 26px; justify-content: space-between; min-height: 470px; overflow: hidden; }
+      .stage::before { content: counter(s, decimal-leading-zero); font: 500 14px var(--mono); letter-spacing: 0; }
+      .stage.c-tint::before, .stage.c-tint-2::before { color: #0f8a6c; }
+      .stage.c-tint-2::before { color: #5b45c9; }
+      .stage.c-deep::before { color: var(--accent); }
+      .stage.c-accent::before { color: var(--accent-ink); }
+      .stage h3 { margin: 0; }
+      .stage p { margin: 10px 0 0; font-size: 16px; line-height: 1.45; }
+      .stage .ui { padding: 16px; border-radius: 18px; }
+      .schema { margin: 0; font: 400 12.5px/1.65 var(--mono); letter-spacing: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--deep-text); }
+      .schema b { color: #5b45c9; font-weight: 500; }
+      .shot.sm { margin: 0; border-radius: 14px; }
+      .shot-note { margin-top: 10px; font-size: 13px; color: #6b6577; }
+      .readout { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .readout div { background: #fff; border-radius: 14px; padding: 12px; }
+      .readout small { display: block; font-size: 12px; color: #6b6577; }
+      .readout b { font: 500 14px var(--mono); letter-spacing: 0; }
+      .phases { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+      .phases li { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: rgba(255, 255, 255, .06); border-radius: 12px; padding: 9px 12px; font-size: 14px; color: rgba(255, 255, 255, .86); }
+      .phases li code { font-size: 11px; color: var(--accent); }
+      /* numbers */
+      .stats .stat:nth-child(2) { background: var(--tint-2); }
+      .stats .stat:nth-child(3) { background: var(--deep); }
+      .stats .stat:nth-child(3) b { color: var(--accent); }
+      .stats .stat:nth-child(3) span { color: rgba(255, 255, 255, .66); }
+      .stats .stat:nth-child(4) { background: var(--accent); }
+      .stats .stat:nth-child(4) span { color: var(--accent-ink); }
+      .stats .stat b small { font-size: .45em; letter-spacing: -.02em; margin-left: 4px; }
+      .method { margin-top: 18px; font-size: 15px; color: var(--muted); max-width: 80ch; }
+      /* real vs blocked */
+      .scope .row { grid-template-columns: 220px 1fr 130px; }
+      .scope .row b { font-weight: 500; color: #fff; }
+      .scope .row > span:nth-child(2) { color: rgba(255, 255, 255, .72); }
+      .scope .tag { justify-self: end; }
+      .tag-key { background: rgba(201, 188, 255, .16); color: #c9bcff; }
+      .tag-blocked { background: rgba(255, 196, 107, .16); color: #ffc46b; }
+      .tag-live { background: var(--accent); color: var(--accent-ink); }
+      @media (max-width: 1180px) { .four { grid-template-columns: 1fr 1fr; } .stage { min-height: 0; } }
+      @media (max-width: 1024px) {
+        .hero-bleed { min-height: auto; padding-top: 560px; }
+        .scene { top: 64px; right: 0; left: 0; width: 100%; height: 540px; aspect-ratio: auto;
+          -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 72%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 72%, transparent 100%); }
+        .scene img { object-position: 52% 40%; }
+        .hero-bleed::after { display: none; }
+        .cap { top: 540px; right: 24px; }
+        .scope .row { grid-template-columns: 180px 1fr 120px; }
+      }
+      @media (max-width: 640px) {
+        .hero-bleed { padding-top: 350px; }
+        .scene { top: 64px; height: 300px; }
+        .scene img { object-position: 58% 38%; }
+        .cap { top: 318px; right: 16px; font-size: 11px; height: 26px; }
+        .built .pill { font-size: 16px; padding: 9px 18px; }
+        .stats { grid-template-columns: 1fr; gap: 10px; }
+        .stats .stat { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: center; padding: 18px 20px; }
+        .stats .stat span { margin-top: 0; font-size: 14px; }
+        .talk pre { white-space: pre-wrap; font-size: 14px; }
+        .four { grid-template-columns: 1fr; }
+        .stage { padding: 22px; border-radius: 24px; }
+        .loop li { font-size: 14px; padding: 10px 11px; gap: 10px; }
+        .loop code { font-size: 10.5px; }
+        .scope .row { grid-template-columns: 1fr; }
+        .scope .tag { justify-self: start; }
+        .stats .stat b { font-size: 30px; }
+      }
+      @media (prefers-reduced-motion: reduce) { .loop li, .mk, .verdict { transition: none; } .loop li { opacity: 1; } }
+    </style>
+  </head>
+  <body>
+    <nav class="nav on-dark" aria-label="Main">
+      <div class="wrap">
+        <ul><li><a href="#how">How it works</a></li><li><a href="#numbers">Numbers</a></li><li><a href="#scope">What's real</a></li></ul>
+        <a class="logo" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#38f2c4" /><g fill="none" stroke="#04241c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6h8" /><path d="M13.5 6v4L9 16v9" /><path d="M18.5 6v4l4.5 6v9" /></g><rect x="13" y="18.5" width="6" height="6" rx="1.2" fill="#04241c" /></svg>Hasami</a>
+        <div class="act"><a href="#faq">FAQ</a><a class="btn btn-white btn-sm" href="https://github.com/nickthelegend/hasami">Get the code</a></div>
+      </div>
+    </nav>
+
+    <header class="hero hero-bleed" id="top">
+      <div class="scene" role="img" aria-label="Simulated SO-101 arm on a table with a red, a green and a blue cube and a dark tray, rendered from the demo camera">
+        <img src="assets/hero.webp" alt="" width="2240" height="1620" fetchpriority="high" />
+      </div>
+      <span class="cap"><i aria-hidden="true"></i>MuJoCo render · demo camera</span>
+      <div class="wrap">
+        <div>
+          <div class="kana rv"><b aria-hidden="true">鋏</b>hasami · scissors, gripper</div>
+          <h1 class="h-hero rv">Say it. <em>The arm</em> picks it up.</h1>
+          <p class="lead rv d1">Muse looks at the camera frame and plans the steps, SAM segments each object, depth turns the mask into a 3D grasp, and an SO-101 arm does it.</p>
+          <div class="cta rv d2"><a class="btn btn-accent" href="#start">Run it locally <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a><a class="btn btn-ghost-light" href="#numbers">See the numbers</a></div>
+        </div>
+        <div class="widget rv d3" aria-label="One instruction, step by step">
+          <div class="w-top"><span class="w-title">One instruction</span><span class="tag tag-deep">sim replay</span></div>
+          <ol class="loop" id="loop">
+            <li><span class="n">1</span><span class="say">“put the red cube in the tray”</span><code>you</code></li>
+            <li class="key"><span class="n">2</span><span>Muse plan: red cube → tray</span><code>needs key</code></li>
+            <li><span class="n">3</span><span>SAM mask from one click</span><code>SAM 2.1</code></li>
+            <li><span class="n">4</span><span>pick: descend · close · lift</span><code>SO-101</code></li>
+          </ol>
+          <div class="shot" aria-hidden="true">
+            <img src="assets/overhead-crop.webp" alt="" width="880" height="520" loading="lazy" />
+            <span class="mk mk-pick pre" id="mk1">1</span><span class="mk mk-place pre" id="mk2">1</span>
+          </div>
+          <div class="verdict pre" id="vd"><span>in tray ✓</span><code>from physics state</code></div>
+          <p class="w-note">Replay of a recorded sim run. The Muse planning step runs once MODEL_API_KEY is set; until then you click the cube and the tray yourself.</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="built">
+      <span class="pill">Built on Meta's models and open robotics</span>
+      <div class="marquee" aria-hidden="true"><div class="track">
+        <span><i></i>Muse Spark</span><span><i></i>SAM 2.1</span><span><i></i>SAM 3.1</span><span><i></i>Meta Model API</span><span><i></i>MuJoCo</span><span><i></i>SO-101</span><span><i></i>LeRobot</span><span><i></i>MCP</span>
+        <span><i></i>Muse Spark</span><span><i></i>SAM 2.1</span><span><i></i>SAM 3.1</span><span><i></i>Meta Model API</span><span><i></i>MuJoCo</span><span><i></i>SO-101</span><span><i></i>LeRobot</span><span><i></i>MCP</span>
+      </div></div>
+    </div>
+
+    <main>
+      <section>
+        <div class="wrap intro">
+          <div>
+            <h2 class="h-sec">A robot arm you can talk to</h2>
+            <div class="cta" style="margin-top: 34px"><a class="btn btn-dark" href="https://github.com/nickthelegend/hasami">Get the code <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a><a class="btn btn-outline" href="#scope">What's real today</a></div>
+          </div>
+          <div class="copy lead">
+            <p><b>A pick only counts if the jaws hold the cube.</b> The arm is the official SO-101 model with force-limited servos, so it sags, slips and misses like real hardware. Success is read from the physics state, never from the camera.</p>
+            <p><b>No key, still a robot.</b> Without a Meta Model API key you click an object and a target on the camera; SAM 2.1 runs locally from that click.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="how" style="padding-top: 0">
+        <div class="wrap">
+          <div class="sec-head"><h2 class="h-sec">From a sentence to a grasp</h2><a class="btn btn-outline btn-sm" href="https://github.com/nickthelegend/hasami#readme">Read the method <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a></div>
+          <div class="four">
+            <div class="stage c-tint-2">
+              <div><h3 class="h-card">Muse plans</h3><p>muse-spark-1.3 reads the instruction and the overhead frame and returns a validated plan: what to pick, where it is, where it goes.</p></div>
+              <div class="ui"><pre class="schema">[{ <b>"pick"</b>: "red cube",
+   <b>"point"</b>: [u, v],
+   <b>"place"</b>: "tray",
+   <b>"place_point"</b>: [u, v] }]</pre></div>
+            </div>
+            <div class="stage c-tint">
+              <div><h3 class="h-card">SAM segments</h3><p>One point prompt per object. SAM 2.1 runs locally on open weights; SAM 3.1 on the Meta Model API takes text instead.</p></div>
+              <div class="ui"><div class="shot sm"><img src="assets/overhead-crop.webp" alt="Overhead camera frame with a click marker on the red cube and a place marker on the tray" width="880" height="520" loading="lazy" /><span class="mk mk-pick" aria-hidden="true">1</span><span class="mk mk-place" aria-hidden="true">1</span></div><p class="shot-note">The overhead camera, as the dashboard shows it: click 1 on the cube, then the tray.</p></div>
+            </div>
+            <div class="stage c-accent">
+              <div><h3 class="h-card">Depth → grasp</h3><p>Every mask pixel is back-projected with metric depth. Pixels at table height drop out, so shadows don't move the target.</p></div>
+              <div class="readout"><div><small>centre</small><b>x, y, z</b></div><div><small>top surface</small><b>top_z</b></div><div><small>yaw</small><b>min-area rect</b></div><div><small>checked against</small><b>sim truth</b></div></div>
+            </div>
+            <div class="stage c-deep">
+              <div><h3 class="h-card">SO-101 moves</h3><p>Damped least-squares IK, then closed-loop correction for servo sag, with the jaws turned to the cube's yaw.</p></div>
+              <ul class="phases"><li>above object<code>IK</code></li><li>descend<code>≤ 8 mm</code></li><li>close jaws<code>grip</code></li><li>lift · above target · lower<code>carry</code></li><li>open jaws<code>place</code></li></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="numbers" style="padding-top: 0">
+        <div class="wrap">
+          <div class="sec-head"><div><h2 class="h-sec">Measured, not promised</h2><p class="lead muted">Local runs on the simulated arm, scored against MuJoCo ground truth.</p></div></div>
+          <div class="stats">
+            <div class="stat"><b>9/9</b><span>randomised picks placed in the tray: 3 seeds × 3 cubes, yaw within ±40°</span></div>
+            <div class="stat"><b>0.74–0.92</b><span>SAM 2.1 single-click IoU against the MuJoCo segmentation</span></div>
+            <div class="stat"><b>≤ 0.6<small>mm</small></b><span>centre error after fusing the mask with depth</span></div>
+            <div class="stat"><b>≤ 0.1°</b><span>yaw error against truth, from the minimum-area rectangle</span></div>
+          </div>
+          <p class="method">Ground-truth segmentation is used only to score perception, never as input. In-tray is checked from the physics state: the cube's centre inside the tray walls and resting low.</p>
+        </div>
+      </section>
+
+      <section class="dark" id="scope">
+        <div class="wrap">
+          <div class="sec-head"><div><h2 class="h-sec">What's real, what's waiting</h2><p class="muted lead">Nothing is mocked. A missing key or device shows as setup required, with its name.</p></div></div>
+          <div class="ev scope" role="table" aria-label="Components and their status">
+            <div class="row" role="row"><b>Simulated SO-101</b><span>Official SO-101 MuJoCo model (TheRobotStudio, Apache-2.0) with force-limited STS3215 position servos</span><span class="tag tag-live">running</span></div>
+            <div class="row" role="row"><b>SAM 2.1 hiera-tiny</b><span>Local, open weights, point prompt. The numbers above come from it.</span><span class="tag tag-live">running</span></div>
+            <div class="row" role="row"><b>Muse planner</b><span>muse-spark-1.3 on the Meta Model API. Without a key the API answers setup_required, never a canned plan.</span><span class="tag tag-key">needs key</span></div>
+            <div class="row" role="row"><b>SAM 3.1</b><span>Text-prompted segmentation on the Meta Model API. Its wire format is unverified until a key exists.</span><span class="tag tag-key">needs key</span></div>
+            <div class="row" role="row"><b>Real SO-101 arm</b><span>LeRobot follower adapter, sim radians to calibrated degrees. Runs when HASAMI_SO101_PORT points at the arm.</span><span class="tag tag-blocked">blocked</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dark" id="faq" style="padding-top: 0">
+        <div class="wrap faq">
+          <div><h2 class="h-sec">Frequently asked questions</h2><p class="muted lead" style="margin-top: 18px">Straight answers about the sim, the keys and the real arm.</p></div>
+          <div>
+            <details open><summary>Is this a real robot?</summary><p>Today it is a simulation of the official SO-101 model with force-limited servos, so a pick only succeeds if the jaws actually hold the cube. The real follower arm runs through LeRobot, and that path is blocked until an arm is connected.</p></details>
+            <details><summary>What needs an API key?</summary><p>The Muse planner and SAM 3.1 both run on the Meta Model API and need MODEL_API_KEY. Without it they report setup required. Clicking an object and a target works with no key, using SAM 2.1 locally.</p></details>
+            <details><summary>How do you know a pick worked?</summary><p>From the physics state, not the camera: the cube's centre has to sit inside the tray walls and rest low. Perception is scored separately against MuJoCo's own segmentation.</p></details>
+            <details><summary>Can an agent drive it?</summary><p>Yes. An MCP server exposes look, find, pick_place and status, and the dashboard and HTTP API show the same runs.</p></details>
+            <details><summary>Who built it, and for what?</summary><p>Nivesh Gajengi, for the Meta Global AI Developer Hackathon. MIT licensed.</p></details>
+          </div>
+        </div>
+      </section>
+
+      <section class="talk" id="start">
+        <div class="wrap">
+          <h2 class="h-sec">Put the red cube in the tray</h2>
+          <p class="lead">Python, MuJoCo and a Vite dashboard. Set MODEL_API_KEY for the Muse planner, or click steps on the camera without one.</p>
+          <pre>pip install -e . && python -m hasami_server</pre>
+          <div class="cta" style="justify-content: center"><a class="btn btn-dark" href="https://github.com/nickthelegend/hasami">Get the code <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="box">
+        <div><a class="logo" href="#top" style="color: #fff"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#38f2c4" /><g fill="none" stroke="#04241c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6h8" /><path d="M13.5 6v4L9 16v9" /><path d="M18.5 6v4l4.5 6v9" /></g><rect x="13" y="18.5" width="6" height="6" rx="1.2" fill="#04241c" /></svg>Hasami</a><p>Muse plans, SAM sees, an SO-101 picks. Built for the Meta Global AI Developer Hackathon.</p></div>
+        <nav aria-label="Footer"><a href="#how">How it works</a><a href="#numbers">Numbers</a><a href="#scope">What's real</a><a href="#faq">FAQ</a><a href="https://github.com/nickthelegend/hasami">GitHub</a></nav>
+        <div class="legal"><span>Hasami — 鋏, scissors · MIT · Copyright (c) 2026 Nivesh Gajengi</span><span>Simulation renders from MuJoCo · not affiliated with Meta</span></div>
+      </div>
+    </footer>
+    <script>
+      const steps = [...document.querySelectorAll('#loop li')];
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const show = (id) => document.getElementById(id).classList.remove('pre');
+      steps.forEach((li, i) => {
+        const go = () => { li.classList.add('on'); if (!li.classList.contains('key')) li.classList.add('done'); if (i === 2) show('mk1'); if (i === 3) { show('mk2'); show('vd'); } };
+        reduce ? go() : setTimeout(go, 700 + i * 800);
+      });
+    </script>
+  </body>
+</html>
