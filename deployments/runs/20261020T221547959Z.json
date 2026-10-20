@@ -1,0 +1,332 @@
+{
+  "run_id": "20261020T221547959Z",
+  "started_at": "2026-10-20T22:15:47.960Z",
+  "segmenter": "local",
+  "seed": 1498644077,
+  "plan": {
+    "steps": [
+      {
+        "pick": "clicked object",
+        "pick_point": [
+          405.0,
+          255.0
+        ],
+        "place": "clicked target",
+        "place_point": [
+          184.0,
+          288.0
+        ],
+        "reason": "clicked by the user"
+      }
+    ],
+    "source": "clicks",
+    "model": null,
+    "instruction": null
+  },
+  "initial_poses": {
+    "red_cube": {
+      "label": "red cube",
+      "pos": [
+        0.2118,
+        -0.0952,
+        0.0125
+      ],
+      "yaw": 0.283
+    },
+    "green_cube": {
+      "label": "green cube",
+      "pos": [
+        0.2195,
+        0.0953,
+        0.0125
+      ],
+      "yaw": -0.5628
+    },
+    "blue_cube": {
+      "label": "blue cube",
+      "pos": [
+        0.2671,
+        -0.0006,
+        0.0125
+      ],
+      "yaw": 0.3454
+    },
+    "tray": {
+      "label": "tray",
+      "pos": [
+        0.17,
+        0.17,
+        0.0
+      ],
+      "yaw": 0.0
+    }
+  },
+  "steps": [
+    {
+      "step": 0,
+      "pick_label": "clicked object",
+      "place_label": "clicked target",
+      "pick": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 518.9,
+        "point": [
+          405.0,
+          255.0
+        ],
+        "text": null,
+        "mask_pixels": 640,
+        "target": {
+          "center": [
+            0.2118,
+            -0.095,
+            0.0125
+          ],
+          "top_z": 0.025,
+          "yaw": 0.2812,
+          "pixels": 485,
+          "centroid_px": [
+            397.2,
+            254.4
+          ]
+        },
+        "truth_label": "red cube",
+        "iou_vs_truth": 0.7769
+      },
+      "place": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 470.0,
+        "point": [
+          184.0,
+          288.0
+        ],
+        "text": null,
+        "mask_pixels": 4586,
+        "target": {
+          "center": [
+            0.1683,
+            0.1728,
+            0.003
+          ],
+          "top_z": 0.006,
+          "yaw": -0.0022,
+          "pixels": 4586,
+          "centroid_px": [
+            181.0,
+            289.0
+          ]
+        },
+        "truth_label": "tray",
+        "iou_vs_truth": 0.6359
+      },
+      "place_xy": [
+        0.1695,
+        0.1691
+      ],
+      "place_how": "inside container",
+      "phases": [
+        {
+          "phase": "above object",
+          "target": [
+            0.207,
+            -0.0782,
+            0.065
+          ],
+          "reached": [
+            0.2069,
+            -0.0781,
+            0.0649
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "descend",
+          "target": [
+            0.207,
+            -0.0782,
+            0.0085
+          ],
+          "reached": [
+            0.2068,
+            -0.0781,
+            0.0084
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "close jaws",
+          "target": [
+            0.207,
+            -0.0782,
+            0.0085
+          ],
+          "reached": [
+            0.2069,
+            -0.0782,
+            0.0084
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lift",
+          "target": [
+            0.207,
+            -0.0782,
+            0.065
+          ],
+          "reached": [
+            0.2069,
+            -0.0781,
+            0.0649
+          ],
+          "error_mm": 0.1,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "above target",
+          "target": [
+            0.1695,
+            0.1516,
+            0.065
+          ],
+          "reached": [
+            0.1694,
+            0.1515,
+            0.0649
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lower",
+          "target": [
+            0.1695,
+            0.1516,
+            0.035
+          ],
+          "reached": [
+            0.1694,
+            0.1515,
+            0.0349
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "open jaws",
+          "target": [
+            0.1695,
+            0.1516,
+            0.0125
+          ],
+          "reached": [
+            0.1694,
+            0.1515,
+            0.0349
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "retreat",
+          "target": [
+            0.1695,
+            0.1516,
+            0.085
+          ],
+          "reached": [
+            0.1714,
+            0.154,
+            0.0848
+          ],
+          "error_mm": 3.1,
+          "ok": true,
+          "note": ""
+        }
+      ],
+      "result": {
+        "step": 0,
+        "object": "red cube",
+        "in_tray": true,
+        "error_mm": 4.7,
+        "ok": true,
+        "localisation_error_mm": 0.27,
+        "disturbed": [],
+        "final_pos": [
+          0.1692,
+          0.1644,
+          0.0185
+        ]
+      },
+      "timings": {
+        "observe_ms": 253.9,
+        "segment_pick_ms": 518.9,
+        "segment_place_ms": 470.0,
+        "pick_place_ms": 1579.8
+      }
+    }
+  ],
+  "ok": true,
+  "segmenter_name": "sam2.1-hiera-tiny (local)",
+  "placed": 1,
+  "total": 1,
+  "finished_at": "2026-10-20T22:15:50.974Z",
+  "final_poses": {
+    "red_cube": {
+      "label": "red cube",
+      "pos": [
+        0.1692,
+        0.1644,
+        0.0185
+      ],
+      "yaw": 3.0526
+    },
+    "green_cube": {
+      "label": "green cube",
+      "pos": [
+        0.2195,
+        0.0953,
+        0.0125
+      ],
+      "yaw": -0.5628
+    },
+    "blue_cube": {
+      "label": "blue cube",
+      "pos": [
+        0.2671,
+        -0.0006,
+        0.0125
+      ],
+      "yaw": 0.3454
+    },
+    "tray": {
+      "label": "tray",
+      "pos": [
+        0.17,
+        0.17,
+        0.0
+      ],
+      "yaw": 0.0
+    }
+  },
+  "timings": {
+    "total_ms": 3013.3
+  },
+  "iou": {
+    "values": [
+      0.7769,
+      0.6359
+    ],
+    "mean": 0.7064,
+    "min": 0.6359
+  }
+}
