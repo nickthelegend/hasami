@@ -11,6 +11,7 @@
   </visual>
 
   <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.93 0.92 0.9" rgb2="0.78 0.79 0.82" width="512" height="3072" />
     <texture type="2d" name="wood" builtin="flat" rgb1="0.86 0.82 0.76" width="64" height="64" />
     <material name="table" texture="wood" rgba="0.86 0.82 0.76 1" reflectance="0.05" />
     <material name="tray" rgba="0.18 0.20 0.24 1" />
@@ -23,7 +24,7 @@
     <!-- Overhead camera the perception stack sees: looks straight down at the workspace. -->
     <camera name="overhead" pos="0.23 0 0.62" fovy="52" mode="fixed" xyaxes="0 -1 0 1 0 0" />
     <!-- A three-quarter camera for the demo video only. -->
-    <camera name="demo" pos="0.62 -0.42 0.38" xyaxes="0.58 0.81 0 -0.36 0.26 0.9" fovy="45" />
+    <camera name="demo" pos="0.62 -0.43 0.43" xyaxes="0.731 0.683 -0.000 -0.335 0.359 0.871" fovy="44" />
 
     <body name="red_cube" pos="0.235 0.075 0.0125">
       <freejoint name="red_cube" />
