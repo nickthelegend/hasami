@@ -1,0 +1,1628 @@
+{
+  "run_id": "20261021T053112874Z",
+  "started_at": "2026-10-21T05:31:13.123Z",
+  "segmenter": "local",
+  "seed": 2,
+  "simulation": "MuJoCo simulation, official SO-101 model",
+  "scene": "classic",
+  "plan": {
+    "steps": [
+      {
+        "pick": "red cube",
+        "pick_point": [
+          353.0,
+          261.0
+        ],
+        "place": "tray",
+        "place_point": [
+          163.5,
+          272.6
+        ],
+        "reason": "simulated click"
+      },
+      {
+        "pick": "green cube",
+        "pick_point": [
+          387.0,
+          220.0
+        ],
+        "place": "tray",
+        "place_point": [
+          197.5,
+          272.6
+        ],
+        "reason": "simulated click"
+      },
+      {
+        "pick": "blue cube",
+        "pick_point": [
+          282.0,
+          236.0
+        ],
+        "place": "tray",
+        "place_point": [
+          163.5,
+          305.4
+        ],
+        "reason": "simulated click"
+      }
+    ],
+    "source": "clicks",
+    "model": null,
+    "instruction": null
+  },
+  "initial_poses": {
+    "red_cube": {
+      "label": "red cube",
+      "pos": [
+        0.2035,
+        -0.0403,
+        0.0125
+      ],
+      "yaw": -0.4358
+    },
+    "green_cube": {
+      "label": "green cube",
+      "pos": [
+        0.2533,
+        -0.0816,
+        0.0125
+      ],
+      "yaw": -0.6211
+    },
+    "blue_cube": {
+      "label": "blue cube",
+      "pos": [
+        0.234,
+        0.0457,
+        0.0125
+      ],
+      "yaw": -0.3142
+    },
+    "tray": {
+      "label": "tray",
+      "pos": [
+        0.17,
+        0.17,
+        0.0
+      ],
+      "yaw": 0.0
+    }
+  },
+  "steps": [
+    {
+      "step": 0,
+      "pick_label": "red cube",
+      "place_label": "tray",
+      "attempts": [
+        {
+          "attempt": 1,
+          "pick_point": [
+            353.0,
+            261.0
+          ],
+          "place_point": [
+            163.5,
+            272.6
+          ],
+          "pick": {
+            "segmenter": "sam2.1-hiera-tiny (local)",
+            "latency_ms": 701.4,
+            "point": [
+              353.0,
+              261.0
+            ],
+            "text": null,
+            "mask_pixels": 465,
+            "target": {
+              "center": [
+                0.2036,
+                -0.0402,
+                0.0125
+              ],
+              "top_z": 0.025,
+              "yaw": -0.4341,
+              "pixels": 444,
+              "centroid_px": [
+                352.4,
+                261.2
+              ]
+            },
+            "truth_label": "red cube",
+            "iou_vs_truth": 0.9531
+          },
+          "place": {
+            "segmenter": "sam2.1-hiera-tiny (local)",
+            "latency_ms": 27.5,
+            "point": [
+              163.5,
+              272.6
+            ],
+            "text": null,
+            "mask_pixels": 7206,
+            "target": {
+              "center": [
+                0.1683,
+                0.1695,
+                0.012
+              ],
+              "top_z": 0.024,
+              "yaw": 0.0004,
+              "pixels": 7126,
+              "centroid_px": [
+                180.5,
+                289.0
+              ]
+            },
+            "truth_label": "tray",
+            "iou_vs_truth": 0.9986
+          },
+          "place_xy": [
+            0.1866,
+            0.1867
+          ],
+          "place_how": "inside container",
+          "surface_z": 0.006,
+          "grasp": {
+            "jaw_yaw": -0.4341,
+            "period": 1.5708,
+            "width_mm": 26.2
+          },
+          "localisation_error_mm": 0.14,
+          "injected": {},
+          "phases": [
+            {
+              "phase": "above object",
+              "target": [
+                0.1872,
+                -0.0326,
+                0.065
+              ],
+              "reached": [
+                0.1871,
+                -0.0326,
+                0.0649
+              ],
+              "error_mm": 0.1,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "descend",
+              "target": [
+                0.1872,
+                -0.0326,
+                0.0085
+              ],
+              "reached": [
+                0.1871,
+                -0.0326,
+                0.0085
+              ],
+              "error_mm": 0.1,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "close jaws",
+              "target": [
+                0.1872,
+                -0.0326,
+                0.0085
+              ],
+              "reached": [
+                0.1872,
+                -0.0326,
+                0.0086
+              ],
+              "error_mm": 0.0,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "lift",
+              "target": [
+                0.1872,
+                -0.0326,
+                0.065
+              ],
+              "reached": [
+                0.1871,
+                -0.0326,
+                0.0649
+              ],
+              "error_mm": 0.1,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "above target",
+              "target": [
+                0.1867,
+                0.1686,
+                0.065
+              ],
+              "reached": [
+                0.1866,
+                0.1685,
+                0.0648
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "lower",
+              "target": [
+                0.1867,
+                0.1686,
+                0.0185
+              ],
+              "reached": [
+                0.1866,
+                0.1685,
+                0.0183
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "open jaws",
+              "target": [
+                0.1867,
+                0.1686,
+                0.0185
+              ],
+              "reached": [
+                0.186,
+                0.1646,
+                0.0178
+              ],
+              "error_mm": 0.0,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "retreat",
+              "target": [
+                0.1867,
+                0.1686,
+                0.085
+              ],
+              "reached": [
+                0.174,
+                0.1534,
+                0.0829
+              ],
+              "error_mm": 19.9,
+              "ok": true,
+              "note": "off by 19.9 mm (IK residual 2.0 mm)"
+            }
+          ],
+          "grasp_checks": [
+            {
+              "after": "close jaws",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.2
+            },
+            {
+              "after": "lift",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.2
+            },
+            {
+              "after": "above target",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.2
+            }
+          ],
+          "verify": {
+            "pick_clear": true,
+            "place_seen": {
+              "center": [
+                0.1887,
+                0.1808,
+                0.0155
+              ],
+              "top_z": 0.031,
+              "near": true,
+              "level": true,
+              "same_colour": true
+            },
+            "place_raised": true,
+            "place_px": [
+              163.5,
+              275.8
+            ],
+            "grasp_held": true,
+            "jaw_gap_mm": 19.7,
+            "completed": true,
+            "ok": true,
+            "physics_ok": true,
+            "agree": true
+          },
+          "images": {
+            "frame": "s0a1-frame.png",
+            "after": "s0a1-after.png",
+            "pick": "s0a1-pick.png",
+            "pick_truth": "s0a1-pick_truth.png",
+            "place": "s0a1-place.png",
+            "place_truth": "s0a1-place_truth.png"
+          },
+          "timings": {
+            "observe_ms": 1621.2,
+            "segment_pick_ms": 701.4,
+            "segment_place_ms": 27.5,
+            "pick_place_ms": 11082.6,
+            "verify_ms": 2400.0
+          }
+        }
+      ],
+      "pick": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 701.4,
+        "point": [
+          353.0,
+          261.0
+        ],
+        "text": null,
+        "mask_pixels": 465,
+        "target": {
+          "center": [
+            0.2036,
+            -0.0402,
+            0.0125
+          ],
+          "top_z": 0.025,
+          "yaw": -0.4341,
+          "pixels": 444,
+          "centroid_px": [
+            352.4,
+            261.2
+          ]
+        },
+        "truth_label": "red cube",
+        "iou_vs_truth": 0.9531
+      },
+      "place": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 27.5,
+        "point": [
+          163.5,
+          272.6
+        ],
+        "text": null,
+        "mask_pixels": 7206,
+        "target": {
+          "center": [
+            0.1683,
+            0.1695,
+            0.012
+          ],
+          "top_z": 0.024,
+          "yaw": 0.0004,
+          "pixels": 7126,
+          "centroid_px": [
+            180.5,
+            289.0
+          ]
+        },
+        "truth_label": "tray",
+        "iou_vs_truth": 0.9986
+      },
+      "place_xy": [
+        0.1866,
+        0.1867
+      ],
+      "place_how": "inside container",
+      "surface_z": 0.006,
+      "phases": [
+        {
+          "phase": "above object",
+          "target": [
+            0.1872,
+            -0.0326,
+            0.065
+          ],
+          "reached": [
+            0.1871,
+            -0.0326,
+            0.0649
+          ],
+          "error_mm": 0.1,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "descend",
+          "target": [
+            0.1872,
+            -0.0326,
+            0.0085
+          ],
+          "reached": [
+            0.1871,
+            -0.0326,
+            0.0085
+          ],
+          "error_mm": 0.1,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "close jaws",
+          "target": [
+            0.1872,
+            -0.0326,
+            0.0085
+          ],
+          "reached": [
+            0.1872,
+            -0.0326,
+            0.0086
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lift",
+          "target": [
+            0.1872,
+            -0.0326,
+            0.065
+          ],
+          "reached": [
+            0.1871,
+            -0.0326,
+            0.0649
+          ],
+          "error_mm": 0.1,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "above target",
+          "target": [
+            0.1867,
+            0.1686,
+            0.065
+          ],
+          "reached": [
+            0.1866,
+            0.1685,
+            0.0648
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lower",
+          "target": [
+            0.1867,
+            0.1686,
+            0.0185
+          ],
+          "reached": [
+            0.1866,
+            0.1685,
+            0.0183
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "open jaws",
+          "target": [
+            0.1867,
+            0.1686,
+            0.0185
+          ],
+          "reached": [
+            0.186,
+            0.1646,
+            0.0178
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "retreat",
+          "target": [
+            0.1867,
+            0.1686,
+            0.085
+          ],
+          "reached": [
+            0.174,
+            0.1534,
+            0.0829
+          ],
+          "error_mm": 19.9,
+          "ok": true,
+          "note": "off by 19.9 mm (IK residual 2.0 mm)"
+        }
+      ],
+      "timings": {
+        "observe_ms": 1621.2,
+        "segment_pick_ms": 701.4,
+        "segment_place_ms": 27.5,
+        "pick_place_ms": 11082.6,
+        "verify_ms": 2400.0
+      },
+      "result": {
+        "step": 0,
+        "object": "red cube",
+        "object_name": "red_cube",
+        "in_tray": true,
+        "error_mm": 5.7,
+        "ok": true,
+        "localisation_error_mm": 0.14,
+        "disturbed": [],
+        "final_pos": [
+          0.1882,
+          0.1812,
+          0.0185
+        ],
+        "attempts": 1,
+        "verified": true,
+        "failure": null
+      }
+    },
+    {
+      "step": 1,
+      "pick_label": "green cube",
+      "place_label": "tray",
+      "attempts": [
+        {
+          "attempt": 1,
+          "pick_point": [
+            387.0,
+            220.0
+          ],
+          "place_point": [
+            197.5,
+            272.6
+          ],
+          "pick": {
+            "segmenter": "sam2.1-hiera-tiny (local)",
+            "latency_ms": 40.4,
+            "point": [
+              387.0,
+              220.0
+            ],
+            "text": null,
+            "mask_pixels": 695,
+            "target": {
+              "center": [
+                0.2532,
+                -0.0814,
+                0.0125
+              ],
+              "top_z": 0.025,
+              "yaw": -0.6203,
+              "pixels": 480,
+              "centroid_px": [
+                386.1,
+                220.5
+              ]
+            },
+            "truth_label": "green cube",
+            "iou_vs_truth": 0.7055
+          },
+          "place": {
+            "segmenter": "sam2.1-hiera-tiny (local)",
+            "latency_ms": 33.0,
+            "point": [
+              197.5,
+              272.6
+            ],
+            "text": null,
+            "mask_pixels": 7074,
+            "target": {
+              "center": [
+                0.1729,
+                0.1708,
+                0.012
+              ],
+              "top_z": 0.024,
+              "yaw": 0.0014,
+              "pixels": 7074,
+              "centroid_px": [
+                180.8,
+                289.0
+              ]
+            },
+            "truth_label": "tray",
+            "iou_vs_truth": 0.9014
+          },
+          "place_xy": [
+            0.1866,
+            0.1531
+          ],
+          "place_how": "inside container",
+          "surface_z": 0.006,
+          "grasp": {
+            "jaw_yaw": -0.6203,
+            "period": 1.5708,
+            "width_mm": 26.2
+          },
+          "localisation_error_mm": 0.25,
+          "injected": {},
+          "phases": [
+            {
+              "phase": "above object",
+              "target": [
+                0.2385,
+                -0.0709,
+                0.065
+              ],
+              "reached": [
+                0.2384,
+                -0.0708,
+                0.0649
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "descend",
+              "target": [
+                0.2385,
+                -0.0709,
+                0.0085
+              ],
+              "reached": [
+                0.2383,
+                -0.0708,
+                0.0083
+              ],
+              "error_mm": 0.3,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "close jaws",
+              "target": [
+                0.2385,
+                -0.0709,
+                0.0085
+              ],
+              "reached": [
+                0.2384,
+                -0.0709,
+                0.0085
+              ],
+              "error_mm": 0.0,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "lift",
+              "target": [
+                0.2385,
+                -0.0709,
+                0.065
+              ],
+              "reached": [
+                0.2384,
+                -0.0708,
+                0.0648
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "above target",
+              "target": [
+                0.1685,
+                0.1531,
+                0.065
+              ],
+              "reached": [
+                0.1684,
+                0.153,
+                0.0649
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "lower",
+              "target": [
+                0.1685,
+                0.1531,
+                0.0185
+              ],
+              "reached": [
+                0.1684,
+                0.153,
+                0.0183
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "open jaws",
+              "target": [
+                0.1685,
+                0.1531,
+                0.0185
+              ],
+              "reached": [
+                0.1646,
+                0.1523,
+                0.0176
+              ],
+              "error_mm": 0.0,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "retreat",
+              "target": [
+                0.1685,
+                0.1531,
+                0.085
+              ],
+              "reached": [
+                0.1706,
+                0.1554,
+                0.0848
+              ],
+              "error_mm": 3.1,
+              "ok": true,
+              "note": ""
+            }
+          ],
+          "grasp_checks": [
+            {
+              "after": "close jaws",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.2
+            },
+            {
+              "after": "lift",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.2
+            },
+            {
+              "after": "above target",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.2
+            }
+          ],
+          "verify": {
+            "pick_clear": true,
+            "place_seen": {
+              "center": [
+                0.1813,
+                0.1524,
+                0.0155
+              ],
+              "top_z": 0.031,
+              "near": true,
+              "level": true,
+              "same_colour": true
+            },
+            "place_raised": true,
+            "place_px": [
+              191.6,
+              275.8
+            ],
+            "grasp_held": true,
+            "jaw_gap_mm": 19.7,
+            "completed": true,
+            "ok": true,
+            "physics_ok": true,
+            "agree": true
+          },
+          "images": {
+            "frame": "s1a1-frame.png",
+            "after": "s1a1-after.png",
+            "pick": "s1a1-pick.png",
+            "pick_truth": "s1a1-pick_truth.png",
+            "place": "s1a1-place.png",
+            "place_truth": "s1a1-place_truth.png"
+          },
+          "timings": {
+            "observe_ms": 1716.1,
+            "segment_pick_ms": 40.4,
+            "segment_place_ms": 33.0,
+            "pick_place_ms": 9677.5,
+            "verify_ms": 2281.3
+          }
+        }
+      ],
+      "pick": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 40.4,
+        "point": [
+          387.0,
+          220.0
+        ],
+        "text": null,
+        "mask_pixels": 695,
+        "target": {
+          "center": [
+            0.2532,
+            -0.0814,
+            0.0125
+          ],
+          "top_z": 0.025,
+          "yaw": -0.6203,
+          "pixels": 480,
+          "centroid_px": [
+            386.1,
+            220.5
+          ]
+        },
+        "truth_label": "green cube",
+        "iou_vs_truth": 0.7055
+      },
+      "place": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 33.0,
+        "point": [
+          197.5,
+          272.6
+        ],
+        "text": null,
+        "mask_pixels": 7074,
+        "target": {
+          "center": [
+            0.1729,
+            0.1708,
+            0.012
+          ],
+          "top_z": 0.024,
+          "yaw": 0.0014,
+          "pixels": 7074,
+          "centroid_px": [
+            180.8,
+            289.0
+          ]
+        },
+        "truth_label": "tray",
+        "iou_vs_truth": 0.9014
+      },
+      "place_xy": [
+        0.1866,
+        0.1531
+      ],
+      "place_how": "inside container",
+      "surface_z": 0.006,
+      "phases": [
+        {
+          "phase": "above object",
+          "target": [
+            0.2385,
+            -0.0709,
+            0.065
+          ],
+          "reached": [
+            0.2384,
+            -0.0708,
+            0.0649
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "descend",
+          "target": [
+            0.2385,
+            -0.0709,
+            0.0085
+          ],
+          "reached": [
+            0.2383,
+            -0.0708,
+            0.0083
+          ],
+          "error_mm": 0.3,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "close jaws",
+          "target": [
+            0.2385,
+            -0.0709,
+            0.0085
+          ],
+          "reached": [
+            0.2384,
+            -0.0709,
+            0.0085
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lift",
+          "target": [
+            0.2385,
+            -0.0709,
+            0.065
+          ],
+          "reached": [
+            0.2384,
+            -0.0708,
+            0.0648
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "above target",
+          "target": [
+            0.1685,
+            0.1531,
+            0.065
+          ],
+          "reached": [
+            0.1684,
+            0.153,
+            0.0649
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lower",
+          "target": [
+            0.1685,
+            0.1531,
+            0.0185
+          ],
+          "reached": [
+            0.1684,
+            0.153,
+            0.0183
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "open jaws",
+          "target": [
+            0.1685,
+            0.1531,
+            0.0185
+          ],
+          "reached": [
+            0.1646,
+            0.1523,
+            0.0176
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "retreat",
+          "target": [
+            0.1685,
+            0.1531,
+            0.085
+          ],
+          "reached": [
+            0.1706,
+            0.1554,
+            0.0848
+          ],
+          "error_mm": 3.1,
+          "ok": true,
+          "note": ""
+        }
+      ],
+      "timings": {
+        "observe_ms": 1716.1,
+        "segment_pick_ms": 40.4,
+        "segment_place_ms": 33.0,
+        "pick_place_ms": 9677.5,
+        "verify_ms": 2281.3
+      },
+      "result": {
+        "step": 1,
+        "object": "green cube",
+        "object_name": "green_cube",
+        "in_tray": true,
+        "error_mm": 5.3,
+        "ok": true,
+        "localisation_error_mm": 0.25,
+        "disturbed": [],
+        "final_pos": [
+          0.1813,
+          0.1528,
+          0.0185
+        ],
+        "attempts": 1,
+        "verified": true,
+        "failure": null
+      }
+    },
+    {
+      "step": 2,
+      "pick_label": "blue cube",
+      "place_label": "tray",
+      "attempts": [
+        {
+          "attempt": 1,
+          "pick_point": [
+            282.0,
+            236.0
+          ],
+          "place_point": [
+            163.5,
+            305.4
+          ],
+          "pick": {
+            "segmenter": "sam2.1-hiera-tiny (local)",
+            "latency_ms": 31.1,
+            "point": [
+              282.0,
+              236.0
+            ],
+            "text": null,
+            "mask_pixels": 608,
+            "target": {
+              "center": [
+                0.2339,
+                0.0456,
+                0.0125
+              ],
+              "top_z": 0.025,
+              "yaw": -0.3202,
+              "pixels": 441,
+              "centroid_px": [
+                282.1,
+                236.3
+              ]
+            },
+            "truth_label": "blue cube",
+            "iou_vs_truth": 0.7316
+          },
+          "place": {
+            "segmenter": "sam2.1-hiera-tiny (local)",
+            "latency_ms": 28.9,
+            "point": [
+              163.5,
+              305.4
+            ],
+            "text": null,
+            "mask_pixels": 7206,
+            "target": {
+              "center": [
+                0.185,
+                0.1667,
+                0.0155
+              ],
+              "top_z": 0.031,
+              "yaw": -0.0061,
+              "pixels": 7126,
+              "centroid_px": [
+                180.5,
+                289.0
+              ]
+            },
+            "truth_label": "tray",
+            "iou_vs_truth": 0.8484
+          },
+          "place_xy": [
+            0.1534,
+            0.1868
+          ],
+          "place_how": "inside container",
+          "surface_z": 0.006,
+          "grasp": {
+            "jaw_yaw": -0.3202,
+            "period": 1.5708,
+            "width_mm": 26.1
+          },
+          "localisation_error_mm": 0.13,
+          "injected": {},
+          "phases": [
+            {
+              "phase": "above object",
+              "target": [
+                0.2168,
+                0.0513,
+                0.065
+              ],
+              "reached": [
+                0.2167,
+                0.0512,
+                0.0649
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "descend",
+              "target": [
+                0.2168,
+                0.0513,
+                0.0085
+              ],
+              "reached": [
+                0.2167,
+                0.0512,
+                0.0084
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "close jaws",
+              "target": [
+                0.2168,
+                0.0513,
+                0.0085
+              ],
+              "reached": [
+                0.2168,
+                0.0513,
+                0.0085
+              ],
+              "error_mm": 0.0,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "lift",
+              "target": [
+                0.2168,
+                0.0513,
+                0.065
+              ],
+              "reached": [
+                0.2167,
+                0.0513,
+                0.0649
+              ],
+              "error_mm": 0.1,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "above target",
+              "target": [
+                0.1534,
+                0.1688,
+                0.065
+              ],
+              "reached": [
+                0.1534,
+                0.1687,
+                0.0649
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "lower",
+              "target": [
+                0.1534,
+                0.1688,
+                0.0185
+              ],
+              "reached": [
+                0.1533,
+                0.1686,
+                0.0183
+              ],
+              "error_mm": 0.2,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "open jaws",
+              "target": [
+                0.1534,
+                0.1688,
+                0.0185
+              ],
+              "reached": [
+                0.1528,
+                0.1648,
+                0.0179
+              ],
+              "error_mm": 0.0,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "retreat",
+              "target": [
+                0.1534,
+                0.1688,
+                0.085
+              ],
+              "reached": [
+                0.152,
+                0.1665,
+                0.085
+              ],
+              "error_mm": 2.6,
+              "ok": true,
+              "note": ""
+            }
+          ],
+          "grasp_checks": [
+            {
+              "after": "close jaws",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.1
+            },
+            {
+              "after": "lift",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.1
+            },
+            {
+              "after": "above target",
+              "held": true,
+              "jaw_gap_mm": 19.7,
+              "object_width_mm": 26.1
+            }
+          ],
+          "verify": {
+            "pick_clear": true,
+            "place_seen": {
+              "center": [
+                0.1546,
+                0.1808,
+                0.0155
+              ],
+              "top_z": 0.031,
+              "near": true,
+              "level": true,
+              "same_colour": true
+            },
+            "place_raised": true,
+            "place_px": [
+              163.5,
+              303.5
+            ],
+            "grasp_held": true,
+            "jaw_gap_mm": 19.7,
+            "completed": true,
+            "ok": true,
+            "physics_ok": true,
+            "agree": true
+          },
+          "images": {
+            "frame": "s2a1-frame.png",
+            "after": "s2a1-after.png",
+            "pick": "s2a1-pick.png",
+            "pick_truth": "s2a1-pick_truth.png",
+            "place": "s2a1-place.png",
+            "place_truth": "s2a1-place_truth.png"
+          },
+          "timings": {
+            "observe_ms": 1647.9,
+            "segment_pick_ms": 31.1,
+            "segment_place_ms": 28.9,
+            "pick_place_ms": 10247.0,
+            "verify_ms": 2256.5
+          }
+        }
+      ],
+      "pick": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 31.1,
+        "point": [
+          282.0,
+          236.0
+        ],
+        "text": null,
+        "mask_pixels": 608,
+        "target": {
+          "center": [
+            0.2339,
+            0.0456,
+            0.0125
+          ],
+          "top_z": 0.025,
+          "yaw": -0.3202,
+          "pixels": 441,
+          "centroid_px": [
+            282.1,
+            236.3
+          ]
+        },
+        "truth_label": "blue cube",
+        "iou_vs_truth": 0.7316
+      },
+      "place": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 28.9,
+        "point": [
+          163.5,
+          305.4
+        ],
+        "text": null,
+        "mask_pixels": 7206,
+        "target": {
+          "center": [
+            0.185,
+            0.1667,
+            0.0155
+          ],
+          "top_z": 0.031,
+          "yaw": -0.0061,
+          "pixels": 7126,
+          "centroid_px": [
+            180.5,
+            289.0
+          ]
+        },
+        "truth_label": "tray",
+        "iou_vs_truth": 0.8484
+      },
+      "place_xy": [
+        0.1534,
+        0.1868
+      ],
+      "place_how": "inside container",
+      "surface_z": 0.006,
+      "phases": [
+        {
+          "phase": "above object",
+          "target": [
+            0.2168,
+            0.0513,
+            0.065
+          ],
+          "reached": [
+            0.2167,
+            0.0512,
+            0.0649
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "descend",
+          "target": [
+            0.2168,
+            0.0513,
+            0.0085
+          ],
+          "reached": [
+            0.2167,
+            0.0512,
+            0.0084
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "close jaws",
+          "target": [
+            0.2168,
+            0.0513,
+            0.0085
+          ],
+          "reached": [
+            0.2168,
+            0.0513,
+            0.0085
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lift",
+          "target": [
+            0.2168,
+            0.0513,
+            0.065
+          ],
+          "reached": [
+            0.2167,
+            0.0513,
+            0.0649
+          ],
+          "error_mm": 0.1,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "above target",
+          "target": [
+            0.1534,
+            0.1688,
+            0.065
+          ],
+          "reached": [
+            0.1534,
+            0.1687,
+            0.0649
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lower",
+          "target": [
+            0.1534,
+            0.1688,
+            0.0185
+          ],
+          "reached": [
+            0.1533,
+            0.1686,
+            0.0183
+          ],
+          "error_mm": 0.2,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "open jaws",
+          "target": [
+            0.1534,
+            0.1688,
+            0.0185
+          ],
+          "reached": [
+            0.1528,
+            0.1648,
+            0.0179
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "retreat",
+          "target": [
+            0.1534,
+            0.1688,
+            0.085
+          ],
+          "reached": [
+            0.152,
+            0.1665,
+            0.085
+          ],
+          "error_mm": 2.6,
+          "ok": true,
+          "note": ""
+        }
+      ],
+      "timings": {
+        "observe_ms": 1647.9,
+        "segment_pick_ms": 31.1,
+        "segment_place_ms": 28.9,
+        "pick_place_ms": 10247.0,
+        "verify_ms": 2256.5
+      },
+      "result": {
+        "step": 2,
+        "object": "blue cube",
+        "object_name": "blue_cube",
+        "in_tray": true,
+        "error_mm": 5.7,
+        "ok": true,
+        "localisation_error_mm": 0.13,
+        "disturbed": [],
+        "final_pos": [
+          0.1544,
+          0.1812,
+          0.0185
+        ],
+        "attempts": 1,
+        "verified": true,
+        "failure": null
+      }
+    }
+  ],
+  "ok": true,
+  "segmenter_name": "sam2.1-hiera-tiny (local)",
+  "placed": 3,
+  "total": 3,
+  "finished_at": "2026-10-21T05:31:58.472Z",
+  "final_poses": {
+    "red_cube": {
+      "label": "red cube",
+      "pos": [
+        0.1882,
+        0.1812,
+        0.0185
+      ],
+      "yaw": 1.5637
+    },
+    "green_cube": {
+      "label": "green cube",
+      "pos": [
+        0.1813,
+        0.1528,
+        0.0185
+      ],
+      "yaw": 0.0552
+    },
+    "blue_cube": {
+      "label": "blue cube",
+      "pos": [
+        0.1544,
+        0.1812,
+        0.0185
+      ],
+      "yaw": 1.5457
+    },
+    "tray": {
+      "label": "tray",
+      "pos": [
+        0.17,
+        0.17,
+        0.0
+      ],
+      "yaw": 0.0
+    }
+  },
+  "timings": {
+    "total_ms": 45349.0
+  },
+  "iou": {
+    "values": [
+      0.9531,
+      0.9986,
+      0.7055,
+      0.9014,
+      0.7316,
+      0.8484
+    ],
+    "mean": 0.8564,
+    "min": 0.7055
+  },
+  "verify": {
+    "checks": 3,
+    "agree": 3,
+    "retries": 0
+  },
+  "video": {
+    "file": "20261021T053112874Z-demo.mp4",
+    "camera": "demo",
+    "fps": 30,
+    "size": [
+      960,
+      720
+    ],
+    "frames": 2510,
+    "seconds": 83.7,
+    "caption": "MuJoCo simulation \u00b7 official SO-101 model"
+  },
+  "clicks": "simulated: colour-threshold blob centres from the rendered overhead RGB"
+}
