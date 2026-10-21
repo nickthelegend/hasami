@@ -450,8 +450,10 @@ class Session:
             pts = frame.cam_pos + np.stack([(us - cx) / fx * z, -(vs - cy) / fy * z, -z], axis=1) @ frame.cam_mat.T
             pts = pts[pts[:, 2] > 0.004]
             lo, hi = pts[:, :2].min(axis=0), pts[:, :2].max(axis=0)
-            margin = held_radius + 0.01
-            if np.all(hi - lo > 2 * margin + 0.02):
+            # Keep the object's centre far enough inside that the fingers (the fixed one is 13 mm thick,
+            # beside the object) clear the walls.
+            margin = held_radius + 0.02
+            if np.all(hi - lo > 2 * margin + 0.01):
                 base = click if click is not None else np.array(seg.target.center[:2])
                 xy = np.clip(base, lo + margin, hi - margin)
                 return xy, "inside container", self._surface_z(frame, xy)

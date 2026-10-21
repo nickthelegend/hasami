@@ -134,8 +134,9 @@ TRAY = ContainerSpec("tray", "tray", 0.17, 0.17)
 GREY_BIN = ContainerSpec("bin", "grey bin", 0.17, -0.17, rgba=(0.55, 0.57, 0.60, 1.0))
 # The procedural scenes move the containers out to the sides (still reachable, measured) so the reach
 # annulus in front of the arm has room for up to eight objects.
-SIDE_TRAY = ContainerSpec("tray", "tray", 0.10, 0.21)
-SIDE_BIN = ContainerSpec("bin", "grey bin", 0.10, -0.21, rgba=(0.55, 0.57, 0.60, 1.0))
+# They are also larger (130 mm) so the fingers clear the walls with several objects inside.
+SIDE_TRAY = ContainerSpec("tray", "tray", 0.10, 0.21, half=0.065)
+SIDE_BIN = ContainerSpec("bin", "grey bin", 0.10, -0.21, half=0.065, rgba=(0.55, 0.57, 0.60, 1.0))
 
 
 def classic(seed: int | None = None) -> SceneSpec:

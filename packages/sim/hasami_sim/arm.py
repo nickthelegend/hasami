@@ -413,6 +413,7 @@ class Arm:
             self.go("back off", above, roll_pick, log)
             return
         if not self.go("lift", above, roll_pick, log, steps=900):
+            self._let_go(log, open_to, roll_pick)
             return
         if slip:  # injected: the jaws let go for a moment just after the lift, as a slipping grip would
             out.injected.append("slip")
@@ -422,30 +423,42 @@ class Arm:
             self.set_gripper(open_to, 200)
             return
         if not self.go("above target", np.array([drop_site[0], drop_site[1], carry]), roll_place, log, steps=900):
+            self._let_go(log, open_to, roll_place)
             return
         if not self._check_grip(log, out, "above target", width):
             self.set_gripper(open_to, 200)
             return
-        if not self.go("lower", np.array([drop_site[0], drop_site[1], lower_z]), roll_place, log, steps=900, segments=3):
-            return
+        lowered = self.go("lower", np.array([drop_site[0], drop_site[1], lower_z]), roll_place, log, steps=900, segments=3)
         # Release by opening just past the object (8 mm beyond its width or the held reading, if larger):
         # the moving jaw swings on a hinge, and a full opening can knock a stacked object off.
         release = min(open_to, self.angle_for_gap(max((out.jaw_gap_mm or 0) / 1000, width) + 0.008))
         self.set_gripper(release)
-        log.append(StepLog("open jaws", [round(float(v), 4) for v in drop_site], [round(float(v), 4) for v in self.gripper_pos()], 0.0, True))
-        # The object is already placed; a sloppy retreat is logged but does not fail the run.
+        log.append(StepLog("open jaws", [round(float(v), 4) for v in drop_site], [round(float(v), 4) for v in self.gripper_pos()],
+                           0.0, lowered, "" if lowered else "released where the lowering stopped"))
+        # The object is already released; a sloppy retreat is logged but does not fail the run.
         self.go("retreat", np.array([drop_site[0], drop_site[1], max(carry, lower_z + 0.03) + 0.02]), roll_place, log,
                 segments=4)
         log[-1].ok = True
-        out.completed = True
+        out.completed = lowered
+        out.released = True
         self.settle(400)
+
+    def _let_go(self, log: list[StepLog], open_to: float, roll: float | None) -> None:
+        """A move failed while holding the object: put it down where it is rather than carry it away."""
+        self.set_gripper(open_to, 300)
+        here = self.gripper_pos()
+        log.append(StepLog("open jaws", [round(float(v), 4) for v in here], [round(float(v), 4) for v in here], 0.0, False,
+                           "released after a failed move"))
+        self.go("back off", here + np.array([0, 0, 0.03]), roll, log)
+        self.settle(300)
 
 
 class PickPlaceLog(list):
     """The phases of one pick-and-place (a list of StepLog) plus what the gripper reported.
 
     held: the last grasp check (None if the jaws never closed); jaw_gap_mm / gripper_angle: its reading;
-    checks: every grasp check; completed: the object was released at the target; injected: disturbances."""
+    checks: every grasp check; completed: the object was lowered to the target and released; released: the
+    jaws opened over the target (possibly higher than planned); injected: disturbances."""
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -454,6 +467,7 @@ class PickPlaceLog(list):
         self.gripper_angle: float | None = None
         self.checks: list[dict] = []
         self.completed = False
+        self.released = False
         self.injected: list[str] = []
 
 
