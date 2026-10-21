@@ -1,0 +1,1476 @@
+{
+  "started_at": "2026-10-21T05:22:38Z",
+  "simulation": "MuJoCo simulation, official SO-101 model",
+  "planner": "clicks",
+  "planner_note": "simulated-click oracle: the task says which object each step moves; the click is the middle of that object's colour blob in the rendered RGB image",
+  "segmenter": "sam2.1-hiera-tiny (local, point prompts)",
+  "max_retries": 2,
+  "disturb": null,
+  "command": "scripts/bench.py --family all-to-tray --seeds 30",
+  "families": {
+    "all-to-tray": {
+      "family": "all-to-tray",
+      "seeds": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "ran": 30,
+      "skipped": 0,
+      "success": 30,
+      "rate": 1.0,
+      "steps_ok": 90,
+      "steps": 90,
+      "failures": {},
+      "retries": 0,
+      "verify": {
+        "checks": 90,
+        "agree": 90,
+        "image_ok_physics_fail": 0,
+        "image_fail_physics_ok": 0
+      },
+      "iou_mean": 0.8462,
+      "seconds": 122.1,
+      "tasks": [
+        {
+          "seed": 0,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.14,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.28,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.29,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8308,
+          "seconds": 3.9
+        },
+        {
+          "seed": 1,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.31,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.16,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.32,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8601,
+          "seconds": 4.0
+        },
+        {
+          "seed": 2,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.14,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.25,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.13,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8564,
+          "seconds": 4.0
+        },
+        {
+          "seed": 3,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.2,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.21,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.23,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8529,
+          "seconds": 4.0
+        },
+        {
+          "seed": 4,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.09,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.23,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.12,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8304,
+          "seconds": 4.0
+        },
+        {
+          "seed": 5,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.17,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.11,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.32,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8502,
+          "seconds": 4.0
+        },
+        {
+          "seed": 6,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.2,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.17,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.34,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8254,
+          "seconds": 4.0
+        },
+        {
+          "seed": 7,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.21,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.22,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.27,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8393,
+          "seconds": 3.9
+        },
+        {
+          "seed": 8,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.25,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.1,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.07,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8691,
+          "seconds": 4.0
+        },
+        {
+          "seed": 9,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.22,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.14,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.11,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8733,
+          "seconds": 4.0
+        },
+        {
+          "seed": 10,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.18,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.2,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.09,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8703,
+          "seconds": 4.0
+        },
+        {
+          "seed": 11,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.04,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.26,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.27,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8185,
+          "seconds": 3.9
+        },
+        {
+          "seed": 12,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.25,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.23,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.23,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.857,
+          "seconds": 4.0
+        },
+        {
+          "seed": 13,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.2,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.18,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.33,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.825,
+          "seconds": 4.0
+        },
+        {
+          "seed": 14,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.09,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.2,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.28,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8631,
+          "seconds": 4.0
+        },
+        {
+          "seed": 15,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.12,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.3,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.14,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8277,
+          "seconds": 4.0
+        },
+        {
+          "seed": 16,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.05,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.3,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.16,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8292,
+          "seconds": 3.9
+        },
+        {
+          "seed": 17,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.16,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.15,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.35,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8422,
+          "seconds": 3.9
+        },
+        {
+          "seed": 18,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.11,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.26,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.21,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8467,
+          "seconds": 3.9
+        },
+        {
+          "seed": 19,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.21,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.23,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.1,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8397,
+          "seconds": 4.0
+        },
+        {
+          "seed": 20,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.02,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.21,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.37,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8813,
+          "seconds": 4.0
+        },
+        {
+          "seed": 21,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.03,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.23,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.26,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8733,
+          "seconds": 4.0
+        },
+        {
+          "seed": 22,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.15,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.18,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.25,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8571,
+          "seconds": 4.0
+        },
+        {
+          "seed": 23,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.07,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.28,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.11,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8456,
+          "seconds": 4.0
+        },
+        {
+          "seed": 24,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.08,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.21,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.15,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8289,
+          "seconds": 4.0
+        },
+        {
+          "seed": 25,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.31,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.15,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.19,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8168,
+          "seconds": 4.0
+        },
+        {
+          "seed": 26,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.16,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.19,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.15,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8567,
+          "seconds": 3.9
+        },
+        {
+          "seed": 27,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.13,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.14,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.2,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8724,
+          "seconds": 4.0
+        },
+        {
+          "seed": 28,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.27,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.31,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.07,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.838,
+          "seconds": 3.9
+        },
+        {
+          "seed": 29,
+          "instruction": "put all the cubes in the tray",
+          "ok": true,
+          "failure": null,
+          "goal": {
+            "red_cube in tray": true,
+            "green_cube in tray": true,
+            "blue_cube in tray": true
+          },
+          "steps": [
+            {
+              "pick": "red cube",
+              "object": "red cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.08,
+              "note": null
+            },
+            {
+              "pick": "green cube",
+              "object": "green cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.12,
+              "note": null
+            },
+            {
+              "pick": "blue cube",
+              "object": "blue cube",
+              "ok": true,
+              "attempts": 1,
+              "failure": null,
+              "localisation_error_mm": 0.27,
+              "note": null
+            }
+          ],
+          "retries": 0,
+          "checks": 3,
+          "agree": 3,
+          "image_ok_physics_fail": 0,
+          "image_fail_physics_ok": 0,
+          "iou_mean": 0.8074,
+          "seconds": 4.0
+        }
+      ]
+    }
+  },
+  "finished_at": "2026-10-21T05:24:40Z"
+}
