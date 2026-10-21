@@ -137,3 +137,33 @@ class SO101:
 
     def close(self) -> None:
         self.robot.disconnect()
+
+
+def limit_step(prev: Sequence[float] | None, target: Sequence[float], max_step: float) -> list[float]:
+    """Move at most `max_step` (radians) per joint from `prev` towards `target`. A guard against a jump
+    in the streamed targets (e.g. the sim being reset) reaching the real servos as one big move."""
+    if prev is None:
+        return [float(t) for t in target]
+    return [float(p + max(-max_step, min(max_step, t - p))) for p, t in zip(prev, target)]
+
+
+class RealMirror:
+    """Mirror mode: stream the simulated arm's joint targets to a connected SO-101 follower.
+
+    Plug an instance into `hasami_sim.arm.Arm.command_hook`. The sim stays the source of truth for
+    planning, perception and success checks; the real arm repeats the commanded joint motion, at most
+    `max_step_deg` per joint per command (~30 Hz). Written against LeRobot's follower API and the unit
+    conversion tested in tests/test_robot.py, but never run on hardware.
+    """
+
+    def __init__(self, robot: SO101, max_step_deg: float = 6.0):
+        self.robot = robot
+        self.max_step = math.radians(max_step_deg)
+        self._last: list[float] | None = None
+        self.sent = 0
+
+    def __call__(self, q_rad: Sequence[float], gripper_rad: float) -> None:
+        q = limit_step(self._last, list(q_rad), self.max_step)
+        self.robot.send_joint_targets(q, gripper_rad)
+        self._last = q
+        self.sent += 1

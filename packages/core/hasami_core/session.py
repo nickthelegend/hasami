@@ -23,7 +23,7 @@ import mujoco
 import numpy as np
 from PIL import Image
 
-from hasami_perception import LocalSam2, MetaSam3, Target, locate, mask_iou
+from hasami_perception import LocalSam2, MetaSam3, SetupRequired, Target, locate, mask_iou
 from hasami_planner import Plan, PlanStep, plan_from_clicks
 from hasami_sim.arm import ARM_JOINTS, GRIPPER, GRIPPER_OPEN, GRIPPER_PRE_GRASP, Arm, StepLog, in_tray
 from hasami_sim.camera import Frame, capture
@@ -123,9 +123,39 @@ class Session:
     _snapshots: dict[str, bytes] = field(default_factory=dict)
     initial_poses: dict = field(default_factory=dict)
     last_run: dict | None = None
+    # Real SO-101 in mirror mode (HASAMI_SO101_PORT): None unless a follower actually connected.
+    real: object | None = None
+    real_setup: str | None = None
+    connect_real: bool = True
 
     def __post_init__(self) -> None:
+        if self.connect_real:
+            self._connect_real_arm()
         self.reset(self.seed)
+
+    def _connect_real_arm(self) -> None:
+        """With HASAMI_SO101_PORT set, connect the LeRobot follower and mirror every joint target the
+        simulated arm is commanded to it. Without the port (or LeRobot, or the device) the session stays
+        sim-only and `real_setup` says what is missing. Untested on hardware."""
+        from hasami_robot import SO101, RealMirror
+
+        if not os.environ.get("HASAMI_SO101_PORT"):
+            return
+        try:
+            robot = SO101()
+        except SetupRequired as e:
+            self.real_setup = str(e)
+            return
+        except Exception as e:  # noqa: BLE001 - the arm is there but would not connect; say why
+            self.real_setup = f"SO-101 did not connect: {type(e).__name__}: {e}"
+            return
+        self.real = robot
+        self.arm.command_hook = RealMirror(robot)
+
+    @property
+    def arm_kind(self) -> str:
+        """'so101' only while a real follower is connected and mirroring; otherwise 'sim'."""
+        return "so101" if self.real is not None else "sim"
 
     # ---- models ------------------------------------------------------------------------
     @property

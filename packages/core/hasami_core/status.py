@@ -36,9 +36,18 @@ def segmenters_status(session=None) -> list[dict]:
 def status(session=None) -> dict:
     from .session import OBJECTS
 
+    so101 = so101_status()
+    kind = getattr(session, "arm_kind", "sim")
+    so101["connected"] = kind == "so101"
+    if kind == "so101":
+        so101.pop("setup", None)
+        so101["mode"] = "mirror: the follower repeats the simulated arm's joint targets (untested on hardware)"
+    elif getattr(session, "real_setup", None):
+        so101["setup"] = session.real_setup
     return {
-        "arm": "sim",
-        "so101": so101_status(),
+        "arm": kind,
+        "sim": "MuJoCo simulation, official SO-101 model",
+        "so101": so101,
         "planner": planner_status(),
         "segmenters": segmenters_status(session),
         "scene": {"objects": [{"name": n, "label": label} for n, label in OBJECTS.items()],

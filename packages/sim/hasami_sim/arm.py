@@ -46,6 +46,11 @@ class Arm:
     record_size: tuple[int, int] = (640, 480)  # (width, height) of recorded frames
     # If set, recorded frames go here (e.g. a video writer) instead of piling up in `frames`.
     frame_sink: Callable[[np.ndarray], None] | None = None
+    # If set, called with (arm joint targets, gripper target) in radians as the controller streams them,
+    # every `command_every` physics steps and at the end of each move. A real SO-101 mirrors the sim
+    # through this (see hasami_robot.RealMirror).
+    command_hook: Callable[[np.ndarray, float], None] | None = None
+    command_every: int = 17  # ~30 Hz of simulated time at a 2 ms timestep
     _renderer: mujoco.Renderer | None = None
     _steps: int = 0
     clearance: float = 0.005  # gap left on the fixed-finger side; the moving jaw closes it
@@ -116,6 +121,12 @@ class Arm:
 
     def settle(self, n: int = 200) -> None:
         self.step(n)
+
+    def _command(self, force: bool = False) -> None:
+        if self.command_hook is None or not (force or self._steps % self.command_every == 0):
+            return
+        aids = [self._aid(j) for j in ARM_JOINTS]
+        self.command_hook(self.data.ctrl[aids].copy(), float(self.data.ctrl[self._aid(GRIPPER)]))
 
     def render(self, camera: str, width: int = 640, height: int = 480) -> np.ndarray:
         if self._renderer is None or self._renderer.width != width or self._renderer.height != height:
@@ -215,6 +226,8 @@ class Arm:
             s = 10 * s**3 - 15 * s**4 + 6 * s**5
             self.data.ctrl[aids] = start + s * (q - start)
             self.step(1)
+            self._command()
+        self._command(force=True)
         self.settle(150)
 
     def set_gripper(self, value: float, steps: int = 400) -> None:
@@ -223,6 +236,8 @@ class Arm:
         for i in range(1, steps + 1):
             self.data.ctrl[aid] = start + (value - start) * i / steps
             self.step(1)
+            self._command()
+        self._command(force=True)
         self.settle(150)
 
     # ---- skills ----------------------------------------------------------------------
