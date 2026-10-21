@@ -175,27 +175,42 @@ function AttemptView({ runId, step, a, view, last }: { runId: string; step: numb
   );
 }
 
-export function RunTrace({ runId, onClose }: { runId: string; onClose: () => void }) {
+export function RunTrace({ runId, onClose, onLoaded }: { runId: string; onClose: () => void; onLoaded?: () => void }) {
   const [rec, setRec] = useState<RunRecord | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useState<View>('perception');
 
   useEffect(() => {
     let off = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     setRec(null);
     setErr(null);
-    fetch(`/api/runs/${encodeURIComponent(runId)}`)
-      .then(async (r) => {
-        const body = await r.json().catch(() => null);
-        if (!r.ok) throw new ApiError('server', r.status, (body && (body.error as string)) || `HTTP ${r.status}`);
-        return body as RunRecord;
-      })
-      .then((b) => !off && setRec(b))
-      .catch((e) => !off && setErr(e instanceof Error ? e.message : String(e)));
+    // The server streams "done" before it writes the record file (it sends "recorded" after), so a trace
+    // opened on "done" can get a 404 for a moment: retry a 404 for up to ~5 s before showing the error.
+    const load = (tries: number) => {
+      fetch(`/api/runs/${encodeURIComponent(runId)}`)
+        .then(async (r) => {
+          const body = await r.json().catch(() => null);
+          if (r.status === 404 && tries > 0) return null;
+          if (!r.ok) throw new ApiError('server', r.status, (body && (body.error as string)) || `HTTP ${r.status}`);
+          return body as RunRecord;
+        })
+        .then((b) => {
+          if (off) return;
+          if (b === null) timer = setTimeout(() => load(tries - 1), 500);
+          else {
+            setRec(b);
+            onLoaded?.();
+          }
+        })
+        .catch((e) => !off && setErr(e instanceof Error ? e.message : String(e)));
+    };
+    load(10);
     return () => {
       off = true;
+      if (timer) clearTimeout(timer);
     };
-  }, [runId]);
+  }, [runId, onLoaded]);
 
   return (
     <section className="trace" aria-labelledby="trace-h">

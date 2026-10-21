@@ -375,7 +375,7 @@ export default function App() {
           </aside>
         </div>
 
-        {traceId && <RunTrace runId={traceId} onClose={() => setTraceId(null)} />}
+        {traceId && <RunTrace runId={traceId} onClose={() => setTraceId(null)} onLoaded={loadRuns} />}
         <section className="register paper" aria-label="Runs and real camera">
           <div className="tabs" role="tablist" aria-label="Register">
             {(['runs', 'realcam'] as const).map((t) => (
