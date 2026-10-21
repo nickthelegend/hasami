@@ -24,9 +24,11 @@ import numpy as np
 from PIL import Image
 
 from hasami_perception import LocalSam2, MetaSam3, SetupRequired, Target, locate, mask_iou
+from hasami_perception.colour import blob_near, colour_mask, colour_word, mean_colour, rgb_to_hsv, similar_mask
 from hasami_planner import Plan, PlanStep, plan_from_clicks
-from hasami_sim.arm import ARM_JOINTS, GRIPPER, GRIPPER_OPEN, GRIPPER_PRE_GRASP, Arm, StepLog, in_tray
+from hasami_sim.arm import ARM_JOINTS, GRIPPER, GRIPPER_OPEN, GRIPPER_PRE_GRASP, Arm, StepLog, in_container
 from hasami_sim.camera import Frame, capture
+from hasami_sim.scene import SceneSpec, build, classic
 
 # Scene objects: MuJoCo body name -> label used by the planner, the API and the dashboard.
 OBJECTS: dict[str, str] = {"red_cube": "red cube", "green_cube": "green cube", "blue_cube": "blue cube",
@@ -48,6 +50,44 @@ PARK_Q = np.array([0.0, -1.5, 0.8, -0.6, 0.0])
 READY_Q = np.array([0.0, -1.2, 1.1, 1.2, 0.0])
 
 EventFn = Callable[[str, dict], None]
+
+SIMULATION = "MuJoCo simulation, official SO-101 model"
+DISTURB_ENV = "HASAMI_DISTURB"
+
+
+@dataclass
+class Disturb:
+    """Injected disturbances for testing recovery (HASAMI_DISTURB=offset_mm:6,slip:0.2). Always labelled
+    in events and run records.
+
+    offset_mm: on each step's first attempt, the grasp point is shifted this far towards the moving jaw,
+      so the fixed finger lands on the object (a localisation error of that size).
+    slip: probability that the jaws let go for a moment just after the lift (a slipping grip)."""
+
+    offset_mm: float = 0.0
+    slip: float = 0.0
+
+    @classmethod
+    def parse(cls, text: str | None) -> "Disturb | None":
+        if not text or not text.strip():
+            return None
+        out = cls()
+        for part in text.split(","):
+            key, _, val = part.partition(":")
+            key = key.strip()
+            if key not in ("offset_mm", "slip") or not val.strip():
+                raise ValueError(f"{DISTURB_ENV}: expected offset_mm:<mm>,slip:<0-1>, got {part!r}")
+            setattr(out, key, float(val))
+        if not 0 <= out.slip <= 1:
+            raise ValueError(f"{DISTURB_ENV}: slip is a probability in [0, 1]")
+        return out if out.active else None
+
+    @property
+    def active(self) -> bool:
+        return bool(self.offset_mm or self.slip)
+
+    def to_dict(self) -> dict:
+        return {"offset_mm": self.offset_mm, "slip": self.slip, "label": "injected disturbance (test)"}
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -127,8 +167,14 @@ class Session:
     real: object | None = None
     real_setup: str | None = None
     connect_real: bool = True
+    scene: SceneSpec = field(default_factory=classic)
+    disturb: Disturb | None = None  # None: read HASAMI_DISTURB
+    max_retries: int = 2  # re-segment and retry a step that fails its checks, up to this many times
+    _rng: np.random.Generator = field(default_factory=np.random.default_rng)
 
     def __post_init__(self) -> None:
+        if self.disturb is None:
+            self.disturb = Disturb.parse(os.environ.get(DISTURB_ENV))
         if self.connect_real:
             self._connect_real_arm()
         self.reset(self.seed)
@@ -189,19 +235,33 @@ class Session:
         d.qpos[m.jnt_qposadr[self._jid(GRIPPER)]] = gripper
         d.ctrl[self.arm._aid(GRIPPER)] = gripper
 
+    @property
+    def objects(self) -> dict[str, str]:
+        """Body name -> label for every object and container in the current scene."""
+        return self.scene.labels
+
+    @property
+    def movables(self) -> list[str]:
+        return [o.name for o in self.scene.objects]
+
     def reset(self, seed: int | None = None) -> dict:
-        """Put the cubes at random non-overlapping poses within reach (yaw within +-40 deg), tray fixed,
-        arm parked. Retries a layout if any cube would be hidden from the overhead camera."""
+        """The classic scene: three cubes at random non-overlapping poses within reach (yaw within
+        +-40 deg), tray fixed, arm parked. Retries a layout if any cube would be hidden from the overhead
+        camera. (Procedural scenes: load_scene.)"""
         with self.lock:
+            if self.scene.name != "classic":
+                self._swap_arm(Arm.load())
+                self.scene = classic()
             seed = int(seed) if seed is not None else secrets.randbelow(2**31)
             rng = np.random.default_rng(seed)
             m, d = self.arm.model, self.arm.data
+            cubes = self.movables
             for _ in range(100):
-                pts = _sample_layout(rng, len(CUBES))
-                yaws = rng.uniform(-MAX_YAW, MAX_YAW, size=len(CUBES))
+                pts = _sample_layout(rng, len(cubes))
+                yaws = rng.uniform(-MAX_YAW, MAX_YAW, size=len(cubes))
                 mujoco.mj_resetData(m, d)
                 self._set_arm(PARK_Q)
-                for name, p, yaw in zip(CUBES, pts, yaws):
+                for name, p, yaw in zip(cubes, pts, yaws):
                     j = self._jid(name)
                     a, v = m.jnt_qposadr[j], m.jnt_dofadr[j]
                     d.qpos[a:a + 3] = [p[0], p[1], CUBE_SIZE / 2]
@@ -211,25 +271,52 @@ class Session:
                 self.arm.settle(300)
                 if self._all_visible():
                     break
-            self.seed = seed
-            self.initial_poses = self.poses()
-            self._snapshots.clear()
-            return {"seed": seed, "objects": self.initial_poses}
+            return self._after_reset(seed)
+
+    def load_scene(self, spec: SceneSpec) -> dict:
+        """Build a procedural scene (hasami_sim.scene) and park the arm in it. Raises ValueError if an
+        object is hidden from the overhead camera."""
+        with self.lock:
+            model = build(spec)
+            self._swap_arm(Arm(model, mujoco.MjData(model)))
+            self.scene = spec
+            m, d = self.arm.model, self.arm.data
+            mujoco.mj_resetData(m, d)
+            self._set_arm(PARK_Q)
+            mujoco.mj_forward(m, d)
+            self.arm.settle(300)
+            if not self._all_visible(min_pixels=120):
+                raise ValueError(f"an object in scene {spec.name!r} (seed {spec.seed}) is hidden from the overhead camera")
+            return self._after_reset(spec.seed if spec.seed is not None else 0)
+
+    def _swap_arm(self, arm: Arm) -> None:
+        arm.command_hook = self.arm.command_hook if hasattr(self, "arm") and self.arm is not None else None
+        self.arm = arm
+
+    def _after_reset(self, seed: int) -> dict:
+        self.seed = seed
+        self._rng = np.random.default_rng([seed, 7])
+        for o in self.scene.objects:  # keep the spec's poses in step with the physics
+            p = self.arm.object_pos(o.name)
+            o.x, o.y, o.yaw = float(p[0]), float(p[1]), float(self.arm.object_yaw(o.name))
+        self.initial_poses = self.poses()
+        self._snapshots.clear()
+        return {"seed": seed, "scene": self.scene.name, "objects": self.initial_poses}
 
     def _all_visible(self, min_pixels: int = 300) -> bool:
         f = capture(self.arm.model, self.arm.data)
-        return all(self._truth_mask(f, n).sum() >= min_pixels for n in CUBES)
+        return all(self._truth_mask(f, n).sum() >= min_pixels for n in self.movables)
 
     def poses(self) -> dict:
         """Ground-truth poses from the physics state (reporting and scoring only)."""
         out = {}
-        for name in OBJECTS:
+        for name, label in self.objects.items():
             p = self.arm.object_pos(name)
-            out[name] = {"label": OBJECTS[name], "pos": _r(p), "yaw": _r(self.arm.object_yaw(name))}
+            out[name] = {"label": label, "pos": _r(p), "yaw": _r(self.arm.object_yaw(name))}
         return out
 
     def scene_objects(self) -> list[dict]:
-        return [{"name": n, "label": label} for n, label in OBJECTS.items()]
+        return [{"name": n, "label": label} for n, label in self.objects.items()]
 
     def park(self) -> None:
         """Move (with the servos, not a teleport) to the parked pose so the camera has a clear view."""
@@ -289,7 +376,7 @@ class Session:
         if not (0 <= u < w and 0 <= v < h):
             return None
         body = self._body_of_geom(int(frame.seg_geom[v, u]))
-        if body in OBJECTS:
+        if body in self.objects:
             return body
         return "table" if body == "world" else ("arm" if body else None)
 
@@ -297,10 +384,10 @@ class Session:
         if seg.point is not None:
             body = self.truth_at(frame, seg.point)
         else:  # text prompt: the known object the mask overlaps most
-            ious = {n: mask_iou(seg.mask, self._truth_mask(frame, n)) for n in OBJECTS}
+            ious = {n: mask_iou(seg.mask, self._truth_mask(frame, n)) for n in self.objects}
             body = max(ious, key=ious.get) if ious and max(ious.values()) > 0 else None
-        if body in OBJECTS:
-            seg.truth_label = OBJECTS[body]
+        if body in self.objects:
+            seg.truth_label = self.objects[body]
             seg.iou_vs_truth = mask_iou(seg.mask, self._truth_mask(frame, body))
         else:
             seg.truth_label = body
@@ -330,13 +417,30 @@ class Session:
             self._score(seg, frame)
             return seg
 
-    def _place_xy(self, frame: Frame, seg: Segmentation) -> tuple[np.ndarray, str]:
-        """Where the picked object's centre should go, from the place prompt.
+    def _surface_z(self, frame: Frame, xy, radius: float = 0.008) -> float:
+        """Height of whatever surface is under (x, y), from depth: table, tray floor, top of an object."""
+        u, v = frame.world_to_pixel(np.array([xy[0], xy[1], 0.0]))
+        h, w = frame.depth.shape
+        u0, u1 = int(max(0, u - 14)), int(min(w, u + 15))
+        v0, v1 = int(max(0, v - 14)), int(min(h, v + 15))
+        if u0 >= u1 or v0 >= v1:
+            return 0.0
+        vs, us = np.mgrid[v0:v1, u0:u1]
+        us, vs = us.ravel(), vs.ravel()
+        fx, fy, cx, cy = frame.intrinsics()
+        z = frame.depth[vs, us].astype(np.float64)
+        pts = frame.cam_pos + np.stack([(us - cx) / fx * z, -(vs - cy) / fy * z, -z], axis=1) @ frame.cam_mat.T
+        near = np.hypot(pts[:, 0] - xy[0], pts[:, 1] - xy[1]) < radius
+        return float(max(0.0, np.median(pts[near, 2]))) if near.any() else 0.0
 
-        - Clicked a container (a footprint larger than the object): the clicked spot, kept far enough
-          inside the container's footprint that the object clears its walls.
+    def _place_target(self, frame: Frame, seg: Segmentation, held_radius: float) -> tuple[np.ndarray, str, float]:
+        """Where the picked object's centre should go, and the height of the surface it will rest on.
+
+        - Clicked a container (a footprint wider than the object plus margins): the clicked spot, kept far
+          enough inside the container's footprint that the object clears its walls; surface = its floor.
+        - Clicked another object: on top of it (stacking); surface = its measured top.
         - Clicked bare table: the clicked spot on the table.
-        - Text prompt (no click): the container's centre.
+        - Text prompt (no click): the container's centre, or the object's top.
         """
         click = None if seg.point is None else frame.pixel_to_world(*seg.point)[:2]
         if seg.target is not None:
@@ -344,21 +448,23 @@ class Session:
             fx, fy, cx, cy = frame.intrinsics()
             z = frame.depth[vs, us].astype(np.float64)
             pts = frame.cam_pos + np.stack([(us - cx) / fx * z, -(vs - cy) / fy * z, -z], axis=1) @ frame.cam_mat.T
-            pts = pts[pts[:, 2] > 0.005]
+            pts = pts[pts[:, 2] > 0.004]
             lo, hi = pts[:, :2].min(axis=0), pts[:, :2].max(axis=0)
-            margin = CUBE_SIZE / 2 + 0.01
-            if np.all(hi - lo > CUBE_SIZE + 2 * margin):
+            margin = held_radius + 0.01
+            if np.all(hi - lo > 2 * margin + 0.02):
                 base = click if click is not None else np.array(seg.target.center[:2])
-                return np.clip(base, lo + margin, hi - margin), "inside container"
-            return np.array(seg.target.center[:2]), "on top of object"
+                xy = np.clip(base, lo + margin, hi - margin)
+                return xy, "inside container", self._surface_z(frame, xy)
+            return np.array(seg.target.center[:2]), "on top of object", float(seg.target.top_z)
         if click is None:
             raise ValueError(f"could not locate the place target: {seg.target_error}")
-        return click, "on table"
+        return click, "on table", self._surface_z(frame, click)
 
     # ---- running a plan ----------------------------------------------------------------
     def run(self, steps: Plan | list[dict] | list[PlanStep], on_event: EventFn | None = None,
             segmenter: str = "local", run_id: str | None = None) -> dict:
-        """Execute a plan step by step. Emits plan, segment, target, phase, result, done (or error).
+        """Execute a plan step by step. Emits plan, then per step segment, target, phase, verify (and retry
+        with another round of those), result; then done (or error).
 
         Returns the run record (also what record() writes)."""
         emit = on_event or (lambda kind, data: None)
@@ -367,8 +473,11 @@ class Session:
         run_id = run_id or new_run_id()
         rec: dict = {
             "run_id": run_id, "started_at": _now(), "segmenter": segmenter, "seed": self.seed,
+            "simulation": SIMULATION, "scene": self.scene.name,
             "plan": plan.model_dump(), "initial_poses": None, "steps": [], "ok": False,
         }
+        if self.disturb is not None:
+            rec["disturb"] = self.disturb.to_dict()
         t_run = time.perf_counter()
         with self.lock:
             rec["initial_poses"] = self.poses()
@@ -376,7 +485,9 @@ class Session:
                 seg_model = self.segmenter(segmenter)
                 rec["segmenter_name"] = seg_model.name
                 emit("plan", {"run_id": run_id, "source": plan.source, "model": plan.model,
-                              "instruction": plan.instruction, "steps": [s.model_dump() for s in plan.steps]})
+                              "instruction": plan.instruction, "steps": [s.model_dump() for s in plan.steps],
+                              "simulation": SIMULATION,
+                              "disturb": None if self.disturb is None else self.disturb.to_dict()})
                 for i, step in enumerate(plan.steps):
                     rec["steps"].append(self._run_step(i, step, segmenter, emit))
                 self.park()
@@ -395,92 +506,275 @@ class Session:
         rec.update(ok=placed == len(plan.steps), placed=placed, total=len(plan.steps), finished_at=_now(),
                    final_poses=self.poses())
         rec["timings"] = {"total_ms": round((time.perf_counter() - t_run) * 1000, 1)}
-        ious = [s[r]["iou_vs_truth"] for s in rec["steps"] for r in ("pick", "place")
-                if s.get(r) and s[r].get("iou_vs_truth") is not None]
+        ious = [a[r]["iou_vs_truth"] for s in rec["steps"] for a in s["attempts"] for r in ("pick", "place")
+                if a.get(r) and a[r].get("iou_vs_truth") is not None]
         rec["iou"] = {"values": ious, "mean": round(float(np.mean(ious)), 4) if ious else None,
                       "min": round(float(np.min(ious)), 4) if ious else None}
+        checks = [a["verify"] for s in rec["steps"] for a in s["attempts"] if a.get("verify")]
+        rec["verify"] = {"checks": len(checks), "agree": sum(1 for c in checks if c["agree"]),
+                         "retries": sum(len(s["attempts"]) - 1 for s in rec["steps"])}
         self.last_run = rec
         emit("done", {"run_id": run_id, "ok": rec["ok"], "placed": placed, "total": len(plan.steps),
-                      "total_ms": rec["timings"]["total_ms"]})
+                      "total_ms": rec["timings"]["total_ms"], "retries": rec["verify"]["retries"]})
         return rec
 
     def _run_step(self, i: int, step: PlanStep, segmenter: str, emit: EventFn) -> dict:
-        t = {}
+        """One plan step: attempt it, check it from the gripper reading and the camera, and if a check
+        fails re-find the object in the new image and try again (up to max_retries more times)."""
+        out: dict = {"step": i, "pick_label": step.pick, "place_label": step.place, "attempts": []}
+        pick_hint = [float(step.pick_point[0]), float(step.pick_point[1])]
+        place_hint = [float(step.place_point[0]), float(step.place_point[1])]
+        att: dict = {}
+        for attempt in range(1, self.max_retries + 2):
+            att = self._attempt(i, attempt, step, pick_hint, place_hint, segmenter, emit)
+            out["attempts"].append(att["record"])
+            if att["verified"] or attempt > self.max_retries:
+                break
+            hint, how = self._reground(att, step, pick_hint)
+            emit("retry", {"step": i, "attempt": attempt + 1, "reason": att["reason"], "pick_point": hint,
+                           "how": how})
+            if hint is None:
+                break
+            pick_hint = hint
+        last = out["attempts"][-1]
+        for key in ("pick", "place", "place_xy", "place_how", "surface_z", "phases", "timings"):
+            if key in last:
+                out[key] = last[key]
+        out.setdefault("phases", [])
+        result = self._step_result(i, att, len(out["attempts"]))
+        emit("result", result)
+        out["result"] = result
+        return out
+
+    def _attempt(self, i: int, attempt: int, step: PlanStep, pick_hint: list[float], place_hint: list[float],
+                 segmenter: str, emit: EventFn) -> dict:
+        t: dict[str, float] = {}
         t0 = time.perf_counter()
         self.park()
         frame = self.observe()
         t["observe_ms"] = (time.perf_counter() - t0) * 1000
-        out: dict = {"step": i, "pick_label": step.pick, "place_label": step.place}
+        rec: dict = {"attempt": attempt, "pick_point": _r(pick_hint, 1), "place_point": _r(place_hint, 1)}
+        res: dict = {"frame": frame, "record": rec, "verified": False, "reason": None, "pick": None, "place": None,
+                     "obj": None, "pp": None, "physics_ok": False}
+
+        use_text = segmenter == "meta" and attempt == 1
+        pick = self.segment(point=None if use_text else pick_hint, text=step.pick if use_text else None,
+                            segmenter=segmenter if use_text else "local", frame=frame)
+        t["segment_pick_ms"] = pick.latency_ms
+        res["pick"] = pick
+        emit("segment", {"step": i, "attempt": attempt, "role": "pick", **pick.to_dict()})
+        rec["pick"] = pick.to_dict(with_mask=False)
+        if pick.target is None:
+            rec["timings"] = _round_t(t)
+            return self._fail_attempt(res, "segment", f"pick target not found: {pick.target_error}")
+        emit("target", {"step": i, "attempt": attempt, "role": "pick", "target": _target_dict(pick.target)})
+        res["ref_colour"] = mean_colour(frame.rgb, pick.mask & self._raised(frame, pick.mask))
 
         use_text = segmenter == "meta"
-        pick = self.segment(point=None if use_text else step.pick_point, text=step.pick if use_text else None,
-                            segmenter=segmenter, frame=frame)
-        t["segment_pick_ms"] = pick.latency_ms
-        emit("segment", {"step": i, "role": "pick", **pick.to_dict()})
-        out["pick"] = pick.to_dict(with_mask=False)
-        if pick.target is None:
-            return self._fail(out, i, emit, None, f"pick target not found: {pick.target_error}", t)
-        emit("target", {"step": i, "role": "pick", "target": _target_dict(pick.target)})
-
-        place = self.segment(point=None if use_text else step.place_point, text=step.place if use_text else None,
+        place = self.segment(point=None if use_text else place_hint, text=step.place if use_text else None,
                              segmenter=segmenter, frame=frame)
         t["segment_place_ms"] = place.latency_ms
-        emit("segment", {"step": i, "role": "place", **place.to_dict()})
-        out["place"] = place.to_dict(with_mask=False)
+        res["place"] = place
+        emit("segment", {"step": i, "attempt": attempt, "role": "place", **place.to_dict()})
+        rec["place"] = place.to_dict(with_mask=False)
+        jaw_yaw, period, width = pick.target.grasp()
+        held_radius = 0.5 * float(max(pick.target.extent or [CUBE_SIZE]))
         try:
-            place_xy, how = self._place_xy(frame, place)
+            place_xy, how, surface = self._place_target(frame, place, held_radius)
         except ValueError as e:
-            return self._fail(out, i, emit, None, str(e), t)
-        out["place_xy"], out["place_how"] = _r(place_xy), how
-        emit("target", {"step": i, "role": "place", "target": _target_dict(place.target), "place_xy": _r(place_xy),
-                        "how": how})
+            rec["timings"] = _round_t(t)
+            return self._fail_attempt(res, "place", str(e))
+        rec.update(place_xy=_r(place_xy), place_how=how, surface_z=_r(surface),
+                   grasp={"jaw_yaw": _r(jaw_yaw), "period": None if period is None else _r(period),
+                          "width_mm": round(width * 1000, 1)})
+        emit("target", {"step": i, "attempt": attempt, "role": "place", "target": _target_dict(place.target),
+                        "place_xy": _r(place_xy), "how": how, "surface_z": _r(surface)})
 
-        # Which object will the arm actually pick? The cube nearest the located centre (physics, for scoring).
-        obj = min(CUBES, key=lambda n: np.linalg.norm(self.arm.object_pos(n)[:2] - np.array(pick.target.center[:2])))
-        before = {n: self.arm.object_pos(n) for n in CUBES}
-        loc_err_mm = float(np.linalg.norm(before[obj][:2] - np.array(pick.target.center[:2])) * 1000)
+        # Scoring only: which object will the arm actually pick? The one nearest the located centre.
+        obj = min(self.movables, key=lambda n: np.linalg.norm(self.arm.object_pos(n)[:2] - np.array(pick.target.center[:2])))
+        before = {n: self.arm.object_pos(n) for n in self.movables}
+        res.update(obj=obj, before=before, place_xy=place_xy, how=how, surface=surface)
+        rec["localisation_error_mm"] = round(float(np.linalg.norm(before[obj][:2] - np.array(pick.target.center[:2])) * 1000), 2)
+
+        injected: dict = {}
+        offset = 0.0
+        if self.disturb is not None and self.disturb.offset_mm and attempt == 1:
+            offset = self.disturb.offset_mm / 1000
+            injected["offset_mm"] = self.disturb.offset_mm
+        slip = bool(self.disturb is not None and self.disturb.slip and self._rng.random() < self.disturb.slip)
+        if slip:
+            injected["slip"] = True
+        rec["injected"] = injected
 
         def on_log(log: StepLog) -> None:
-            emit("phase", {"step": i, **asdict(log)})
+            emit("phase", {"step": i, "attempt": attempt, **asdict(log)})
             if self.snapshot_on_phase:
                 self._render_png("overhead")
                 self._render_png("demo")
 
         t1 = time.perf_counter()
         self.unpark()
-        height = float(np.clip(pick.target.top_z, 0.015, 0.04))
-        logs = self.arm.pick_place(pick.target.center[:2], place_xy, yaw=pick.target.yaw, object_height=height,
-                                   on_log=on_log, open_to=GRIPPER_PRE_GRASP)
+        height = float(np.clip(pick.target.top_z, 0.012, 0.045))
+        pp = self.arm.pick_place(pick.target.center[:2], place_xy, yaw=jaw_yaw, object_height=height, on_log=on_log,
+                                 open_to=GRIPPER_PRE_GRASP, grip_width=width, yaw_period=period,
+                                 place_surface_z=surface, jaw_offset=offset, slip=slip)
         t["pick_place_ms"] = (time.perf_counter() - t1) * 1000
-        out["phases"] = [asdict(lg) for lg in logs]
+        res["pp"] = pp
+        rec["phases"] = [asdict(lg) for lg in pp]
+        rec["grasp_checks"] = pp.checks
 
+        # Check the step the way a real robot could: the gripper's own position, then the camera.
+        t2 = time.perf_counter()
+        self.park()
+        after = self.observe()
+        res["after"] = after
+        v = self._verify_image(after, pick, place_xy, surface, height, res["ref_colour"])
+        t["verify_ms"] = (time.perf_counter() - t2) * 1000
+        v.update(grasp_held=pp.held, jaw_gap_mm=pp.jaw_gap_mm, completed=pp.completed)
+        v["ok"] = bool(pp.completed and pp.held is not False and v["pick_clear"] and v["place_raised"])
+        physics_ok = self._physics_ok(obj, place_xy, how, surface, height)
+        v["physics_ok"] = physics_ok  # ground truth, for scoring the check (never used to decide)
+        v["agree"] = v["ok"] == physics_ok
+        res["physics_ok"] = physics_ok
+        rec["verify"] = v
+        rec["timings"] = _round_t(t)
+        emit("verify", {"step": i, "attempt": attempt, **v, "injected": injected})
+        if not physics_ok:
+            rec["failure"] = "grasp" if pp.held is not True else "place"
+        res["verified"] = v["ok"]
+        if not v["ok"]:
+            if pp.held is False:
+                res["reason"] = next((c for c in pp.checks if not c["held"]), {}).get("after", "")
+                res["reason"] = f"empty grasp (gripper reading after '{res['reason']}')"
+            elif not pp.completed:
+                failed = next((lg for lg in pp if not lg.ok), None)
+                res["reason"] = f"motion stopped at '{failed.phase}': {failed.note}" if failed else "motion incomplete"
+            elif not v["pick_clear"]:
+                res["reason"] = "the object is still at the pick spot in the image"
+            else:
+                res["reason"] = "no raised object of the right colour at the place spot in the image"
+        return res
+
+    def _fail_attempt(self, res: dict, failure: str, reason: str) -> dict:
+        res["record"]["failure"] = failure
+        res["record"]["note"] = reason
+        res["reason"] = reason
+        return res
+
+    def _raised(self, frame: Frame, mask: np.ndarray, min_height: float = 0.005) -> np.ndarray:
+        """Mask pixels that sit above the table (drops shadow and table pixels a mask leaks onto)."""
+        vs, us = np.nonzero(mask)
+        out = np.zeros_like(mask, dtype=bool)
+        if len(us) == 0:
+            return out
+        fx, fy, cx, cy = frame.intrinsics()
+        z = frame.depth[vs, us].astype(np.float64)
+        pz = (frame.cam_pos + np.stack([(us - cx) / fx * z, -(vs - cy) / fy * z, -z], axis=1) @ frame.cam_mat.T)[:, 2]
+        keep = pz > min_height
+        out[vs[keep], us[keep]] = True
+        return out
+
+    def _verify_image(self, frame: Frame, pick: Segmentation, place_xy: np.ndarray, surface: float,
+                      height: float, ref_colour: np.ndarray) -> dict:
+        """Did the step work, judged from the camera alone (RGB + depth, SAM 2.1 point prompts)?
+
+        pick_clear: no raised mask left where the object was (SAM at the original pick pixel).
+        place_raised: a raised mask of the object's colour at the place spot, its top where the object's
+        top should be (SAM at the place spot's pixel)."""
+        assert pick.target is not None
+        sam = self.sam
+        out: dict = {}
+        still = False
+        m1 = sam.segment(frame.rgb, point=tuple(pick.target.centroid_px))
+        try:
+            t1 = locate(frame, m1)
+            still = (np.linalg.norm(np.array(t1.center[:2]) - np.array(pick.target.center[:2])) < 0.010
+                     and abs(t1.top_z - pick.target.top_z) < 0.006)
+        except ValueError:
+            pass
+        out["pick_clear"] = not still
+        exp_top = surface + height
+        u, v = frame.world_to_pixel(np.array([place_xy[0], place_xy[1], exp_top]))
+        w, h = frame.size
+        raised = False
+        if 0 <= u < w and 0 <= v < h:
+            m2 = sam.segment(frame.rgb, point=(u, v))
+            try:
+                t2 = locate(frame, m2)
+                near = np.linalg.norm(np.array(t2.center[:2]) - place_xy) < 0.02
+                level = abs(t2.top_z - exp_top) < 0.008
+                same = _hue_close(mean_colour(frame.rgb, m2 & self._raised(frame, m2)), ref_colour)
+                raised = bool(near and level and same)
+                out["place_seen"] = {"center": _r(t2.center), "top_z": _r(t2.top_z), "near": bool(near),
+                                     "level": bool(level), "same_colour": bool(same)}
+            except ValueError as e:
+                out["place_seen"] = {"error": str(e)}
+        out["place_raised"] = raised
+        out["place_px"] = _r([u, v], 1)
+        return out
+
+    def _container_at(self, xy) -> object | None:
+        for c in self.scene.containers:
+            if abs(xy[0] - c.x) < c.half and abs(xy[1] - c.y) < c.half:
+                return c
+        return None
+
+    def _physics_ok(self, obj: str, place_xy, how: str, surface: float, height: float) -> bool:
+        """Ground truth (scoring only): did the object end up where the step meant it to go?"""
         final = self.arm.object_pos(obj)
-        intray = in_tray(self.arm, obj)
-        err_mm = float(np.linalg.norm(final[:2] - place_xy) * 1000)
-        disturbed = [OBJECTS[n] for n in CUBES if n != obj and np.linalg.norm(self.arm.object_pos(n)[:2] - before[n][:2]) > 0.005]
-        motion_ok = all(lg.ok for lg in logs) and len(logs) >= 8
-        to_tray = place.truth_label == "tray" or (use_text and "tray" in step.place.lower())
-        ok = motion_ok and (intray if to_tray else err_mm < 15.0)
-        result = {"step": i, "object": OBJECTS[obj], "in_tray": intray, "error_mm": round(err_mm, 1),
-                  "ok": bool(ok), "localisation_error_mm": round(loc_err_mm, 2), "disturbed": disturbed,
-                  "final_pos": _r(final)}
-        if not motion_ok:
-            failed = next((lg for lg in logs if not lg.ok), None)
-            result["note"] = f"motion stopped at '{failed.phase}': {failed.note}" if failed else "motion incomplete"
-        elif not ok:
-            result["note"] = "object did not end up at the target"
-        emit("result", result)
-        out["result"] = result
-        out["timings"] = {k: round(v, 1) for k, v in t.items()}
-        return out
+        cont = self._container_at(place_xy)
+        if cont is not None:
+            return in_container(self.arm, obj, cont)
+        err = float(np.linalg.norm(final[:2] - np.asarray(place_xy)))
+        if how == "on top of object":
+            return err < 0.012 and abs(final[2] - (surface + height / 2)) < 0.006
+        return err < 0.015 and final[2] < height / 2 + 0.006
 
-    def _fail(self, out: dict, i: int, emit: EventFn, obj: str | None, note: str, t: dict) -> dict:
-        result = {"step": i, "object": obj, "in_tray": False, "error_mm": None, "ok": False, "note": note}
-        emit("result", result)
-        out["result"] = result
-        out["phases"] = []
-        out["timings"] = {k: round(v, 1) for k, v in t.items()}
-        return out
+    def _reground(self, att: dict, step: PlanStep, hint: list[float]) -> tuple[list[float] | None, str]:
+        """Where to prompt SAM for the retry, from the newest image only: the blob of the picked object's
+        colour nearest the previous pick pixel; else the blob of the colour the label names; else the
+        same pixel again."""
+        frame: Frame = att.get("after") or self.observe()
+        ref = att.get("ref_colour")
+        if ref is not None:
+            try:
+                c = blob_near(similar_mask(frame.rgb, ref), tuple(hint), max_dist_px=140)
+                if c is not None:
+                    return [c[0], c[1]], "same-colour blob nearest the previous pick pixel"
+            except ValueError:
+                pass
+        word = colour_word(step.pick)
+        if word:
+            c = blob_near(colour_mask(frame.rgb, word), tuple(hint), max_dist_px=140)
+            if c is not None:
+                return [c[0], c[1]], f"'{word}' blob nearest the previous pick pixel"
+        if att.get("pick") is not None and att["pick"].target is not None:
+            return list(hint), "same pixel"
+        return None, "nothing of the object's colour near the pick pixel"
+
+    def _step_result(self, i: int, att: dict, attempts: int) -> dict:
+        rec = att["record"]
+        obj = att.get("obj")
+        if obj is None:
+            return {"step": i, "object": None, "object_name": None, "in_tray": False, "error_mm": None, "ok": False,
+                    "note": att["reason"], "attempts": attempts, "verified": False,
+                    "failure": rec.get("failure", "segment")}
+        final = self.arm.object_pos(obj)
+        cont = self._container_at(att["place_xy"])
+        inside = in_container(self.arm, obj, cont) if cont is not None else any(
+            in_container(self.arm, obj, c) for c in self.scene.containers)
+        err_mm = float(np.linalg.norm(final[:2] - att["place_xy"]) * 1000)
+        disturbed = [self.objects[n] for n in self.movables
+                     if n != obj and np.linalg.norm(self.arm.object_pos(n)[:2] - att["before"][n][:2]) > 0.005]
+        pp = att["pp"]
+        ok = bool(pp is not None and pp.completed and att["physics_ok"])
+        result = {"step": i, "object": self.objects[obj], "object_name": obj, "in_tray": inside,
+                  "error_mm": round(err_mm, 1), "ok": ok, "localisation_error_mm": rec.get("localisation_error_mm"),
+                  "disturbed": disturbed, "final_pos": _r(final), "attempts": attempts,
+                  "verified": bool(att["verified"]), "failure": None if ok else rec.get("failure", "place")}
+        if not ok:
+            result["note"] = att["reason"] or "object did not end up at the target"
+        return result
 
     # ---- records -----------------------------------------------------------------------
     def record(self, run: dict, out_dir: Path | str | None = None) -> Path:
@@ -502,6 +796,19 @@ def _sample_layout(rng: np.random.Generator, n: int) -> list[np.ndarray]:
                 pts.append(p)
                 if len(pts) == n:
                     return pts
+
+
+def _round_t(t: dict) -> dict:
+    return {k: round(v, 1) for k, v in t.items()}
+
+
+def _hue_close(a: np.ndarray, b: np.ndarray, tol: float = 25.0) -> bool:
+    """Same colour by hue (both saturated), or both unsaturated."""
+    ha, sa, _ = rgb_to_hsv(np.asarray(a, dtype=np.float64).reshape(1, 3) / 255.0)
+    hb, sb, _ = rgb_to_hsv(np.asarray(b, dtype=np.float64).reshape(1, 3) / 255.0)
+    if sa[0] < 0.3 or sb[0] < 0.3:
+        return bool(sa[0] < 0.3 and sb[0] < 0.3)
+    return bool(abs(((ha[0] - hb[0]) + 180) % 360 - 180) <= tol)
 
 
 def _json_default(o):

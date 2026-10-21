@@ -57,15 +57,20 @@ def test_full_clicked_run_places_all_three_cubes(session, tmp_path):
         assert s["result"]["localisation_error_mm"] <= 3.0
         assert s["result"]["disturbed"] == []
 
-    # event order: plan, then per step segment/target (pick), segment/target (place), 8 phases, result; done
+    # event order: plan, then per step segment/target (pick), segment/target (place), 8 phases, verify, result;
+    # done
     kinds = [k for k, _ in events]
-    per_step = ["segment", "target", "segment", "target"] + ["phase"] * len(PHASES) + ["result"]
+    per_step = ["segment", "target", "segment", "target"] + ["phase"] * len(PHASES) + ["verify", "result"]
     assert kinds == ["plan"] + per_step * 3 + ["done"]
     phases = [d["phase"] for k, d in events if k == "phase"]
     assert phases == PHASES * 3
     seg = next(d for k, d in events if k == "segment")
     assert seg["role"] == "pick" and seg["mask_png"] and seg["segmenter"].startswith("sam2.1")
     assert events[-1][1]["ok"] is True
+    verifies = [d for k, d in events if k == "verify"]
+    assert all(v["ok"] and v["physics_ok"] and v["grasp_held"] and v["pick_clear"] and v["place_raised"]
+               for v in verifies)
+    assert rec["verify"] == {"checks": 3, "agree": 3, "retries": 0}
 
     # the record
     path = session.record(rec, tmp_path)

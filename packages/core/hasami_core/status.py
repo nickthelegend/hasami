@@ -36,6 +36,7 @@ def segmenters_status(session=None) -> list[dict]:
 def status(session=None) -> dict:
     from .session import OBJECTS
 
+    objects = getattr(session, "objects", None) or OBJECTS
     so101 = so101_status()
     kind = getattr(session, "arm_kind", "sim")
     so101["connected"] = kind == "so101"
@@ -50,8 +51,8 @@ def status(session=None) -> dict:
         "so101": so101,
         "planner": planner_status(),
         "segmenters": segmenters_status(session),
-        "scene": {"objects": [{"name": n, "label": label} for n, label in OBJECTS.items()],
-                  "seed": getattr(session, "seed", None)},
+        "scene": {"objects": [{"name": n, "label": label} for n, label in objects.items()],
+                  "seed": getattr(session, "seed", None), "name": getattr(getattr(session, "scene", None), "name", "classic")},
     }
 
 
