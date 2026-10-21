@@ -52,3 +52,33 @@ def test_click_on_bare_table_has_no_target(session):
     assert seg.target is None
     assert "above the table" in seg.target_error
     assert seg.truth_label == "table"
+
+
+def test_every_shape_iou_localisation_and_grasp_width(session):
+    """Procedural scene with one object of each kind: SAM 2.1 at an oracle click, then mask + depth."""
+    from hasami_core.tasks import oracle_click
+    from hasami_sim.scene import SIDE_TRAY, ObjectSpec, SceneSpec
+
+    kinds = [("small cube", "red"), ("cube", "green"), ("big cube", "blue"), ("block", "purple"),
+             ("flat box", "orange"), ("cylinder", "yellow")]
+    xy = [(0.24, -0.10), (0.25, -0.03), (0.25, 0.05), (0.19, -0.07), (0.19, 0.02), (0.20, 0.10)]
+    objs = [ObjectSpec(f"o{i}", k, c, x, y, yaw=0.35 if k != "cylinder" else 0.0)
+            for i, ((k, c), (x, y)) in enumerate(zip(kinds, xy))]
+    try:
+        session.load_scene(SceneSpec(objs, [SIDE_TRAY], seed=0, name="shapes"))
+        frame = session.observe()
+        for o in objs:
+            seg = session.segment(point=oracle_click(frame, session, o.name), frame=frame)
+            assert seg.truth_label == o.label
+            assert seg.iou_vs_truth >= 0.6, (o.label, seg.iou_vs_truth)
+            t = seg.target
+            err = np.linalg.norm(np.array(t.center[:2]) - session.arm.object_pos(o.name)[:2]) * 1000
+            assert err <= 3.0, (o.label, err)
+            assert abs(t.top_z - o.height) < 0.003, (o.label, t.top_z)
+            assert t.round == (o.shape == "cylinder"), o.label
+            _, period, width = t.grasp()
+            assert abs(width - o.grip_width) < 0.004, (o.label, width)
+            if o.shape in ("block", "flat"):
+                assert period == pytest.approx(np.pi)
+    finally:
+        session.reset(1)
