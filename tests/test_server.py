@@ -225,3 +225,58 @@ def test_realcam_synthetic_photo_segment_and_locate(client):
     assert np.hypot(tgt["x_mm"] - cx, tgt["y_mm"] - cy) < 4.0, tgt
     assert sorted(tgt["extent_mm"]) == pytest.approx([30, 50], abs=6)
     assert png(client.get("/api/realcam/frame.png")).shape == (720, 1280, 3)
+
+
+def test_twin_from_a_photo_then_run_a_task_on_it(client, tmp_path, monkeypatch):
+    """POST a MuJoCo-rendered desk photo -> twin JSON + side-by-side PNG; adjust a height; run clear-desk on the
+    twin over SSE and get the goal checked on the twin's physics, recorded with the twin's label."""
+    from hasami_core.twin import TWIN_LABEL
+    from hasami_sim.photo import PhotoCamera, SheetPose, render_photo
+    from hasami_sim.scene import ObjectSpec
+
+    monkeypatch.setenv("HASAMI_TWINS_DIR", str(tmp_path / "twins"))
+    cam = PhotoCamera(pos=(0.52, 0.07, 0.34), fovy_deg=50)
+    objs = [ObjectSpec("a", "cube", "red", 0.20, 0.06, 0.3), ObjectSpec("c", "cylinder", "green", 0.17, -0.08)]
+    buf = io.BytesIO()
+    Image.fromarray(render_photo(objs, SheetPose(), cam)).save(buf, format="PNG")
+    r = client.post("/api/twin", content=buf.getvalue(), params={"hfov_deg": cam.hfov_deg})
+    assert r.status_code == 200, r.text
+    tw = r.json()
+    assert tw["label"] == TWIN_LABEL and tw["sheet"]["corners_source"] == "detected"
+    assert sorted(o["colour"] for o in tw["objects"]) == ["green", "red"]
+    assert all(o["in_twin"] and o["reachable"] for o in tw["objects"])
+    assert {t["id"] for t in tw["tasks"]} >= {"clear-desk", "sort-by-colour"}
+    sbs = png(client.get(tw["images"]["side_by_side"]))
+    assert sbs.shape[1] == 2 * cam.width + 8
+    assert (tmp_path / "twins" / tw["twin_id"] / "twin.json").is_file()
+
+    adj = client.post(f"/api/twin/{tw['twin_id']}/adjust", json={"heights_mm": {"0": 45}})
+    assert adj.status_code == 200, adj.text
+    adj = adj.json()
+    assert adj["twin_id"] == tw["twin_id"]
+    assert adj["objects"][0]["size_mm"][2] == 45 and adj["objects"][0]["height_source"] == "typed"
+
+    assert client.post(f"/api/twin/{tw['twin_id']}/run", json={"task": "stack-everything"}).status_code == 422
+    assert client.get("/api/twin/nope").status_code == 404
+    run = client.post(f"/api/twin/{tw['twin_id']}/run", json={"task": "clear-desk"})
+    assert run.status_code == 200, run.text
+    with client.stream("GET", "/api/events", params={"once": "true"}) as resp:
+        events = read_sse(resp)
+    kinds = [k for k, _ in events]
+    assert "goal" in kinds and kinds.index("goal") < kinds.index("done") and kinds[-1] == "done"
+    goal = next(d for k, d in events if k == "goal")
+    assert goal["ok"] is True and goal["label"] == TWIN_LABEL
+    client.app.state.runner.thread.join(timeout=60)
+    rec = client.get(f"/api/runs/{run.json()['run_id']}").json()
+    assert rec["scene"] == "twin" and rec["goal"]["ok"] and rec["twin"]["task"] == "clear-desk"
+    assert rec["twin"]["planner"].startswith("simulated-click oracle")
+
+
+def test_twin_needs_a_sheet(client, tmp_path, monkeypatch):
+    monkeypatch.setenv("HASAMI_TWINS_DIR", str(tmp_path / "twins"))
+    buf = io.BytesIO()
+    Image.fromarray(np.full((480, 640, 3), (150, 120, 100), np.uint8)).save(buf, format="PNG")
+    r = client.post("/api/twin", content=buf.getvalue())
+    assert r.status_code == 422 and "sheet" in r.json()["error"]
+    assert client.post("/api/twin", content=b"nope").status_code == 400
+    assert client.post("/api/twin", content=buf.getvalue(), params={"corners": "1,2,3"}).status_code == 422

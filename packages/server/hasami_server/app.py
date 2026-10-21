@@ -12,6 +12,7 @@ import json
 import re
 import threading
 import time
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Literal
 
@@ -69,6 +70,18 @@ class ResetReq(BaseModel):
     family: str | None = None  # a benchmark task family (hasami_core.tasks): load its scene for this seed
 
 
+class TwinAdjustReq(BaseModel):
+    heights_mm: dict[int, float] | None = Field(default=None, description="object index -> typed height (mm)")
+    hfov_deg: float | None = Field(default=None, ge=20, le=150)
+    side: Literal["far", "near", "left", "right"] | None = None
+    offset_mm: float | None = Field(default=None, ge=100, le=400)
+    corners: list[list[float]] | None = Field(default=None, min_length=4, max_length=4)
+    default_height_mm: float | None = Field(default=None, ge=5, le=150)
+
+class TwinRunReq(BaseModel):
+    task: str = Field(min_length=1, max_length=40)
+
+
 # ---- events --------------------------------------------------------------------------------
 class EventBus:
     """Thread-safe event log. Runs publish from a worker thread; SSE readers poll by sequence number."""
@@ -111,31 +124,49 @@ class Runner:
         return self.thread is not None and self.thread.is_alive()
 
     def start(self, *, plan: Plan | None, instruction: str | None, planner: Planner | None,
-              segmenter: str) -> str:
+              segmenter: str, prepare: Callable[[], Plan | None] | None = None,
+              finish: Callable[[dict, Callable[[str, dict], None]], None] | None = None) -> str:
+        """Start a run in the background. `prepare` runs first in the worker (e.g. load a twin scene);
+        `finish(record, emit)` runs after the arm is done and before the record is written (e.g. a goal check)."""
         with self._lock:
             if self.busy:
                 raise RuntimeError("busy")
             run_id = new_run_id()
             self.run_id = run_id
             self.bus.mark_run_start()
-            self.thread = threading.Thread(target=self._work, args=(run_id, plan, instruction, planner, segmenter),
+            self.thread = threading.Thread(target=self._work,
+                                           args=(run_id, plan, instruction, planner, segmenter, prepare, finish),
                                            name=f"hasami-run-{run_id}", daemon=True)
             self.thread.start()
             return run_id
 
     def _work(self, run_id: str, plan: Plan | None, instruction: str | None, planner: Planner | None,
-              segmenter: str) -> None:
+              segmenter: str, prepare=None, finish=None) -> None:
         def emit(kind: str, data: dict) -> None:
             self.bus.publish(run_id, kind, data)
 
         try:
+            if prepare is not None:
+                prepared = prepare()  # may return the plan (it can depend on the scene prepare loads)
+                plan = prepared if prepared is not None else plan
             if plan is None:
                 assert planner is not None and instruction is not None
                 png, _ = self.session.frame_png("overhead")
                 labels = [o["label"] for o in self.session.scene_objects()]
                 plan, latency_ms = planner.plan(instruction, png, labels)
                 emit("planned", {"model": plan.model, "latency_ms": round(latency_ms, 1)})
-            rec = self.session.run(plan, on_event=emit, segmenter=segmenter, run_id=run_id)
+            if finish is None:
+                rec = self.session.run(plan, on_event=emit, segmenter=segmenter, run_id=run_id)
+            else:  # hold `done` back until the finish hook has emitted its own events (clients stop at done)
+                held: list[dict] = []
+
+                def emit_hold(kind: str, data: dict) -> None:
+                    held.append(data) if kind == "done" else emit(kind, data)
+
+                rec = self.session.run(plan, on_event=emit_hold, segmenter=segmenter, run_id=run_id)
+                finish(rec, emit)
+                for data in held:
+                    emit("done", data | {k: rec[k] for k in ("goal",) if k in rec})
             path = self.session.record(rec)
             emit("recorded", {"file": path.name})
         except PlanError as e:
@@ -463,6 +494,174 @@ def create_app(session: Session | None = None) -> FastAPI:
             target, err = None, str(e)
         return {"mask_png": mask_png_b64(mask), "target": target, "target_error": err, "latency_ms": round(ms, 1),
                 "segmenter": s.sam.name, "source": real["source"], "arm": "sim", "note": REAL_NOTE}
+
+    # ---- digital twin from one photo (the arm is simulated) -----------------------------------------
+    twins: dict = {}  # id -> {"twin": Twin, "rgb": photo}
+
+    def _twin_or_404(twin_id: str):
+        t = twins.get(twin_id)
+        if t is None:
+            return None, JSONResponse(status_code=404, content={"error": f"no twin {twin_id!r} (twins live until the "
+                                                                          "server restarts; upload the photo again)"})
+        return t, None
+
+    def _build_twin(request: Request, rgb, opts: dict, twin_id: str | None = None):
+        from hasami_core.twin import ArmPlacement, make_twin, save_twin
+
+        s = sess(request)
+        try:
+            placement = ArmPlacement(opts.get("side") or "far", float(opts.get("offset_mm") or 215.0))
+            with s.lock:
+                twin = make_twin(rgb, s.sam, corners=opts.get("corners"), hfov_deg=float(opts.get("hfov_deg") or 70.0),
+                                 placement=placement, heights_mm=opts.get("heights_mm"),
+                                 default_height_mm=opts.get("default_height_mm"), twin_id=twin_id,
+                                 photo_source=opts.get("source") or "upload")
+        except ValueError as e:
+            return JSONResponse(status_code=422, content={"error": str(e)})
+        save_twin(twin, rgb)
+        twins[twin.id] = {"twin": twin, "rgb": rgb, "opts": opts}
+        return twin.to_dict() | {"images": {"side_by_side": f"/api/twin/{twin.id}/side_by_side.png",
+                                            "photo": f"/api/twin/{twin.id}/photo.png"}}
+
+    @app.get("/api/twin/sample.png")
+    def twin_sample(seed: int = Query(0, ge=0, le=10_000)):
+        """A synthetic desk photo rendered by MuJoCo (A4 sheet, 3-5 objects, a random tilted camera; no arm) to
+        try the twin without a camera. Its field of view is in X-Hasami-Hfov. Labelled synthetic wherever used."""
+        from hasami_core import png_bytes
+        from hasami_sim.photo import SheetPose, random_desk, render_photo
+
+        objs, cam = random_desk(seed)
+        return Response(png_bytes(render_photo(objs, SheetPose(), cam)), media_type="image/png",
+                        headers={"Cache-Control": "no-store", "X-Hasami-Hfov": f"{cam.hfov_deg:.3f}",
+                                 "X-Hasami-Photo": "synthetic (MuJoCo render)",
+                                 "Access-Control-Expose-Headers": "X-Hasami-Hfov, X-Hasami-Photo"})
+
+    @app.post("/api/twin")
+    async def post_twin(request: Request, hfov_deg: float = Query(70.0, ge=20, le=150),
+                        side: Literal["far", "near", "left", "right"] = "far",
+                        offset_mm: float = Query(215.0, ge=100, le=400),
+                        default_height_mm: float | None = Query(None, ge=5, le=150),
+                        corners: str | None = Query(None, description="u,v,u,v,u,v,u,v: the sheet's corners (else found)"),
+                        source: Literal["upload", "synthetic"] = Query("upload", description="synthetic: a /api/twin/sample.png render")):
+        """A photo of a desk with an A4 sheet on it (PNG or JPEG body) -> a digital twin the simulated arm can
+        work in. The photo is never sent anywhere; SAM 2.1 runs locally."""
+        import io
+
+        import numpy as np
+        from PIL import Image, UnidentifiedImageError
+
+        if request.app.state.runner.busy:
+            return busy_response(request)
+        data = await request.body()
+        if not data or len(data) > 15_000_000:
+            return JSONResponse(status_code=400, content={"error": "send a PNG or JPEG photo (under 15 MB) as the body"})
+        try:
+            img = Image.open(io.BytesIO(data)).convert("RGB")
+        except (UnidentifiedImageError, OSError):
+            return JSONResponse(status_code=400, content={"error": "not an image"})
+        img.thumbnail((1280, 1280))
+        pts = None
+        if corners:
+            try:
+                v = [float(x) for x in corners.split(",")]
+                if len(v) != 8:
+                    raise ValueError
+                pts = [v[i:i + 2] for i in range(0, 8, 2)]
+            except ValueError:
+                return JSONResponse(status_code=422, content={"error": "corners: eight numbers u,v,u,v,u,v,u,v"})
+        opts = {"hfov_deg": hfov_deg, "side": side, "offset_mm": offset_mm, "default_height_mm": default_height_mm,
+                "corners": pts, "source": source}
+        return _build_twin(request, np.asarray(img).copy(), opts)
+
+    @app.post("/api/twin/{twin_id}/adjust")
+    def adjust_twin(twin_id: str, body: TwinAdjustReq, request: Request):
+        """Rebuild a twin from its photo with typed heights, clicked corners, another field of view or arm side."""
+        t, err = _twin_or_404(twin_id)
+        if err:
+            return err
+        if request.app.state.runner.busy:
+            return busy_response(request)
+        if body.heights_mm and any(not 5 <= h <= 150 for h in body.heights_mm.values()):
+            return JSONResponse(status_code=422, content={"error": "heights must be 5-150 mm"})
+        opts = dict(t["opts"])
+        for k, v in body.model_dump().items():
+            if v is not None:
+                opts[k] = v
+        return _build_twin(request, t["rgb"], opts, twin_id=twin_id)
+
+    @app.get("/api/twin/{twin_id}")
+    def get_twin(twin_id: str):
+        t, err = _twin_or_404(twin_id)
+        return err or t["twin"].to_dict()
+
+    @app.get("/api/twin/{twin_id}/{name}.png")
+    def get_twin_png(twin_id: str, name: Literal["photo", "side_by_side"]):
+        from hasami_core.twin import twins_dir
+
+        t, err = _twin_or_404(twin_id)
+        if err:
+            return err
+        return Response((twins_dir() / twin_id / f"{name}.png").read_bytes(), media_type="image/png",
+                        headers={"Cache-Control": "no-store"})
+
+    @app.post("/api/twin/{twin_id}/load")
+    def load_twin(twin_id: str, request: Request):
+        """Put the twin in the simulator (the live camera then shows it; click-to-pick works on it)."""
+        t, err = _twin_or_404(twin_id)
+        if err:
+            return err
+        if request.app.state.runner.busy:
+            return busy_response(request)
+        try:
+            out = sess(request).load_scene(t["twin"].spec)
+        except ValueError as e:
+            return JSONResponse(status_code=422, content={"error": str(e)})
+        return {**out, "scene": "twin", "twin_id": twin_id, "label": t["twin"].label}
+
+    @app.post("/api/twin/{twin_id}/run")
+    def run_twin(twin_id: str, body: TwinRunReq, request: Request):
+        """Run one of the twin's tasks: the twin is loaded, the simulated-click oracle plans the steps, the
+        arm runs them with verify + retry, and the goal predicate is checked on the twin's physics (SSE as
+        for /api/run, plus a `goal` event; the run record carries `twin` and `goal`)."""
+        from hasami_core.tasks import ORACLE_LABEL, oracle_steps, world_from
+        from hasami_core.twin import TWIN_LABEL, twin_tasks
+
+        t, err = _twin_or_404(twin_id)
+        if err:
+            return err
+        runner: Runner = request.app.state.runner
+        if runner.busy:
+            return busy_response(request)
+        tasks = twin_tasks(t["twin"])
+        task = tasks.get(body.task)
+        if task is None:
+            return JSONResponse(status_code=422, content={"error": f"this twin has no task {body.task!r}; it has "
+                                                                   f"{sorted(tasks) or 'none (no reachable, graspable object)'}"})
+        s = sess(request)
+        state: dict = {}
+
+        def prepare():
+            s.load_scene(t["twin"].spec)
+            state["w0"] = world_from(s)
+            plan = plan_from_clicks(oracle_steps(task, s))
+            plan.instruction = task.instruction
+            return plan
+
+        def finish(rec: dict, emit) -> None:
+            ok, detail = task.goal(state["w0"], world_from(s))
+            rec["twin"] = {"twin_id": twin_id, "task": body.task, "instruction": task.instruction,
+                           "label": TWIN_LABEL, "planner": ORACLE_LABEL}
+            rec["goal"] = {"ok": ok, "detail": detail}
+            emit("goal", {"run_id": rec["run_id"], "ok": ok, "detail": detail, "task": body.task,
+                          "label": TWIN_LABEL})
+
+        try:
+            run_id = runner.start(plan=None, instruction=task.instruction, planner=None, segmenter="local",
+                                  prepare=prepare, finish=finish)
+        except RuntimeError:
+            return busy_response(request)
+        return {"run_id": run_id, "task": body.task, "instruction": task.instruction, "label": TWIN_LABEL,
+                "planner": ORACLE_LABEL}
 
     if DASHBOARD_DIST.is_dir():
         app.mount("/", StaticFiles(directory=DASHBOARD_DIST, html=True), name="dashboard")
