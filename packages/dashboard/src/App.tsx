@@ -244,52 +244,27 @@ export default function App() {
         : '';
   const mask = (live || run.phase === 'done') && run.lastMask ? run.lastMask : seg?.mask_png ?? null;
   const busy = resetting ? 'Resetting the scene…' : segBusy ? 'Segmenting with SAM 2.1…' : live ? 'Run streaming · live frame' : null;
-  const realArmSetup = status && status.arm === 'sim' ? setupName(status.so101.setup ?? 'HASAMI_SO101_PORT') : null;
 
   return (
     <div className="shell">
-      <div className={`env-pill${reachable === false ? ' env-off' : ''}`} role="note">
-        <i aria-hidden="true" />
-        {reachable === null ? (
-          'Connecting to the server…'
-        ) : reachable === false ? (
-          'Server offline'
-        ) : status?.arm === 'so101' && status.so101.connected ? (
-          'Real SO-101 connected'
-        ) : (
-          <span>
-            Simulation<span className="env-long"> · real arm: Setup required: {realArmSetup ?? 'HASAMI_SO101_PORT'}</span>
-            <span className="env-short"> · real arm blocked</span>
+      <a className="skip" href="#cam">
+        Skip to the camera
+      </a>
+      <header className="topbar">
+        <a className="brand" href="/" aria-label="Hasami home">
+          <LogoMark />
+          <span>Hasami</span>
+          <span className="kanji" lang="ja" aria-hidden="true">
+            鋏
           </span>
-        )}
-      </div>
-      <main className="frame">
-        <header className="top">
-          <a className="brand" href="/" aria-label="Hasami home">
-            <LogoMark />
-            <span>Hasami</span>
-          </a>
-          <StatusPills status={status} reachable={reachable} />
-          <div className="top-act">
-            <label className="scene-pick">
-              <span className="sr">Scene</span>
-              <select value={scene} onChange={(e) => setScene(e.target.value)} disabled={!reachable || live || resetting}>
-                <option value="classic">3 cubes</option>
-                <option value="sort-by-colour">sort</option>
-                <option value="stack-two">stack 2</option>
-                <option value="clear-except-X">clear but 1</option>
-                <option value="tower-of-3">tower of 3</option>
-              </select>
-            </label>
-            <button type="button" className="btn btn-ghost" onClick={doReset} disabled={!reachable || live || resetting}>
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" />
-              </svg>
-              {resetting ? 'Resetting…' : 'Reset scene'}
-            </button>
-          </div>
-        </header>
-
+        </a>
+        <StatusPills status={status} reachable={reachable} />
+        <span className={`simlabel${reachable === false ? ' simlabel-off' : ''}`} role="note">
+          <i aria-hidden="true" />
+          {status?.arm === 'so101' && status.so101.connected ? 'Real SO-101 mirroring the sim' : 'MuJoCo simulation · official SO-101 model'}
+        </span>
+      </header>
+      <main className="desk">
         {reachable === false && (
           <div className="offline" role="alert">
             <div>
@@ -313,32 +288,35 @@ export default function App() {
         )}
 
         <div className="grid">
-          <div className="col-main">
+          <div className="col-main" id="cam" tabIndex={-1}>
             <div className="title-row">
-              <div className="title">
-                <span className="glyphs" aria-hidden="true">
-                  <span className="g1">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  </span>
-                  <span className="g2">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <path d="M9 3v5l-4 5v8M15 3v5l4 5v8" />
-                    </svg>
-                  </span>
-                </span>
-                <h1>
-                  Live camera <span>/ {camera}</span>
-                </h1>
-              </div>
+              <h1>
+                Viewfinder <span>/ {camera}</span>
+              </h1>
               <div className="seg" role="group" aria-label="Camera">
                 {(['overhead', 'demo'] as Camera[]).map((c) => (
                   <button key={c} type="button" aria-pressed={camera === c} onClick={() => setCamera(c)}>
                     {c}
                   </button>
                 ))}
+              </div>
+              <div className="top-act">
+                <label className="scene-pick">
+                  <span className="sr">Scene</span>
+                  <select value={scene} onChange={(e) => setScene(e.target.value)} disabled={!reachable || live || resetting}>
+                    <option value="classic">3 cubes</option>
+                    <option value="sort-by-colour">sort</option>
+                    <option value="stack-two">stack 2</option>
+                    <option value="clear-except-X">clear but 1</option>
+                    <option value="tower-of-3">tower of 3</option>
+                  </select>
+                </label>
+                <button type="button" className="btn btn-ghost" onClick={doReset} disabled={!reachable || live || resetting}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" />
+                  </svg>
+                  {resetting ? 'Resetting…' : 'Reset scene'}
+                </button>
               </div>
             </div>
             <CameraTile
@@ -352,12 +330,17 @@ export default function App() {
               onPick={onPick}
               onSize={onSize}
               awaiting={pending ? 'place' : 'pick'}
+              live={live}
             />
             <Readout seg={readout} label={readoutLabel} />
             <Timeline run={run} />
           </div>
 
-          <aside className="col-side">
+          <aside className="col-side paper" aria-label="Notebook">
+            <p className="nb-head">
+              <span>Notebook</span>
+              <span>{status?.scene.name ?? scene}{status?.scene.seed != null ? ` · seed ${status.scene.seed}` : ''}</span>
+            </p>
             <InstructionCard value={instruction} onChange={setInstruction} onPlan={doPlan} plan={plan} status={status} disabled={!reachable} />
             <StepsCard
               steps={steps}
@@ -393,19 +376,23 @@ export default function App() {
         </div>
 
         {traceId && <RunTrace runId={traceId} onClose={() => setTraceId(null)} />}
-        <div className="tabs" role="tablist" aria-label="More">
-          {(['runs', 'realcam'] as const).map((t) => (
-            <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-              {t === 'runs' ? 'Recorded runs' : 'Real camera'}
-            </button>
-          ))}
-        </div>
-        {tab === 'realcam' ? <RealCam /> : (
-        <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={setTraceId} active={traceId} />
-        )}
+        <section className="register paper" aria-label="Runs and real camera">
+          <div className="tabs" role="tablist" aria-label="Register">
+            {(['runs', 'realcam'] as const).map((t) => (
+              <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
+                {t === 'runs' ? 'Recorded runs' : 'Real camera'}
+              </button>
+            ))}
+          </div>
+          {tab === 'realcam' ? (
+            <RealCam />
+          ) : (
+            <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={setTraceId} active={traceId} />
+          )}
+        </section>
       </main>
       <footer className="foot">
-        Hasami — 鋏, scissors · MIT · Copyright (c) 2026 Nivesh Gajengi ·{' '}
+        Hasami — 鋏, scissors · Meta Global AI Developer Hackathon · MIT · Copyright (c) 2026 Nivesh Gajengi ·{' '}
         <a href="https://github.com/nickthelegend/hasami" target="_blank" rel="noreferrer">
           GitHub
         </a>

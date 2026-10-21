@@ -1,17 +1,15 @@
 import type { Status } from '../api';
 import { setupName } from '../api';
 
-export function LogoMark({ size = 34 }: { size?: number }) {
-  // A parallel gripper: wrist bar, two jaws, and the cube it holds.
+export function LogoMark({ size = 26 }: { size?: number }) {
+  // Hasami (鋏) means scissors: two finger loops, two blades crossing.
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="10" fill="var(--mint)" />
-      <g fill="none" stroke="var(--mint-ink)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 6h8" />
-        <path d="M13.5 6v4L9 16v9" />
-        <path d="M18.5 6v4l4.5 6v9" />
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="logo">
+      <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="6" cy="6" r="3.2" />
+        <circle cx="6" cy="18" r="3.2" />
+        <path d="M8.7 7.8 21 16.5M8.7 16.2 21 7.5" />
       </g>
-      <rect x="13" y="18.5" width="6" height="6" rx="1.2" fill="var(--mint-ink)" />
     </svg>
   );
 }
@@ -79,6 +77,14 @@ export function StatusPills({ status, reachable }: { status: Status | null; reac
         ))
       )}
       <Pill label="Arm" value={arm.value} state={arm.state} title={arm.title} />
+      {status.arm === 'sim' && (
+        <Pill
+          label="Real arm"
+          value={`Setup required: ${setupName(status.so101.setup ?? 'HASAMI_SO101_PORT')}`}
+          state="setup"
+          title={status.so101.setup ?? 'LeRobot SO-101 follower on HASAMI_SO101_PORT'}
+        />
+      )}
     </div>
   );
 }

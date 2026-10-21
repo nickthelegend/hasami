@@ -70,7 +70,9 @@ export function InstructionCard(props: {
   return (
     <section className="card" aria-labelledby="ins-h">
       <div className="card-head">
-        <h2 id="ins-h">Instruction</h2>
+        <h2 id="ins-h">
+          <span className="eno">01</span>Instruction
+        </h2>
         <span className="muted small">Muse plans from the frame</span>
       </div>
       <form
@@ -179,7 +181,9 @@ export function StepsCard(props: {
   return (
     <section className="card" aria-labelledby="steps-h">
       <div className="card-head">
-        <h2 id="steps-h">Clicked steps</h2>
+        <h2 id="steps-h">
+          <span className="eno">02</span>Clicked steps
+        </h2>
         {!empty && (
           <button type="button" className="link" onClick={props.onClear}>
             Clear
@@ -221,7 +225,9 @@ export function Results({ run }: { run: RunState }) {
   return (
     <section className="card card-results" aria-labelledby="res-h">
       <div className="card-head">
-        <h2 id="res-h">Results</h2>
+        <h2 id="res-h">
+          <span className="eno">03</span>Results
+        </h2>
         <span className="muted small">{run.phase === 'idle' ? 'No run yet' : run.label}</span>
       </div>
       <div className="bigs">
@@ -267,7 +273,7 @@ export function Timeline({ run }: { run: RunState }) {
   return (
     <section className="tl-wrap" aria-labelledby="tl-h">
       <div className="sec-head">
-        <h2 id="tl-h">Timeline</h2>
+        <h2 id="tl-h">Run log</h2>
         <span className={`run-state rs-${run.phase}`}>
           {run.phase === 'idle' ? 'idle' : run.phase === 'starting' ? 'starting…' : run.phase === 'running' ? 'running' : run.phase === 'done' ? 'done' : 'failed'}
         </span>
@@ -342,8 +348,8 @@ export function RunsTable({ view, onReplay, active }: { view: RunsView; onReplay
   return (
     <section className="runs" aria-labelledby="runs-h">
       <div className="sec-head">
-        <h2 id="runs-h">Runs</h2>
-        <span className="muted small">Recorded in deployments/runs</span>
+        <h2 id="runs-h">Run register</h2>
+        <span className="muted small">deployments/runs · every finished run writes a record</span>
       </div>
       {view.state === 'loading' ? (
         <div className="empty-box">

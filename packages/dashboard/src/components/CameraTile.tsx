@@ -21,11 +21,15 @@ interface Props {
   onPick: (p: Pixel) => void;
   onSize: (w: number, h: number) => void;
   awaiting: 'pick' | 'place';
+  /** a run is streaming: the frame refreshes on its own */
+  live?: boolean;
 }
 
 const MINT: [number, number, number] = [56, 242, 196];
 
-/** Paint a SAM mask PNG (luminance or alpha) as a mint fill with a solid edge. */
+const INK: [number, number, number] = [27, 22, 34];
+
+/** Paint a SAM mask PNG (luminance or alpha) as a light mint fill with a dashed cut line on its edge. */
 function paintMask(canvas: HTMLCanvasElement, img: HTMLImageElement) {
   const w = img.naturalWidth;
   const h = img.naturalHeight;
@@ -48,10 +52,12 @@ function paintMask(canvas: HTMLCanvasElement, img: HTMLImageElement) {
       const i = y * w + x;
       if (!on[i]) continue;
       const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1 || !on[i - 1] || !on[i + 1] || !on[i - w] || !on[i + w];
-      d[i * 4] = MINT[0];
-      d[i * 4 + 1] = MINT[1];
-      d[i * 4 + 2] = MINT[2];
-      d[i * 4 + 3] = edge ? 255 : 120;
+      // The edge alternates mint and ink every 3 px: a cut line that reads on the pale table and the dark tray.
+      const c = edge && (x + y) % 6 >= 3 ? INK : MINT;
+      d[i * 4] = c[0];
+      d[i * 4 + 1] = c[1];
+      d[i * 4 + 2] = c[2];
+      d[i * 4 + 3] = edge ? 255 : 80;
     }
   }
   ctx.putImageData(out, 0, 0);
@@ -133,6 +139,8 @@ export function CameraTile(p: Props) {
   const aspect = dims ? `${dims.w} / ${dims.h}` : '4 / 3';
 
   return (
+    <div className="vf">
+    <span className="vf-cm" aria-hidden="true" />
     <div className="cam" style={{ aspectRatio: aspect }}>
       {!p.reachable ? (
         <div className="cam-empty">
@@ -180,6 +188,13 @@ export function CameraTile(p: Props) {
           {canClick && cursor && <span className="xhair" style={pct(cursor)} aria-hidden="true" />}
         </div>
       )}
+      <div className="osd osd-top" aria-hidden="true">
+        <span className="osd-cell">
+          {p.camera}
+          {dims ? ` · ${dims.w}×${dims.h}` : ''}
+        </span>
+        {p.reachable && shown && <span className={`osd-cell osd-rec${p.live ? ' is-live' : ''}`}>{p.live ? 'live' : 'still'}</span>}
+      </div>
       <div className="cam-hud" aria-live="polite">
         {p.busy ? (
           <span className="hud hud-busy">{p.busy}</span>
@@ -188,8 +203,9 @@ export function CameraTile(p: Props) {
         ) : p.clickable && dims ? (
           <span className="hud">{p.awaiting === 'pick' ? 'Click an object to pick' : 'Now click where it goes'}</span>
         ) : null}
-        {dims && <span className="hud mono">{dims.w}×{dims.h}</span>}
+        <span className="hud hud-sim">MuJoCo simulation · official SO-101 model</span>
       </div>
+    </div>
     </div>
   );
 }
