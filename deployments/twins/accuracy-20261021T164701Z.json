@@ -1,0 +1,5899 @@
+{
+  "started_at": "2026-10-21T16:47:01Z",
+  "finished_at": "2026-10-21T16:54:43Z",
+  "label": "digital twin from one photo \u00b7 simulated arm",
+  "photos": "synthetic: rendered by MuJoCo (table, A4 sheet, objects, tilted camera; no arm, no depth); only the RGB image is given to the twin",
+  "simulation": "MuJoCo simulation, official SO-101 model",
+  "segmenter": "sam2.1-hiera-tiny (local, automatic masks from point prompts)",
+  "command": "scripts/twin_accuracy.py --seeds 20 --tasks",
+  "summary": {
+    "true_fov": {
+      "objects": 86,
+      "found": 86,
+      "false_positives": 0,
+      "kind_correct": 83,
+      "colour_correct": 86,
+      "centre_err_mm": {
+        "mean": 1.2,
+        "median": 0.8,
+        "max": 4.87,
+        "n": 86
+      },
+      "yaw_err_deg": {
+        "mean": 1.01,
+        "median": 0.35,
+        "max": 22.29,
+        "n": 76
+      },
+      "long_err_mm": {
+        "mean": 0.82,
+        "median": 0.3,
+        "max": 5.9,
+        "n": 86
+      },
+      "short_err_mm": {
+        "mean": 0.6,
+        "median": 0.2,
+        "max": 6.5,
+        "n": 86
+      },
+      "height_err_mm": {
+        "mean": 1.57,
+        "median": 0.9,
+        "max": 13.7,
+        "n": 86
+      }
+    },
+    "assumed_fov_70": {
+      "objects": 86,
+      "found": 83,
+      "false_positives": 1,
+      "kind_correct": 83,
+      "colour_correct": 83,
+      "centre_err_mm": {
+        "mean": 3.34,
+        "median": 2.28,
+        "max": 14.33,
+        "n": 83
+      },
+      "yaw_err_deg": {
+        "mean": 0.75,
+        "median": 0.57,
+        "max": 3.54,
+        "n": 73
+      },
+      "long_err_mm": {
+        "mean": 1.1,
+        "median": 0.6,
+        "max": 10.8,
+        "n": 83
+      },
+      "short_err_mm": {
+        "mean": 1.02,
+        "median": 0.5,
+        "max": 18.0,
+        "n": 83
+      },
+      "height_err_mm": {
+        "mean": 2.81,
+        "median": 1.7,
+        "max": 17.7,
+        "n": 83
+      }
+    },
+    "clear_desk_on_twin": {
+      "ok": 16,
+      "run": 20,
+      "planner": "simulated-click oracle: the task says which object each step moves; the click is the middle of that object's colour blob in the rendered RGB image"
+    }
+  },
+  "scenes": [
+    {
+      "seed": 0,
+      "camera": {
+        "pos": [
+          0.505,
+          -0.109,
+          0.477
+        ],
+        "fovy_deg": 49.3,
+        "hfov_deg": 62.9
+      },
+      "truth": [
+        {
+          "label": "blue big cube",
+          "x": 0.1608,
+          "y": -0.0489,
+          "yaw": -0.6277,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "purple cylinder",
+          "x": 0.2134,
+          "y": -0.1021,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        },
+        {
+          "label": "orange small cube",
+          "x": 0.1856,
+          "y": 0.0707,
+          "yaw": -0.2195,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "green cylinder",
+          "x": 0.195,
+          "y": 0.1375,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "blue big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.26,
+            "yaw_err_deg": 0.35,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.4,
+            "height_err_mm": 0.3,
+            "fit_iou": 0.939
+          },
+          {
+            "truth": "purple cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.46,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.0,
+            "short_err_mm": 0.0,
+            "height_err_mm": -0.1,
+            "fit_iou": 0.927
+          },
+          {
+            "truth": "orange small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.94,
+            "yaw_err_deg": 0.22,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.0,
+            "height_err_mm": 1.8,
+            "fit_iou": 0.952
+          },
+          {
+            "truth": "green cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.62,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.4,
+            "height_err_mm": 0.3,
+            "fit_iou": 0.973
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 9.16,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 2089.4,
+          "fit_ms": 7006.4,
+          "total_ms": 9159.9,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              221.85,
+              322.06
+            ],
+            [
+              572.88,
+              206.96
+            ],
+            [
+              711.17,
+              406.58
+            ],
+            [
+              301.35,
+              573.86
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 62.94627966482923,
+          "orthogonality": 0.0002,
+          "camera_mm": [
+            39.1,
+            398.8,
+            476.3
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_blue_box in tray": true,
+          "twin1_orange_box in tray": true,
+          "twin2_green_cylinder in tray": true,
+          "twin3_purple_cylinder in tray": true
+        },
+        "retries": 0,
+        "placed": 4,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "blue big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 2.28,
+            "yaw_err_deg": 0.57,
+            "long_err_mm": -0.1,
+            "short_err_mm": -1.1,
+            "height_err_mm": 5.1,
+            "fit_iou": 0.939
+          },
+          {
+            "truth": "purple cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 3.63,
+            "yaw_err_deg": null,
+            "long_err_mm": -0.1,
+            "short_err_mm": -0.1,
+            "height_err_mm": 2.4,
+            "fit_iou": 0.912
+          },
+          {
+            "truth": "orange small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 1.9,
+            "yaw_err_deg": 0.06,
+            "long_err_mm": 0.1,
+            "short_err_mm": -0.8,
+            "height_err_mm": 3.0,
+            "fit_iou": 0.95
+          },
+          {
+            "truth": "green cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 1.19,
+            "yaw_err_deg": null,
+            "long_err_mm": -0.2,
+            "short_err_mm": -0.2,
+            "height_err_mm": 1.6,
+            "fit_iou": 0.942
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 9.32,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 2147.4,
+          "fit_ms": 7123.5,
+          "total_ms": 9322.2,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              221.85,
+              322.06
+            ],
+            [
+              572.88,
+              206.96
+            ],
+            [
+              711.17,
+              406.58
+            ],
+            [
+              301.35,
+              573.86
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0274,
+          "camera_mm": [
+            65.8,
+            339.7,
+            434.7
+          ]
+        }
+      }
+    },
+    {
+      "seed": 1,
+      "camera": {
+        "pos": [
+          0.446,
+          -0.033,
+          0.45
+        ],
+        "fovy_deg": 58.7,
+        "hfov_deg": 73.7
+      },
+      "truth": [
+        {
+          "label": "purple small cube",
+          "x": 0.2468,
+          "y": -0.0357,
+          "yaw": 0.4856,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "blue big cube",
+          "x": 0.2199,
+          "y": -0.1125,
+          "yaw": 0.2282,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "green cube",
+          "x": 0.2267,
+          "y": 0.0875,
+          "yaw": -0.2417,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow small cube",
+          "x": 0.1514,
+          "y": 0.0666,
+          "yaw": -0.3918,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "orange cylinder",
+          "x": 0.1827,
+          "y": -0.0391,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "purple small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.19,
+            "yaw_err_deg": 0.04,
+            "long_err_mm": 1.1,
+            "short_err_mm": 0.0,
+            "height_err_mm": 1.7,
+            "fit_iou": 0.93
+          },
+          {
+            "truth": "blue big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.67,
+            "yaw_err_deg": 0.61,
+            "long_err_mm": 0.1,
+            "short_err_mm": -0.1,
+            "height_err_mm": 0.8,
+            "fit_iou": 0.986
+          },
+          {
+            "truth": "green cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.29,
+            "yaw_err_deg": 0.49,
+            "long_err_mm": 0.9,
+            "short_err_mm": 0.0,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.973
+          },
+          {
+            "truth": "yellow small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.41,
+            "yaw_err_deg": 0.82,
+            "long_err_mm": 0.7,
+            "short_err_mm": 0.2,
+            "height_err_mm": 0.8,
+            "fit_iou": 0.936
+          },
+          {
+            "truth": "orange cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.82,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.5,
+            "short_err_mm": 0.5,
+            "height_err_mm": 0.7,
+            "fit_iou": 0.977
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 14.58,
+        "stats": {
+          "masks": 10,
+          "dropped_shadow": 2,
+          "dropped_flat": 0,
+          "dropped_loose": 3,
+          "sam_ms": 3261.6,
+          "fit_ms": 11241.8,
+          "total_ms": 14583.1,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              299.0,
+              285.94
+            ],
+            [
+              637.88,
+              253.14
+            ],
+            [
+              706.22,
+              480.76
+            ],
+            [
+              294.24,
+              529.56
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 73.71167858628519,
+          "orthogonality": 0.0001,
+          "camera_mm": [
+            115.6,
+            336.2,
+            450.8
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_yellow_box in tray": true,
+          "twin1_orange_cylinder in tray": true,
+          "twin2_blue_box in tray": true,
+          "twin3_green_box in tray": true,
+          "twin4_purple_box in bin": true
+        },
+        "retries": 0,
+        "placed": 5,
+        "steps": 5
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "purple small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.68,
+            "yaw_err_deg": 0.09,
+            "long_err_mm": 0.5,
+            "short_err_mm": 0.4,
+            "height_err_mm": -0.6,
+            "fit_iou": 0.946
+          },
+          {
+            "truth": "blue big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 4.16,
+            "yaw_err_deg": 0.54,
+            "long_err_mm": 0.6,
+            "short_err_mm": 0.4,
+            "height_err_mm": 4.0,
+            "fit_iou": 0.933
+          },
+          {
+            "truth": "green cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 1.56,
+            "yaw_err_deg": 0.92,
+            "long_err_mm": 1.4,
+            "short_err_mm": 0.7,
+            "height_err_mm": -0.2,
+            "fit_iou": 0.973
+          },
+          {
+            "truth": "yellow small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.1,
+            "yaw_err_deg": 0.5,
+            "long_err_mm": 0.8,
+            "short_err_mm": 0.8,
+            "height_err_mm": 0.3,
+            "fit_iou": 0.951
+          },
+          {
+            "truth": "orange cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.82,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.6,
+            "short_err_mm": 0.6,
+            "height_err_mm": -0.6,
+            "fit_iou": 0.978
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 9.91,
+        "stats": {
+          "masks": 10,
+          "dropped_shadow": 2,
+          "dropped_flat": 1,
+          "dropped_loose": 2,
+          "sam_ms": 1826.8,
+          "fit_ms": 8033.4,
+          "total_ms": 9907.0,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              299.0,
+              285.94
+            ],
+            [
+              637.88,
+              253.14
+            ],
+            [
+              706.22,
+              480.76
+            ],
+            [
+              294.24,
+              529.56
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0041,
+          "camera_mm": [
+            111.6,
+            368.6,
+            474.5
+          ]
+        }
+      }
+    },
+    {
+      "seed": 2,
+      "camera": {
+        "pos": [
+          0.606,
+          0.036,
+          0.42
+        ],
+        "fovy_deg": 48.4,
+        "hfov_deg": 61.8
+      },
+      "truth": [
+        {
+          "label": "blue small cube",
+          "x": 0.1688,
+          "y": 0.0237,
+          "yaw": -0.5995,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "yellow flat box",
+          "x": 0.2363,
+          "y": 0.0321,
+          "yaw": 0.5948,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "orange flat box",
+          "x": 0.2119,
+          "y": 0.1321,
+          "yaw": -0.3227,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "green cube",
+          "x": 0.1993,
+          "y": -0.0686,
+          "yaw": -0.5078,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "purple small cube",
+          "x": 0.1525,
+          "y": 0.0761,
+          "yaw": -0.0163,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "blue small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 2.82,
+            "yaw_err_deg": 0.5,
+            "long_err_mm": 0.3,
+            "short_err_mm": 0.3,
+            "height_err_mm": 3.1,
+            "fit_iou": 0.94
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.25,
+            "yaw_err_deg": 0.64,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.1,
+            "height_err_mm": 0.3,
+            "fit_iou": 0.989
+          },
+          {
+            "truth": "orange flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 2.0,
+            "yaw_err_deg": 0.19,
+            "long_err_mm": 0.3,
+            "short_err_mm": 3.5,
+            "height_err_mm": 0.1,
+            "fit_iou": 0.955
+          },
+          {
+            "truth": "green cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 2.96,
+            "yaw_err_deg": 0.43,
+            "long_err_mm": 0.3,
+            "short_err_mm": 0.3,
+            "height_err_mm": 3.3,
+            "fit_iou": 0.918
+          },
+          {
+            "truth": "purple small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 3.02,
+            "yaw_err_deg": 0.55,
+            "long_err_mm": 5.2,
+            "short_err_mm": 1.6,
+            "height_err_mm": -3.8,
+            "fit_iou": 0.95
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 5.96,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 991.5,
+          "fit_ms": 4918.7,
+          "total_ms": 5955.0,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              295.76,
+              270.11
+            ],
+            [
+              660.89,
+              286.06
+            ],
+            [
+              691.63,
+              507.14
+            ],
+            [
+              221.04,
+              480.43
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 61.84538887712982,
+          "orthogonality": 0.0014,
+          "camera_mm": [
+            185.3,
+            499.6,
+            419.9
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_purple_box in tray": true,
+          "twin1_green_box in tray": true,
+          "twin2_blue_box in tray": true,
+          "twin3_yellow_box in tray": true,
+          "twin4_orange_box in bin": true
+        },
+        "retries": 0,
+        "placed": 5,
+        "steps": 5
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "blue small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 2.88,
+            "yaw_err_deg": 2.14,
+            "long_err_mm": 0.1,
+            "short_err_mm": -0.7,
+            "height_err_mm": 3.7,
+            "fit_iou": 0.948
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 9.49,
+            "yaw_err_deg": 1.21,
+            "long_err_mm": -1.9,
+            "short_err_mm": -0.5,
+            "height_err_mm": 1.3,
+            "fit_iou": 0.98
+          },
+          {
+            "truth": "orange flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 8.24,
+            "yaw_err_deg": 0.31,
+            "long_err_mm": -1.9,
+            "short_err_mm": 0.3,
+            "height_err_mm": 1.1,
+            "fit_iou": 0.959
+          },
+          {
+            "truth": "green cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 4.16,
+            "yaw_err_deg": 0.57,
+            "long_err_mm": 0.2,
+            "short_err_mm": -1.2,
+            "height_err_mm": 4.6,
+            "fit_iou": 0.918
+          },
+          {
+            "truth": "purple small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.62,
+            "yaw_err_deg": 3.54,
+            "long_err_mm": -0.2,
+            "short_err_mm": -3.7,
+            "height_err_mm": 5.2,
+            "fit_iou": 0.924
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.29,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 949.3,
+          "fit_ms": 5297.7,
+          "total_ms": 6294.3,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              295.76,
+              270.11
+            ],
+            [
+              660.89,
+              286.06
+            ],
+            [
+              691.63,
+              507.14
+            ],
+            [
+              221.04,
+              480.43
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0081,
+          "camera_mm": [
+            178.8,
+            405.1,
+            385.3
+          ]
+        }
+      }
+    },
+    {
+      "seed": 3,
+      "camera": {
+        "pos": [
+          0.48,
+          0.075,
+          0.389
+        ],
+        "fovy_deg": 51.5,
+        "hfov_deg": 65.5
+      },
+      "truth": [
+        {
+          "label": "orange cylinder",
+          "x": 0.2277,
+          "y": -0.0524,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        },
+        {
+          "label": "purple big cube",
+          "x": 0.2269,
+          "y": 0.1161,
+          "yaw": 0.1745,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "red flat box",
+          "x": 0.2439,
+          "y": 0.0359,
+          "yaw": -0.4638,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "blue cube",
+          "x": 0.1635,
+          "y": -0.0424,
+          "yaw": -0.4915,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow flat box",
+          "x": 0.1534,
+          "y": 0.0929,
+          "yaw": 0.5716,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "orange cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.45,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 0.5,
+            "fit_iou": 0.99
+          },
+          {
+            "truth": "purple big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.27,
+            "yaw_err_deg": 0.08,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.1,
+            "height_err_mm": 0.4,
+            "fit_iou": 0.979
+          },
+          {
+            "truth": "red flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 0.29,
+            "yaw_err_deg": 0.32,
+            "long_err_mm": -0.8,
+            "short_err_mm": -0.3,
+            "height_err_mm": 1.1,
+            "fit_iou": 0.974
+          },
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.37,
+            "yaw_err_deg": 0.0,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.1,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.976
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.16,
+            "yaw_err_deg": 0.18,
+            "long_err_mm": -0.3,
+            "short_err_mm": -0.2,
+            "height_err_mm": 0.9,
+            "fit_iou": 0.977
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 11.04,
+        "stats": {
+          "masks": 9,
+          "dropped_shadow": 2,
+          "dropped_flat": 1,
+          "dropped_loose": 1,
+          "sam_ms": 1395.1,
+          "fit_ms": 9587.8,
+          "total_ms": 11035.5,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              329.04,
+              202.76
+            ],
+            [
+              730.75,
+              286.26
+            ],
+            [
+              695.34,
+              574.94
+            ],
+            [
+              192.26,
+              439.12
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 65.50781427679878,
+          "orthogonality": 0.0002,
+          "camera_mm": [
+            223.3,
+            370.8,
+            390.2
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_yellow_box in tray": true,
+          "twin1_blue_box in tray": true,
+          "twin2_orange_cylinder in tray": true,
+          "twin3_purple_box in tray": true,
+          "twin4_red_box in bin": true
+        },
+        "retries": 0,
+        "placed": 5,
+        "steps": 5
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "orange cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 3.51,
+            "yaw_err_deg": null,
+            "long_err_mm": -0.2,
+            "short_err_mm": -0.2,
+            "height_err_mm": 2.2,
+            "fit_iou": 0.981
+          },
+          {
+            "truth": "purple big cube",
+            "found": false
+          },
+          {
+            "truth": "red flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 3.63,
+            "yaw_err_deg": 0.34,
+            "long_err_mm": -0.8,
+            "short_err_mm": 0.8,
+            "height_err_mm": 2.5,
+            "fit_iou": 0.96
+          },
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 1.17,
+            "yaw_err_deg": 0.01,
+            "long_err_mm": -0.3,
+            "short_err_mm": -0.4,
+            "height_err_mm": 2.8,
+            "fit_iou": 0.965
+          },
+          {
+            "truth": "yellow flat box",
+            "found": false
+          }
+        ],
+        "false_positives": 1,
+        "seconds": 11.23,
+        "stats": {
+          "masks": 7,
+          "dropped_shadow": 2,
+          "dropped_flat": 0,
+          "dropped_loose": 1,
+          "sam_ms": 1391.0,
+          "fit_ms": 9785.3,
+          "total_ms": 11229.1,
+          "in_twin": 3
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              329.04,
+              202.76
+            ],
+            [
+              730.75,
+              286.26
+            ],
+            [
+              695.34,
+              574.94
+            ],
+            [
+              192.26,
+              439.12
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0142,
+          "camera_mm": [
+            212.7,
+            332.7,
+            368.8
+          ]
+        }
+      }
+    },
+    {
+      "seed": 4,
+      "camera": {
+        "pos": [
+          0.421,
+          -0.036,
+          0.402
+        ],
+        "fovy_deg": 51.4,
+        "hfov_deg": 65.4
+      },
+      "truth": [
+        {
+          "label": "red cube",
+          "x": 0.2555,
+          "y": -0.0415,
+          "yaw": 0.1266,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "blue block",
+          "x": 0.2337,
+          "y": 0.0786,
+          "yaw": -0.6719,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "orange flat box",
+          "x": 0.1742,
+          "y": -0.106,
+          "yaw": -0.5363,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "yellow cube",
+          "x": 0.1587,
+          "y": 0.1124,
+          "yaw": -0.2544,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "purple cylinder",
+          "x": 0.1783,
+          "y": 0.0225,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "red cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 1.0,
+            "yaw_err_deg": 0.03,
+            "long_err_mm": 0.6,
+            "short_err_mm": -0.4,
+            "height_err_mm": 3.4,
+            "fit_iou": 0.869
+          },
+          {
+            "truth": "blue block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.7,
+            "yaw_err_deg": 0.44,
+            "long_err_mm": 0.0,
+            "short_err_mm": 0.0,
+            "height_err_mm": -0.3,
+            "fit_iou": 0.957
+          },
+          {
+            "truth": "orange flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 1.89,
+            "yaw_err_deg": 0.25,
+            "long_err_mm": -0.3,
+            "short_err_mm": 0.3,
+            "height_err_mm": 3.7,
+            "fit_iou": 0.956
+          },
+          {
+            "truth": "yellow cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.83,
+            "yaw_err_deg": 0.27,
+            "long_err_mm": 0.3,
+            "short_err_mm": 0.3,
+            "height_err_mm": 0.1,
+            "fit_iou": 0.983
+          },
+          {
+            "truth": "purple cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.39,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.4,
+            "height_err_mm": 0.4,
+            "fit_iou": 0.936
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 9.99,
+        "stats": {
+          "masks": 7,
+          "dropped_shadow": 1,
+          "dropped_flat": 1,
+          "dropped_loose": 0,
+          "sam_ms": 1535.9,
+          "fit_ms": 8394.2,
+          "total_ms": 9990.6,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              219.72,
+              252.08
+            ],
+            [
+              657.39,
+              184.16
+            ],
+            [
+              768.21,
+              471.47
+            ],
+            [
+              233.58,
+              574.41
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 65.35493946854437,
+          "orthogonality": 0.0004,
+          "camera_mm": [
+            112.0,
+            311.9,
+            402.4
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_yellow_box in tray": true,
+          "twin1_orange_box in tray": true,
+          "twin2_purple_cylinder in tray": true,
+          "twin3_blue_box in tray": true,
+          "twin4_red_box in bin": true
+        },
+        "retries": 0,
+        "placed": 5,
+        "steps": 5
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "red cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 3.1,
+            "yaw_err_deg": 0.06,
+            "long_err_mm": 3.7,
+            "short_err_mm": -0.7,
+            "height_err_mm": 3.5,
+            "fit_iou": 0.901
+          },
+          {
+            "truth": "blue block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.91,
+            "yaw_err_deg": 0.26,
+            "long_err_mm": -1.0,
+            "short_err_mm": 2.5,
+            "height_err_mm": 2.2,
+            "fit_iou": 0.957
+          },
+          {
+            "truth": "orange flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 1.32,
+            "yaw_err_deg": 0.62,
+            "long_err_mm": -1.0,
+            "short_err_mm": -0.2,
+            "height_err_mm": 4.3,
+            "fit_iou": 0.961
+          },
+          {
+            "truth": "yellow cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.58,
+            "yaw_err_deg": 0.05,
+            "long_err_mm": 0.2,
+            "short_err_mm": -0.5,
+            "height_err_mm": 0.8,
+            "fit_iou": 0.972
+          },
+          {
+            "truth": "purple cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.05,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 1.1,
+            "fit_iou": 0.934
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 10.6,
+        "stats": {
+          "masks": 6,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 1,
+          "sam_ms": 1380.9,
+          "fit_ms": 9167.7,
+          "total_ms": 10604.7,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              219.72,
+              252.08
+            ],
+            [
+              657.39,
+              184.16
+            ],
+            [
+              768.21,
+              471.47
+            ],
+            [
+              233.58,
+              574.41
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.006,
+          "camera_mm": [
+            118.1,
+            281.1,
+            375.2
+          ]
+        }
+      }
+    },
+    {
+      "seed": 5,
+      "camera": {
+        "pos": [
+          0.455,
+          0.026,
+          0.45
+        ],
+        "fovy_deg": 50.3,
+        "hfov_deg": 64.1
+      },
+      "truth": [
+        {
+          "label": "red flat box",
+          "x": 0.2071,
+          "y": -0.1245,
+          "yaw": -0.3968,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "orange block",
+          "x": 0.2563,
+          "y": -0.0435,
+          "yaw": 0.2823,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow big cube",
+          "x": 0.1703,
+          "y": 0.0685,
+          "yaw": -0.5026,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "blue big cube",
+          "x": 0.2559,
+          "y": 0.0827,
+          "yaw": -0.3841,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "red flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 1.64,
+            "yaw_err_deg": 0.14,
+            "long_err_mm": -0.3,
+            "short_err_mm": 0.1,
+            "height_err_mm": 3.9,
+            "fit_iou": 0.963
+          },
+          {
+            "truth": "orange block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 2.66,
+            "yaw_err_deg": 0.85,
+            "long_err_mm": 0.1,
+            "short_err_mm": 6.5,
+            "height_err_mm": -0.2,
+            "fit_iou": 0.851
+          },
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.42,
+            "yaw_err_deg": 0.31,
+            "long_err_mm": 1.0,
+            "short_err_mm": 0.3,
+            "height_err_mm": 0.4,
+            "fit_iou": 0.923
+          },
+          {
+            "truth": "blue big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 2.61,
+            "yaw_err_deg": 0.25,
+            "long_err_mm": 5.5,
+            "short_err_mm": 0.1,
+            "height_err_mm": 0.2,
+            "fit_iou": 0.948
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 10.11,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 1,
+          "sam_ms": 2245.9,
+          "fit_ms": 7806.9,
+          "total_ms": 10106.7,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              325.61,
+              222.86
+            ],
+            [
+              726.82,
+              276.54
+            ],
+            [
+              723.47,
+              565.77
+            ],
+            [
+              236.63,
+              485.96
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 64.0858922602381,
+          "orthogonality": 0.0003,
+          "camera_mm": [
+            174.9,
+            346.3,
+            451.1
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": false,
+        "goal": {
+          "twin0_yellow_box in tray": true,
+          "twin1_red_box in tray": true,
+          "twin2_orange_box in tray": true,
+          "twin3_blue_box in tray": false
+        },
+        "retries": 3,
+        "placed": 2,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "red flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 1.61,
+            "yaw_err_deg": 0.42,
+            "long_err_mm": -1.3,
+            "short_err_mm": -0.3,
+            "height_err_mm": 7.0,
+            "fit_iou": 0.956
+          },
+          {
+            "truth": "orange block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 7.07,
+            "yaw_err_deg": 0.74,
+            "long_err_mm": 5.1,
+            "short_err_mm": 1.0,
+            "height_err_mm": -9.7,
+            "fit_iou": 0.907
+          },
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 2.71,
+            "yaw_err_deg": 0.47,
+            "long_err_mm": 0.8,
+            "short_err_mm": -0.6,
+            "height_err_mm": 1.5,
+            "fit_iou": 0.912
+          },
+          {
+            "truth": "blue big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 4.38,
+            "yaw_err_deg": 0.52,
+            "long_err_mm": 1.0,
+            "short_err_mm": -1.1,
+            "height_err_mm": 4.1,
+            "fit_iou": 0.898
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 9.38,
+        "stats": {
+          "masks": 6,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 1,
+          "sam_ms": 1939.8,
+          "fit_ms": 7383.4,
+          "total_ms": 9375.8,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              325.61,
+              222.86
+            ],
+            [
+              726.82,
+              276.54
+            ],
+            [
+              723.47,
+              565.77
+            ],
+            [
+              236.63,
+              485.96
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0078,
+          "camera_mm": [
+            166.9,
+            298.5,
+            413.6
+          ]
+        }
+      }
+    },
+    {
+      "seed": 6,
+      "camera": {
+        "pos": [
+          0.639,
+          0.009,
+          0.436
+        ],
+        "fovy_deg": 58.6,
+        "hfov_deg": 73.6
+      },
+      "truth": [
+        {
+          "label": "red small cube",
+          "x": 0.2463,
+          "y": -0.0196,
+          "yaw": 0.1777,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "yellow block",
+          "x": 0.1757,
+          "y": -0.0903,
+          "yaw": -0.1144,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "green big cube",
+          "x": 0.1777,
+          "y": 0.0429,
+          "yaw": 0.4213,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "purple flat box",
+          "x": 0.2441,
+          "y": 0.0848,
+          "yaw": -0.3474,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "blue big cube",
+          "x": 0.2359,
+          "y": -0.1255,
+          "yaw": 0.0586,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "red small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 1.24,
+            "yaw_err_deg": 1.46,
+            "long_err_mm": 1.4,
+            "short_err_mm": 0.3,
+            "height_err_mm": 2.2,
+            "fit_iou": 0.913
+          },
+          {
+            "truth": "yellow block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.4,
+            "yaw_err_deg": 0.14,
+            "long_err_mm": 0.6,
+            "short_err_mm": 0.2,
+            "height_err_mm": 1.9,
+            "fit_iou": 0.963
+          },
+          {
+            "truth": "green big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.41,
+            "yaw_err_deg": 0.45,
+            "long_err_mm": 1.2,
+            "short_err_mm": 0.5,
+            "height_err_mm": 1.9,
+            "fit_iou": 0.958
+          },
+          {
+            "truth": "purple flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.1,
+            "yaw_err_deg": 0.16,
+            "long_err_mm": 0.5,
+            "short_err_mm": 1.7,
+            "height_err_mm": 0.2,
+            "fit_iou": 0.952
+          },
+          {
+            "truth": "blue big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "cylinder",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 1.24,
+            "yaw_err_deg": 3.36,
+            "long_err_mm": 5.9,
+            "short_err_mm": 5.9,
+            "height_err_mm": -0.2,
+            "fit_iou": 0.851
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 5.53,
+        "stats": {
+          "masks": 6,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1118.1,
+          "fit_ms": 4372.6,
+          "total_ms": 5529.7,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              327.77,
+              276.56
+            ],
+            [
+              607.32,
+              274.91
+            ],
+            [
+              643.02,
+              434.4
+            ],
+            [
+              289.23,
+              436.37
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 73.61084971887807,
+          "orthogonality": 0.0037,
+          "camera_mm": [
+            160.6,
+            531.2,
+            436.5
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": false,
+        "goal": {
+          "twin0_yellow_box in tray": true,
+          "twin1_green_box in tray": true,
+          "twin2_blue_cylinder in tray": true,
+          "twin3_red_box in tray": true,
+          "twin4_purple_box in bin": false
+        },
+        "retries": 1,
+        "placed": 4,
+        "steps": 5
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "red small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 3.98,
+            "yaw_err_deg": 1.19,
+            "long_err_mm": 1.0,
+            "short_err_mm": 0.8,
+            "height_err_mm": 0.0,
+            "fit_iou": 0.939
+          },
+          {
+            "truth": "yellow block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 2.26,
+            "yaw_err_deg": 0.31,
+            "long_err_mm": 1.7,
+            "short_err_mm": 0.4,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.966
+          },
+          {
+            "truth": "green big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 2.86,
+            "yaw_err_deg": 0.76,
+            "long_err_mm": 2.1,
+            "short_err_mm": 0.7,
+            "height_err_mm": 1.4,
+            "fit_iou": 0.957
+          },
+          {
+            "truth": "purple flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 5.82,
+            "yaw_err_deg": 0.2,
+            "long_err_mm": 1.3,
+            "short_err_mm": 1.8,
+            "height_err_mm": 1.6,
+            "fit_iou": 0.948
+          },
+          {
+            "truth": "blue big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 3.9,
+            "yaw_err_deg": 0.81,
+            "long_err_mm": 1.7,
+            "short_err_mm": 0.2,
+            "height_err_mm": 0.1,
+            "fit_iou": 0.903
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 5.72,
+        "stats": {
+          "masks": 6,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1194.5,
+          "fit_ms": 4489.4,
+          "total_ms": 5723.6,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              327.77,
+              276.56
+            ],
+            [
+              607.32,
+              274.91
+            ],
+            [
+              643.02,
+              434.4
+            ],
+            [
+              289.23,
+              436.37
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0037,
+          "camera_mm": [
+            160.7,
+            578.4,
+            451.7
+          ]
+        }
+      }
+    },
+    {
+      "seed": 7,
+      "camera": {
+        "pos": [
+          0.523,
+          -0.08,
+          0.325
+        ],
+        "fovy_deg": 51.1,
+        "hfov_deg": 65.0
+      },
+      "truth": [
+        {
+          "label": "blue block",
+          "x": 0.239,
+          "y": -0.0394,
+          "yaw": 0.5251,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "green small cube",
+          "x": 0.1689,
+          "y": 0.1104,
+          "yaw": -0.4119,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "purple cylinder",
+          "x": 0.1828,
+          "y": -0.0919,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        },
+        {
+          "label": "yellow flat box",
+          "x": 0.1775,
+          "y": 0.0075,
+          "yaw": -0.4168,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "blue block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.69,
+            "yaw_err_deg": 0.0,
+            "long_err_mm": 0.0,
+            "short_err_mm": 0.1,
+            "height_err_mm": 0.2,
+            "fit_iou": 0.991
+          },
+          {
+            "truth": "green small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 1.43,
+            "yaw_err_deg": 0.49,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.4,
+            "height_err_mm": -0.2,
+            "fit_iou": 0.958
+          },
+          {
+            "truth": "purple cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.76,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.4,
+            "height_err_mm": 0.3,
+            "fit_iou": 0.967
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.85,
+            "yaw_err_deg": 0.05,
+            "long_err_mm": 0.3,
+            "short_err_mm": 0.5,
+            "height_err_mm": 0.1,
+            "fit_iou": 0.967
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.12,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1071.1,
+          "fit_ms": 4996.8,
+          "total_ms": 6121.4,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              199.7,
+              297.61
+            ],
+            [
+              615.65,
+              221.98
+            ],
+            [
+              770.95,
+              435.06
+            ],
+            [
+              215.95,
+              576.97
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 65.00478562850168,
+          "orthogonality": 0.0018,
+          "camera_mm": [
+            67.8,
+            413.7,
+            324.3
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_purple_cylinder in tray": true,
+          "twin1_yellow_box in tray": true,
+          "twin2_green_box in tray": true,
+          "twin3_blue_box in tray": true
+        },
+        "retries": 0,
+        "placed": 4,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "blue block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 3.72,
+            "yaw_err_deg": 1.22,
+            "long_err_mm": -0.9,
+            "short_err_mm": -0.4,
+            "height_err_mm": 2.1,
+            "fit_iou": 0.979
+          },
+          {
+            "truth": "green small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.54,
+            "yaw_err_deg": 1.72,
+            "long_err_mm": 0.1,
+            "short_err_mm": -0.6,
+            "height_err_mm": 0.9,
+            "fit_iou": 0.965
+          },
+          {
+            "truth": "purple cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 2.87,
+            "yaw_err_deg": null,
+            "long_err_mm": -0.2,
+            "short_err_mm": -0.2,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.95
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 1.25,
+            "yaw_err_deg": 0.01,
+            "long_err_mm": -1.5,
+            "short_err_mm": 0.5,
+            "height_err_mm": 1.0,
+            "fit_iou": 0.96
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.28,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 911.0,
+          "fit_ms": 5315.3,
+          "total_ms": 6279.6,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              199.7,
+              297.61
+            ],
+            [
+              615.65,
+              221.98
+            ],
+            [
+              770.95,
+              435.06
+            ],
+            [
+              215.95,
+              576.97
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0227,
+          "camera_mm": [
+            81.2,
+            371.5,
+            309.6
+          ]
+        }
+      }
+    },
+    {
+      "seed": 8,
+      "camera": {
+        "pos": [
+          0.545,
+          0.02,
+          0.444
+        ],
+        "fovy_deg": 59.1,
+        "hfov_deg": 74.1
+      },
+      "truth": [
+        {
+          "label": "green block",
+          "x": 0.234,
+          "y": -0.1375,
+          "yaw": 0.1415,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "blue flat box",
+          "x": 0.2406,
+          "y": 0.0123,
+          "yaw": 0.43,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "yellow small cube",
+          "x": 0.1786,
+          "y": -0.0931,
+          "yaw": 0.3594,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "red flat box",
+          "x": 0.1908,
+          "y": 0.0726,
+          "yaw": 0.6193,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "green block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.78,
+            "yaw_err_deg": 0.1,
+            "long_err_mm": 0.6,
+            "short_err_mm": 3.8,
+            "height_err_mm": 0.1,
+            "fit_iou": 0.872
+          },
+          {
+            "truth": "blue flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.66,
+            "yaw_err_deg": 0.48,
+            "long_err_mm": 0.6,
+            "short_err_mm": 0.7,
+            "height_err_mm": 0.1,
+            "fit_iou": 0.983
+          },
+          {
+            "truth": "yellow small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "cylinder",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.24,
+            "yaw_err_deg": 20.59,
+            "long_err_mm": 3.5,
+            "short_err_mm": 3.5,
+            "height_err_mm": 0.8,
+            "fit_iou": 0.835
+          },
+          {
+            "truth": "red flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 0.44,
+            "yaw_err_deg": 0.01,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.2,
+            "height_err_mm": 0.9,
+            "fit_iou": 0.99
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 4.83,
+        "stats": {
+          "masks": 4,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1058.7,
+          "fit_ms": 3728.9,
+          "total_ms": 4830.0,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              342.14,
+              280.81
+            ],
+            [
+              646.07,
+              297.22
+            ],
+            [
+              670.07,
+              496.48
+            ],
+            [
+              286.57,
+              470.51
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 74.1200717597488,
+          "orthogonality": 0.0005,
+          "camera_mm": [
+            167.6,
+            436.9,
+            445.1
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": false,
+        "goal": {
+          "twin0_yellow_cylinder in tray": false,
+          "twin1_red_box in tray": true,
+          "twin2_green_box in tray": true,
+          "twin3_blue_box in tray": true
+        },
+        "retries": 3,
+        "placed": 2,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "green block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 5.22,
+            "yaw_err_deg": 0.66,
+            "long_err_mm": -0.5,
+            "short_err_mm": 7.6,
+            "height_err_mm": 1.8,
+            "fit_iou": 0.889
+          },
+          {
+            "truth": "blue flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 5.04,
+            "yaw_err_deg": 0.09,
+            "long_err_mm": 1.4,
+            "short_err_mm": 0.0,
+            "height_err_mm": 1.0,
+            "fit_iou": 0.97
+          },
+          {
+            "truth": "yellow small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 4.27,
+            "yaw_err_deg": 3.06,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.0,
+            "height_err_mm": 3.2,
+            "fit_iou": 0.894
+          },
+          {
+            "truth": "red flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 2.74,
+            "yaw_err_deg": 0.8,
+            "long_err_mm": 0.9,
+            "short_err_mm": 0.6,
+            "height_err_mm": 0.4,
+            "fit_iou": 0.987
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 4.8,
+        "stats": {
+          "masks": 4,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 908.4,
+          "fit_ms": 3849.7,
+          "total_ms": 4799.5,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              342.14,
+              280.81
+            ],
+            [
+              646.07,
+              297.22
+            ],
+            [
+              670.07,
+              496.48
+            ],
+            [
+              286.57,
+              470.51
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0039,
+          "camera_mm": [
+            171.1,
+            484.7,
+            465.7
+          ]
+        }
+      }
+    },
+    {
+      "seed": 9,
+      "camera": {
+        "pos": [
+          0.574,
+          -0.014,
+          0.365
+        ],
+        "fovy_deg": 54.3,
+        "hfov_deg": 68.8
+      },
+      "truth": [
+        {
+          "label": "purple cube",
+          "x": 0.1516,
+          "y": -0.1064,
+          "yaw": 0.5852,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "orange cube",
+          "x": 0.1782,
+          "y": -0.0209,
+          "yaw": -0.6846,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow cube",
+          "x": 0.1838,
+          "y": 0.102,
+          "yaw": 0.409,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "green small cube",
+          "x": 0.2105,
+          "y": -0.1218,
+          "yaw": -0.0853,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "purple cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.93,
+            "yaw_err_deg": 0.37,
+            "long_err_mm": -0.1,
+            "short_err_mm": -0.1,
+            "height_err_mm": 1.9,
+            "fit_iou": 0.929
+          },
+          {
+            "truth": "orange cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 2.84,
+            "yaw_err_deg": 1.12,
+            "long_err_mm": 0.8,
+            "short_err_mm": 0.3,
+            "height_err_mm": 3.7,
+            "fit_iou": 0.821
+          },
+          {
+            "truth": "yellow cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 1.33,
+            "yaw_err_deg": 0.31,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.0,
+            "height_err_mm": 0.3,
+            "fit_iou": 0.987
+          },
+          {
+            "truth": "green small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 1.83,
+            "yaw_err_deg": 0.62,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 2.8,
+            "fit_iou": 0.911
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.67,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1120.7,
+          "fit_ms": 5501.0,
+          "total_ms": 6666.8,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              307.52,
+              289.38
+            ],
+            [
+              661.91,
+              284.96
+            ],
+            [
+              731.04,
+              491.42
+            ],
+            [
+              254.95,
+              499.88
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 68.77330941687448,
+          "orthogonality": 0.0024,
+          "camera_mm": [
+            132.6,
+            463.9,
+            365.1
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_purple_box in tray": true,
+          "twin1_orange_box in tray": true,
+          "twin2_yellow_box in tray": true,
+          "twin3_green_box in tray": true
+        },
+        "retries": 0,
+        "placed": 4,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "purple cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.9,
+            "yaw_err_deg": 0.8,
+            "long_err_mm": -0.2,
+            "short_err_mm": -0.7,
+            "height_err_mm": 2.4,
+            "fit_iou": 0.92
+          },
+          {
+            "truth": "orange cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 5.37,
+            "yaw_err_deg": 0.92,
+            "long_err_mm": 0.2,
+            "short_err_mm": -0.1,
+            "height_err_mm": 7.0,
+            "fit_iou": 0.753
+          },
+          {
+            "truth": "yellow cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 2.15,
+            "yaw_err_deg": 0.15,
+            "long_err_mm": 0.1,
+            "short_err_mm": -0.2,
+            "height_err_mm": 0.5,
+            "fit_iou": 0.988
+          },
+          {
+            "truth": "green small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.94,
+            "yaw_err_deg": 1.54,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.0,
+            "height_err_mm": 3.2,
+            "fit_iou": 0.906
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.56,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1127.3,
+          "fit_ms": 5386.1,
+          "total_ms": 6559.7,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              307.52,
+              289.38
+            ],
+            [
+              661.91,
+              284.96
+            ],
+            [
+              731.04,
+              491.42
+            ],
+            [
+              254.95,
+              499.88
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0018,
+          "camera_mm": [
+            133.0,
+            450.3,
+            361.0
+          ]
+        }
+      }
+    },
+    {
+      "seed": 10,
+      "camera": {
+        "pos": [
+          0.656,
+          0.092,
+          0.382
+        ],
+        "fovy_deg": 58.5,
+        "hfov_deg": 73.5
+      },
+      "truth": [
+        {
+          "label": "blue flat box",
+          "x": 0.2441,
+          "y": 0.1186,
+          "yaw": -0.3866,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "orange big cube",
+          "x": 0.2446,
+          "y": -0.0854,
+          "yaw": -0.1035,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "green block",
+          "x": 0.2421,
+          "y": 0.0199,
+          "yaw": -0.1698,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow block",
+          "x": 0.1876,
+          "y": -0.0242,
+          "yaw": -0.6159,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "purple flat box",
+          "x": 0.1677,
+          "y": -0.1022,
+          "yaw": -0.6313,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "blue flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 4.33,
+            "yaw_err_deg": 0.16,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.8,
+            "height_err_mm": 2.7,
+            "fit_iou": 0.936
+          },
+          {
+            "truth": "orange big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 2.01,
+            "yaw_err_deg": 1.51,
+            "long_err_mm": 0.3,
+            "short_err_mm": -0.1,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.97
+          },
+          {
+            "truth": "green block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 3.49,
+            "yaw_err_deg": 0.2,
+            "long_err_mm": 0.7,
+            "short_err_mm": 0.0,
+            "height_err_mm": 2.1,
+            "fit_iou": 0.959
+          },
+          {
+            "truth": "yellow block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 1.24,
+            "yaw_err_deg": 0.03,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.986
+          },
+          {
+            "truth": "purple flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 2.0,
+            "yaw_err_deg": 0.41,
+            "long_err_mm": 0.8,
+            "short_err_mm": -0.1,
+            "height_err_mm": 2.2,
+            "fit_iou": 0.961
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.19,
+        "stats": {
+          "masks": 7,
+          "dropped_shadow": 2,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1142.2,
+          "fit_ms": 5010.1,
+          "total_ms": 6190.7,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              358.02,
+              294.27
+            ],
+            [
+              637.0,
+              325.12
+            ],
+            [
+              637.0,
+              483.64
+            ],
+            [
+              273.5,
+              430.18
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 73.53500571921029,
+          "orthogonality": 0.005,
+          "camera_mm": [
+            241.2,
+            552.1,
+            379.7
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_purple_box in tray": true,
+          "twin1_yellow_box in tray": true,
+          "twin2_orange_box in tray": true,
+          "twin3_green_box in tray": true
+        },
+        "retries": 0,
+        "placed": 4,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "blue flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 11.56,
+            "yaw_err_deg": 0.83,
+            "long_err_mm": 1.6,
+            "short_err_mm": 2.7,
+            "height_err_mm": 1.9,
+            "fit_iou": 0.949
+          },
+          {
+            "truth": "orange big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 7.97,
+            "yaw_err_deg": 1.79,
+            "long_err_mm": 3.2,
+            "short_err_mm": 1.3,
+            "height_err_mm": 1.0,
+            "fit_iou": 0.9
+          },
+          {
+            "truth": "green block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 9.6,
+            "yaw_err_deg": 0.16,
+            "long_err_mm": 1.5,
+            "short_err_mm": 0.3,
+            "height_err_mm": 1.3,
+            "fit_iou": 0.974
+          },
+          {
+            "truth": "yellow block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 8.33,
+            "yaw_err_deg": 0.12,
+            "long_err_mm": 1.0,
+            "short_err_mm": 0.6,
+            "height_err_mm": 2.8,
+            "fit_iou": 0.947
+          },
+          {
+            "truth": "purple flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 3.68,
+            "yaw_err_deg": 1.28,
+            "long_err_mm": 0.5,
+            "short_err_mm": 0.7,
+            "height_err_mm": 1.3,
+            "fit_iou": 0.975
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.67,
+        "stats": {
+          "masks": 7,
+          "dropped_shadow": 2,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1116.3,
+          "fit_ms": 5510.4,
+          "total_ms": 6665.7,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              358.02,
+              294.27
+            ],
+            [
+              637.0,
+              325.12
+            ],
+            [
+              637.0,
+              483.64
+            ],
+            [
+              273.5,
+              430.18
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0201,
+          "camera_mm": [
+            250.1,
+            599.3,
+            388.5
+          ]
+        }
+      }
+    },
+    {
+      "seed": 11,
+      "camera": {
+        "pos": [
+          0.468,
+          -0.034,
+          0.508
+        ],
+        "fovy_deg": 56.9,
+        "hfov_deg": 71.7
+      },
+      "truth": [
+        {
+          "label": "blue cube",
+          "x": 0.2485,
+          "y": 0.0358,
+          "yaw": 0.5615,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "purple flat box",
+          "x": 0.2128,
+          "y": -0.0749,
+          "yaw": -0.1249,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "green cube",
+          "x": 0.1603,
+          "y": 0.0119,
+          "yaw": 0.4389,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.26,
+            "yaw_err_deg": 0.21,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.0,
+            "height_err_mm": 1.3,
+            "fit_iou": 0.968
+          },
+          {
+            "truth": "purple flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 4.87,
+            "yaw_err_deg": 0.76,
+            "long_err_mm": -4.7,
+            "short_err_mm": 1.1,
+            "height_err_mm": 13.7,
+            "fit_iou": 0.933
+          },
+          {
+            "truth": "green cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.35,
+            "yaw_err_deg": 0.71,
+            "long_err_mm": 0.3,
+            "short_err_mm": 0.1,
+            "height_err_mm": 2.1,
+            "fit_iou": 0.953
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 9.66,
+        "stats": {
+          "masks": 6,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 3,
+          "sam_ms": 1728.4,
+          "fit_ms": 7890.6,
+          "total_ms": 9663.1,
+          "in_twin": 3
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              280.54,
+              288.33
+            ],
+            [
+              596.36,
+              237.78
+            ],
+            [
+              666.09,
+              444.07
+            ],
+            [
+              296.18,
+              514.19
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 71.7276665627945,
+          "orthogonality": 0.0007,
+          "camera_mm": [
+            114.5,
+            358.9,
+            509.0
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_green_box in tray": true,
+          "twin1_purple_box in tray": true,
+          "twin2_blue_box in tray": true
+        },
+        "retries": 0,
+        "placed": 3,
+        "steps": 3
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.41,
+            "yaw_err_deg": 0.21,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.3,
+            "height_err_mm": -0.2,
+            "fit_iou": 0.968
+          },
+          {
+            "truth": "purple flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 2.0,
+            "yaw_err_deg": 0.57,
+            "long_err_mm": 4.6,
+            "short_err_mm": 4.9,
+            "height_err_mm": -7.5,
+            "fit_iou": 0.965
+          },
+          {
+            "truth": "green cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.61,
+            "yaw_err_deg": 0.22,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.0,
+            "height_err_mm": 0.7,
+            "fit_iou": 0.977
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 9.48,
+        "stats": {
+          "masks": 6,
+          "dropped_shadow": 0,
+          "dropped_flat": 2,
+          "dropped_loose": 1,
+          "sam_ms": 1875.7,
+          "fit_ms": 7564.4,
+          "total_ms": 9484.3,
+          "in_twin": 3
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              280.54,
+              288.33
+            ],
+            [
+              596.36,
+              237.78
+            ],
+            [
+              666.09,
+              444.07
+            ],
+            [
+              296.18,
+              514.19
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0033,
+          "camera_mm": [
+            111.5,
+            374.2,
+            521.8
+          ]
+        }
+      }
+    },
+    {
+      "seed": 12,
+      "camera": {
+        "pos": [
+          0.442,
+          -0.1,
+          0.425
+        ],
+        "fovy_deg": 53.3,
+        "hfov_deg": 67.5
+      },
+      "truth": [
+        {
+          "label": "red cube",
+          "x": 0.1874,
+          "y": -0.0244,
+          "yaw": -0.3891,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "purple block",
+          "x": 0.219,
+          "y": 0.0974,
+          "yaw": -0.1407,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow big cube",
+          "x": 0.2442,
+          "y": 0.011,
+          "yaw": -0.4695,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "red cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "cylinder",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 1.11,
+            "yaw_err_deg": 22.29,
+            "long_err_mm": 2.6,
+            "short_err_mm": 2.6,
+            "height_err_mm": 3.3,
+            "fit_iou": 0.897
+          },
+          {
+            "truth": "purple block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.43,
+            "yaw_err_deg": 0.06,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.0,
+            "height_err_mm": 0.6,
+            "fit_iou": 0.991
+          },
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 1.57,
+            "yaw_err_deg": 0.5,
+            "long_err_mm": 2.7,
+            "short_err_mm": -1.1,
+            "height_err_mm": 3.1,
+            "fit_iou": 0.887
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 4.68,
+        "stats": {
+          "masks": 4,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1003.2,
+          "fit_ms": 3623.9,
+          "total_ms": 4678.3,
+          "in_twin": 3
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              221.48,
+              302.55
+            ],
+            [
+              589.4,
+              170.9
+            ],
+            [
+              742.92,
+              385.52
+            ],
+            [
+              315.93,
+              577.32
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 67.52961801921329,
+          "orthogonality": 0.0004,
+          "camera_mm": [
+            48.0,
+            331.6,
+            425.4
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_red_cylinder in tray": true,
+          "twin1_purple_box in tray": true,
+          "twin2_yellow_box in tray": true
+        },
+        "retries": 0,
+        "placed": 3,
+        "steps": 3
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "red cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 6.07,
+            "yaw_err_deg": 0.82,
+            "long_err_mm": 10.8,
+            "short_err_mm": 1.2,
+            "height_err_mm": -15.3,
+            "fit_iou": 0.964
+          },
+          {
+            "truth": "purple block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.31,
+            "yaw_err_deg": 0.25,
+            "long_err_mm": -0.2,
+            "short_err_mm": -0.1,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.986
+          },
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 8.88,
+            "yaw_err_deg": 1.56,
+            "long_err_mm": 5.3,
+            "short_err_mm": -18.0,
+            "height_err_mm": -17.7,
+            "fit_iou": 0.769
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 4.27,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 1,
+          "dropped_loose": 0,
+          "sam_ms": 916.5,
+          "fit_ms": 3298.2,
+          "total_ms": 4265.5,
+          "in_twin": 3
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              221.48,
+              302.55
+            ],
+            [
+              589.4,
+              170.9
+            ],
+            [
+              742.92,
+              385.52
+            ],
+            [
+              315.93,
+              577.32
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0075,
+          "camera_mm": [
+            56.0,
+            314.9,
+            411.2
+          ]
+        }
+      }
+    },
+    {
+      "seed": 13,
+      "camera": {
+        "pos": [
+          0.561,
+          0.128,
+          0.474
+        ],
+        "fovy_deg": 45.1,
+        "hfov_deg": 58.0
+      },
+      "truth": [
+        {
+          "label": "purple small cube",
+          "x": 0.2609,
+          "y": -0.0049,
+          "yaw": 0.6416,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "orange big cube",
+          "x": 0.2397,
+          "y": 0.1246,
+          "yaw": 0.0675,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "red block",
+          "x": 0.1867,
+          "y": -0.0738,
+          "yaw": -0.4832,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "green flat box",
+          "x": 0.1948,
+          "y": 0.0121,
+          "yaw": 0.4859,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "purple small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.17,
+            "yaw_err_deg": 1.76,
+            "long_err_mm": 0.3,
+            "short_err_mm": 0.0,
+            "height_err_mm": 2.4,
+            "fit_iou": 0.885
+          },
+          {
+            "truth": "orange big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.3,
+            "yaw_err_deg": 0.04,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.1,
+            "height_err_mm": 0.7,
+            "fit_iou": 0.986
+          },
+          {
+            "truth": "red block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 2.53,
+            "yaw_err_deg": 0.55,
+            "long_err_mm": -0.2,
+            "short_err_mm": 0.4,
+            "height_err_mm": 3.9,
+            "fit_iou": 0.92
+          },
+          {
+            "truth": "green flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.66,
+            "yaw_err_deg": 0.55,
+            "long_err_mm": 0.3,
+            "short_err_mm": 1.3,
+            "height_err_mm": 0.6,
+            "fit_iou": 0.952
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.19,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1142.5,
+          "fit_ms": 5000.4,
+          "total_ms": 6191.7,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              366.38,
+              217.63
+            ],
+            [
+              734.23,
+              320.29
+            ],
+            [
+              663.3,
+              571.31
+            ],
+            [
+              226.63,
+              417.34
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 58.00135434296424,
+          "orthogonality": 0.0007,
+          "camera_mm": [
+            277.7,
+            452.0,
+            475.2
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_red_box in tray": true,
+          "twin1_green_box in tray": true,
+          "twin2_orange_box in tray": true,
+          "twin3_purple_box in tray": true
+        },
+        "retries": 1,
+        "placed": 3,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "purple small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 12.74,
+            "yaw_err_deg": 0.29,
+            "long_err_mm": 0.3,
+            "short_err_mm": -1.1,
+            "height_err_mm": 5.1,
+            "fit_iou": 0.89
+          },
+          {
+            "truth": "orange big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 14.33,
+            "yaw_err_deg": 1.07,
+            "long_err_mm": -2.5,
+            "short_err_mm": -2.5,
+            "height_err_mm": 7.5,
+            "fit_iou": 0.951
+          },
+          {
+            "truth": "red block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 3.41,
+            "yaw_err_deg": 2.2,
+            "long_err_mm": -1.0,
+            "short_err_mm": -1.2,
+            "height_err_mm": 8.8,
+            "fit_iou": 0.914
+          },
+          {
+            "truth": "green flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 8.86,
+            "yaw_err_deg": 1.13,
+            "long_err_mm": -3.1,
+            "short_err_mm": 1.5,
+            "height_err_mm": 4.3,
+            "fit_iou": 0.949
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 7.72,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1546.5,
+          "fit_ms": 6114.7,
+          "total_ms": 7716.5,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              366.38,
+              217.63
+            ],
+            [
+              734.23,
+              320.29
+            ],
+            [
+              663.3,
+              571.31
+            ],
+            [
+              226.63,
+              417.34
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0527,
+          "camera_mm": [
+            231.0,
+            332.3,
+            410.7
+          ]
+        }
+      }
+    },
+    {
+      "seed": 14,
+      "camera": {
+        "pos": [
+          0.526,
+          0.074,
+          0.506
+        ],
+        "fovy_deg": 59.2,
+        "hfov_deg": 74.3
+      },
+      "truth": [
+        {
+          "label": "orange cylinder",
+          "x": 0.1763,
+          "y": 0.0455,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        },
+        {
+          "label": "blue cube",
+          "x": 0.2361,
+          "y": 0.1255,
+          "yaw": -0.2839,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "green big cube",
+          "x": 0.2124,
+          "y": -0.0085,
+          "yaw": -0.6674,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "purple cube",
+          "x": 0.2582,
+          "y": 0.0467,
+          "yaw": 0.4693,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow flat box",
+          "x": 0.1522,
+          "y": -0.089,
+          "yaw": 0.0866,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "orange cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.53,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.4,
+            "height_err_mm": 0.6,
+            "fit_iou": 0.975
+          },
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 2.61,
+            "yaw_err_deg": 0.39,
+            "long_err_mm": 4.5,
+            "short_err_mm": 0.3,
+            "height_err_mm": 0.4,
+            "fit_iou": 0.916
+          },
+          {
+            "truth": "green big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 2.66,
+            "yaw_err_deg": 0.54,
+            "long_err_mm": 0.1,
+            "short_err_mm": -0.1,
+            "height_err_mm": 5.2,
+            "fit_iou": 0.929
+          },
+          {
+            "truth": "purple cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.3,
+            "yaw_err_deg": 0.5,
+            "long_err_mm": 3.3,
+            "short_err_mm": -0.1,
+            "height_err_mm": 2.2,
+            "fit_iou": 0.928
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 2.22,
+            "yaw_err_deg": 0.13,
+            "long_err_mm": 0.0,
+            "short_err_mm": 0.2,
+            "height_err_mm": 4.4,
+            "fit_iou": 0.898
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 11.9,
+        "stats": {
+          "masks": 7,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 1,
+          "sam_ms": 3084.9,
+          "fit_ms": 8770.0,
+          "total_ms": 11904.2,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              362.62,
+              237.76
+            ],
+            [
+              644.42,
+              287.64
+            ],
+            [
+              621.43,
+              482.2
+            ],
+            [
+              288.39,
+              411.04
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 74.28967283735626,
+          "orthogonality": 0.0012,
+          "camera_mm": [
+            223.7,
+            418.1,
+            507.5
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": false,
+        "goal": {
+          "twin0_yellow_box in tray": true,
+          "twin1_orange_cylinder in tray": true,
+          "twin2_green_box in tray": true,
+          "twin3_blue_box in tray": false,
+          "twin4_purple_box in bin": true
+        },
+        "retries": 2,
+        "placed": 4,
+        "steps": 5
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "orange cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 2.01,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.7,
+            "short_err_mm": 0.7,
+            "height_err_mm": -0.5,
+            "fit_iou": 0.981
+          },
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 4.55,
+            "yaw_err_deg": 0.63,
+            "long_err_mm": 0.6,
+            "short_err_mm": 0.5,
+            "height_err_mm": -0.4,
+            "fit_iou": 0.905
+          },
+          {
+            "truth": "green big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 6.35,
+            "yaw_err_deg": 0.31,
+            "long_err_mm": 0.9,
+            "short_err_mm": 0.7,
+            "height_err_mm": 4.8,
+            "fit_iou": 0.921
+          },
+          {
+            "truth": "purple cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 4.02,
+            "yaw_err_deg": 0.85,
+            "long_err_mm": 0.9,
+            "short_err_mm": 0.7,
+            "height_err_mm": -1.1,
+            "fit_iou": 0.965
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 1.89,
+            "yaw_err_deg": 1.2,
+            "long_err_mm": 2.3,
+            "short_err_mm": -0.4,
+            "height_err_mm": -1.7,
+            "fit_iou": 0.973
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 7.83,
+        "stats": {
+          "masks": 7,
+          "dropped_shadow": 2,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 2609.2,
+          "fit_ms": 5097.0,
+          "total_ms": 7830.0,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              362.62,
+              237.76
+            ],
+            [
+              644.42,
+              287.64
+            ],
+            [
+              621.43,
+              482.2
+            ],
+            [
+              288.39,
+              411.04
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.011,
+          "camera_mm": [
+            234.2,
+            464.1,
+            536.4
+          ]
+        }
+      }
+    },
+    {
+      "seed": 15,
+      "camera": {
+        "pos": [
+          0.397,
+          0.0,
+          0.424
+        ],
+        "fovy_deg": 53.8,
+        "hfov_deg": 68.2
+      },
+      "truth": [
+        {
+          "label": "blue cube",
+          "x": 0.1608,
+          "y": 0.0229,
+          "yaw": -0.4217,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow flat box",
+          "x": 0.2239,
+          "y": 0.1126,
+          "yaw": -0.2958,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "green block",
+          "x": 0.1817,
+          "y": -0.0946,
+          "yaw": 0.5972,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "red block",
+          "x": 0.2581,
+          "y": -0.0707,
+          "yaw": 0.3933,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "orange small cube",
+          "x": 0.2574,
+          "y": 0.0413,
+          "yaw": 0.417,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.78,
+            "yaw_err_deg": 0.42,
+            "long_err_mm": 2.2,
+            "short_err_mm": 0.0,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.917
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.52,
+            "yaw_err_deg": 0.52,
+            "long_err_mm": 0.3,
+            "short_err_mm": 0.8,
+            "height_err_mm": -0.2,
+            "fit_iou": 0.983
+          },
+          {
+            "truth": "green block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 2.54,
+            "yaw_err_deg": 0.17,
+            "long_err_mm": 0.7,
+            "short_err_mm": 0.8,
+            "height_err_mm": -3.0,
+            "fit_iou": 0.944
+          },
+          {
+            "truth": "red block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 0.6,
+            "yaw_err_deg": 0.57,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.4,
+            "height_err_mm": 0.8,
+            "fit_iou": 0.974
+          },
+          {
+            "truth": "orange small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.56,
+            "yaw_err_deg": 0.36,
+            "long_err_mm": 1.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 4.1,
+            "fit_iou": 0.933
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 15.25,
+        "stats": {
+          "masks": 8,
+          "dropped_shadow": 2,
+          "dropped_flat": 0,
+          "dropped_loose": 1,
+          "sam_ms": 3296.7,
+          "fit_ms": 11893.5,
+          "total_ms": 15249.4,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              245.06,
+              257.77
+            ],
+            [
+              661.25,
+              236.04
+            ],
+            [
+              721.25,
+              529.55
+            ],
+            [
+              216.99,
+              561.48
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 68.15751480782832,
+          "orthogonality": 0.0005,
+          "camera_mm": [
+            148.4,
+            287.4,
+            424.3
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_green_box in tray": true,
+          "twin1_blue_box in tray": true,
+          "twin2_yellow_box in tray": true,
+          "twin3_red_box in tray": true,
+          "twin4_orange_box in bin": true
+        },
+        "retries": 2,
+        "placed": 4,
+        "steps": 5
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.21,
+            "yaw_err_deg": 0.14,
+            "long_err_mm": 0.4,
+            "short_err_mm": -0.2,
+            "height_err_mm": 1.9,
+            "fit_iou": 0.902
+          },
+          {
+            "truth": "yellow flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.85,
+            "yaw_err_deg": 0.06,
+            "long_err_mm": -0.2,
+            "short_err_mm": 0.6,
+            "height_err_mm": 0.9,
+            "fit_iou": 0.986
+          },
+          {
+            "truth": "green block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 1.62,
+            "yaw_err_deg": 0.86,
+            "long_err_mm": -1.3,
+            "short_err_mm": 0.1,
+            "height_err_mm": 5.8,
+            "fit_iou": 0.938
+          },
+          {
+            "truth": "red block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 0.58,
+            "yaw_err_deg": 0.02,
+            "long_err_mm": -0.5,
+            "short_err_mm": -0.3,
+            "height_err_mm": 6.0,
+            "fit_iou": 0.96
+          },
+          {
+            "truth": "orange small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 1.22,
+            "yaw_err_deg": 0.64,
+            "long_err_mm": 0.6,
+            "short_err_mm": 0.0,
+            "height_err_mm": 1.6,
+            "fit_iou": 0.955
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 11.79,
+        "stats": {
+          "masks": 8,
+          "dropped_shadow": 2,
+          "dropped_flat": 0,
+          "dropped_loose": 1,
+          "sam_ms": 2594.0,
+          "fit_ms": 9135.4,
+          "total_ms": 11792.5,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              245.06,
+              257.77
+            ],
+            [
+              661.25,
+              236.04
+            ],
+            [
+              721.25,
+              529.55
+            ],
+            [
+              216.99,
+              561.48
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0002,
+          "camera_mm": [
+            149.1,
+            274.9,
+            412.4
+          ]
+        }
+      }
+    },
+    {
+      "seed": 16,
+      "camera": {
+        "pos": [
+          0.549,
+          -0.099,
+          0.384
+        ],
+        "fovy_deg": 56.2,
+        "hfov_deg": 70.9
+      },
+      "truth": [
+        {
+          "label": "orange cylinder",
+          "x": 0.2511,
+          "y": 0.0921,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        },
+        {
+          "label": "purple cube",
+          "x": 0.1767,
+          "y": 0.0415,
+          "yaw": 0.2299,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        },
+        {
+          "label": "yellow big cube",
+          "x": 0.1981,
+          "y": -0.0809,
+          "yaw": -0.416,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "red small cube",
+          "x": 0.2602,
+          "y": -0.0775,
+          "yaw": 0.5088,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "orange cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.42,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.1,
+            "height_err_mm": 0.3,
+            "fit_iou": 0.986
+          },
+          {
+            "truth": "purple cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.33,
+            "yaw_err_deg": 0.34,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.1,
+            "height_err_mm": 1.1,
+            "fit_iou": 0.975
+          },
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 1.47,
+            "yaw_err_deg": 0.18,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 2.2,
+            "fit_iou": 0.96
+          },
+          {
+            "truth": "red small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 1.25,
+            "yaw_err_deg": 0.4,
+            "long_err_mm": 0.0,
+            "short_err_mm": 0.0,
+            "height_err_mm": 2.4,
+            "fit_iou": 0.928
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 5.48,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1014.7,
+          "fit_ms": 4419.6,
+          "total_ms": 5484.5,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              282.67,
+              283.06
+            ],
+            [
+              615.87,
+              223.23
+            ],
+            [
+              731.16,
+              402.51
+            ],
+            [
+              309.59,
+              502.07
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.85706358307745,
+          "orthogonality": 0.0009,
+          "camera_mm": [
+            48.6,
+            439.5,
+            384.2
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_yellow_box in tray": true,
+          "twin1_purple_box in tray": true,
+          "twin3_orange_cylinder in tray": true
+        },
+        "retries": 0,
+        "placed": 3,
+        "steps": 3
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "orange cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.16,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 0.1,
+            "fit_iou": 0.987
+          },
+          {
+            "truth": "purple cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.39,
+            "yaw_err_deg": 0.39,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 0.8,
+            "fit_iou": 0.978
+          },
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.6,
+            "yaw_err_deg": 0.53,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.4,
+            "height_err_mm": 0.5,
+            "fit_iou": 0.981
+          },
+          {
+            "truth": "red small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 1.56,
+            "yaw_err_deg": 0.03,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.1,
+            "height_err_mm": 1.5,
+            "fit_iou": 0.944
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 5.5,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 1,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 999.4,
+          "fit_ms": 4457.4,
+          "total_ms": 5500.8,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              282.67,
+              283.06
+            ],
+            [
+              615.87,
+              223.23
+            ],
+            [
+              731.16,
+              402.51
+            ],
+            [
+              309.59,
+              502.07
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0043,
+          "camera_mm": [
+            46.2,
+            447.8,
+            387.5
+          ]
+        }
+      }
+    },
+    {
+      "seed": 17,
+      "camera": {
+        "pos": [
+          0.518,
+          0.07,
+          0.477
+        ],
+        "fovy_deg": 58.3,
+        "hfov_deg": 73.2
+      },
+      "truth": [
+        {
+          "label": "purple flat box",
+          "x": 0.2263,
+          "y": -0.1128,
+          "yaw": 0.6303,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "green small cube",
+          "x": 0.1873,
+          "y": 0.0324,
+          "yaw": 0.1763,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "red big cube",
+          "x": 0.1536,
+          "y": -0.0811,
+          "yaw": -0.5753,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "yellow big cube",
+          "x": 0.2132,
+          "y": 0.1153,
+          "yaw": 0.6164,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "purple flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.46,
+            "yaw_err_deg": 1.21,
+            "long_err_mm": 0.9,
+            "short_err_mm": 1.8,
+            "height_err_mm": -0.7,
+            "fit_iou": 0.907
+          },
+          {
+            "truth": "green small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.59,
+            "yaw_err_deg": 2.17,
+            "long_err_mm": 0.8,
+            "short_err_mm": -0.4,
+            "height_err_mm": -0.1,
+            "fit_iou": 0.926
+          },
+          {
+            "truth": "red big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 0.44,
+            "yaw_err_deg": 0.12,
+            "long_err_mm": 0.4,
+            "short_err_mm": 0.3,
+            "height_err_mm": 1.2,
+            "fit_iou": 0.949
+          },
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 2.1,
+            "yaw_err_deg": 1.05,
+            "long_err_mm": 0.6,
+            "short_err_mm": 0.2,
+            "height_err_mm": 4.2,
+            "fit_iou": 0.881
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 10.4,
+        "stats": {
+          "masks": 6,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 2,
+          "sam_ms": 1758.5,
+          "fit_ms": 8596.2,
+          "total_ms": 10397.4,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              337.69,
+              255.06
+            ],
+            [
+              638.23,
+              296.47
+            ],
+            [
+              626.04,
+              504.41
+            ],
+            [
+              261.33,
+              442.16
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 73.2433823495292,
+          "orthogonality": 0.0018,
+          "camera_mm": [
+            219.9,
+            410.5,
+            477.9
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_red_box in tray": true,
+          "twin1_green_box in tray": true,
+          "twin2_purple_box in tray": true,
+          "twin3_yellow_box in tray": true
+        },
+        "retries": 4,
+        "placed": 2,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "purple flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 3.97,
+            "yaw_err_deg": 0.42,
+            "long_err_mm": 0.5,
+            "short_err_mm": 3.1,
+            "height_err_mm": 3.7,
+            "fit_iou": 0.92
+          },
+          {
+            "truth": "green small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 1.39,
+            "yaw_err_deg": 2.45,
+            "long_err_mm": 1.1,
+            "short_err_mm": -0.1,
+            "height_err_mm": -1.0,
+            "fit_iou": 0.907
+          },
+          {
+            "truth": "red big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 4.94,
+            "yaw_err_deg": 0.97,
+            "long_err_mm": 1.9,
+            "short_err_mm": 1.3,
+            "height_err_mm": 5.7,
+            "fit_iou": 0.909
+          },
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 3.56,
+            "yaw_err_deg": 0.69,
+            "long_err_mm": 0.3,
+            "short_err_mm": 0.3,
+            "height_err_mm": 0.2,
+            "fit_iou": 0.98
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 10.1,
+        "stats": {
+          "masks": 6,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 2,
+          "sam_ms": 1714.6,
+          "fit_ms": 8339.0,
+          "total_ms": 10096.4,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              337.69,
+              255.06
+            ],
+            [
+              638.23,
+              296.47
+            ],
+            [
+              626.04,
+              504.41
+            ],
+            [
+              261.33,
+              442.16
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0087,
+          "camera_mm": [
+            226.4,
+            445.5,
+            497.3
+          ]
+        }
+      }
+    },
+    {
+      "seed": 18,
+      "camera": {
+        "pos": [
+          0.613,
+          -0.132,
+          0.4
+        ],
+        "fovy_deg": 49.3,
+        "hfov_deg": 62.9
+      },
+      "truth": [
+        {
+          "label": "yellow cylinder",
+          "x": 0.1922,
+          "y": 0.0691,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        },
+        {
+          "label": "purple block",
+          "x": 0.1642,
+          "y": -0.0428,
+          "yaw": 0.0997,
+          "dims": [
+            0.036,
+            0.022,
+            0.025
+          ]
+        },
+        {
+          "label": "blue cube",
+          "x": 0.2314,
+          "y": -0.0134,
+          "yaw": 0.2443,
+          "dims": [
+            0.025,
+            0.025,
+            0.025
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "yellow cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.65,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.2,
+            "height_err_mm": 0.5,
+            "fit_iou": 0.987
+          },
+          {
+            "truth": "purple block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.67,
+            "yaw_err_deg": 0.06,
+            "long_err_mm": -0.2,
+            "short_err_mm": 0.0,
+            "height_err_mm": 2.4,
+            "fit_iou": 0.911
+          },
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 0.62,
+            "yaw_err_deg": 0.25,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.0,
+            "height_err_mm": 0.4,
+            "fit_iou": 0.98
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 4.58,
+        "stats": {
+          "masks": 3,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 826.6,
+          "fit_ms": 3712.4,
+          "total_ms": 4581.7,
+          "in_twin": 3
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              244.61,
+              304.83
+            ],
+            [
+              588.59,
+              230.2
+            ],
+            [
+              717.84,
+              395.49
+            ],
+            [
+              291.16,
+              516.78
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 62.88010654847727,
+          "orthogonality": 0.0005,
+          "camera_mm": [
+            16.9,
+            504.6,
+            400.8
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin0_purple_box in tray": true,
+          "twin1_yellow_cylinder in tray": true,
+          "twin2_blue_box in tray": true
+        },
+        "retries": 0,
+        "placed": 3,
+        "steps": 3
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "yellow cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 1.66,
+            "yaw_err_deg": null,
+            "long_err_mm": -0.1,
+            "short_err_mm": -0.1,
+            "height_err_mm": 1.9,
+            "fit_iou": 0.975
+          },
+          {
+            "truth": "purple block",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.41,
+            "yaw_err_deg": 2.3,
+            "long_err_mm": -2.2,
+            "short_err_mm": 1.2,
+            "height_err_mm": 3.1,
+            "fit_iou": 0.917
+          },
+          {
+            "truth": "blue cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "blue",
+            "colour": "blue",
+            "centre_err_mm": 3.8,
+            "yaw_err_deg": 0.57,
+            "long_err_mm": -0.3,
+            "short_err_mm": -1.2,
+            "height_err_mm": 3.2,
+            "fit_iou": 0.957
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 4.5,
+        "stats": {
+          "masks": 3,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1091.6,
+          "fit_ms": 3360.5,
+          "total_ms": 4496.8,
+          "in_twin": 3
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              244.61,
+              304.83
+            ],
+            [
+              588.59,
+              230.2
+            ],
+            [
+              717.84,
+              395.49
+            ],
+            [
+              291.16,
+              516.78
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.041,
+          "camera_mm": [
+            43.9,
+            432.0,
+            375.8
+          ]
+        }
+      }
+    },
+    {
+      "seed": 19,
+      "camera": {
+        "pos": [
+          0.453,
+          -0.109,
+          0.43
+        ],
+        "fovy_deg": 52.8,
+        "hfov_deg": 66.9
+      },
+      "truth": [
+        {
+          "label": "yellow big cube",
+          "x": 0.1907,
+          "y": -0.0091,
+          "yaw": 0.4766,
+          "dims": [
+            0.03,
+            0.03,
+            0.03
+          ]
+        },
+        {
+          "label": "orange flat box",
+          "x": 0.2186,
+          "y": -0.0941,
+          "yaw": -0.0074,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "purple small cube",
+          "x": 0.2315,
+          "y": 0.0837,
+          "yaw": 0.1126,
+          "dims": [
+            0.02,
+            0.02,
+            0.02
+          ]
+        },
+        {
+          "label": "green flat box",
+          "x": 0.2577,
+          "y": 0.0221,
+          "yaw": 0.6205,
+          "dims": [
+            0.04,
+            0.026,
+            0.016
+          ]
+        },
+        {
+          "label": "red cylinder",
+          "x": 0.1541,
+          "y": 0.046,
+          "yaw": 0.0,
+          "dims": [
+            0.024,
+            0.024,
+            0.04
+          ]
+        }
+      ],
+      "true_fov": {
+        "objects": [
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.75,
+            "yaw_err_deg": 0.02,
+            "long_err_mm": 0.2,
+            "short_err_mm": 0.1,
+            "height_err_mm": 0.5,
+            "fit_iou": 0.986
+          },
+          {
+            "truth": "orange flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "orange",
+            "colour": "orange",
+            "centre_err_mm": 0.47,
+            "yaw_err_deg": 0.17,
+            "long_err_mm": -0.2,
+            "short_err_mm": 1.6,
+            "height_err_mm": 0.8,
+            "fit_iou": 0.935
+          },
+          {
+            "truth": "purple small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 1.7,
+            "yaw_err_deg": 0.14,
+            "long_err_mm": 2.6,
+            "short_err_mm": 0.0,
+            "height_err_mm": 1.6,
+            "fit_iou": 0.92
+          },
+          {
+            "truth": "green flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 0.79,
+            "yaw_err_deg": 0.02,
+            "long_err_mm": 0.1,
+            "short_err_mm": 0.2,
+            "height_err_mm": 0.2,
+            "fit_iou": 0.991
+          },
+          {
+            "truth": "red cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 0.95,
+            "yaw_err_deg": null,
+            "long_err_mm": 0.0,
+            "short_err_mm": 0.0,
+            "height_err_mm": 0.3,
+            "fit_iou": 0.99
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 7.5,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 1177.6,
+          "fit_ms": 6275.3,
+          "total_ms": 7503.6,
+          "in_twin": 5
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              254.34,
+              304.23
+            ],
+            [
+              620.26,
+              192.43
+            ],
+            [
+              765.92,
+              408.88
+            ],
+            [
+              333.36,
+              576.09
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 66.94479733823147,
+          "orthogonality": 0.0012,
+          "camera_mm": [
+            37.9,
+            343.3,
+            429.9
+          ]
+        }
+      },
+      "task": {
+        "id": "clear-desk",
+        "instruction": "put every object in the tray (the grey bin takes any beyond four)",
+        "ok": true,
+        "goal": {
+          "twin1_yellow_box in tray": true,
+          "twin2_orange_box in tray": true,
+          "twin3_purple_box in tray": true,
+          "twin4_green_box in tray": true
+        },
+        "retries": 0,
+        "placed": 4,
+        "steps": 4
+      },
+      "assumed_fov_70": {
+        "objects": [
+          {
+            "truth": "yellow big cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "yellow",
+            "colour": "yellow",
+            "centre_err_mm": 0.44,
+            "yaw_err_deg": 0.1,
+            "long_err_mm": -0.3,
+            "short_err_mm": -0.4,
+            "height_err_mm": 2.1,
+            "fit_iou": 0.979
+          },
+          {
+            "truth": "orange flat box",
+            "found": false
+          },
+          {
+            "truth": "purple small cube",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "purple",
+            "colour": "purple",
+            "centre_err_mm": 0.93,
+            "yaw_err_deg": 0.7,
+            "long_err_mm": 0.2,
+            "short_err_mm": -0.1,
+            "height_err_mm": 1.3,
+            "fit_iou": 0.98
+          },
+          {
+            "truth": "green flat box",
+            "found": true,
+            "kind_truth": "box",
+            "kind": "box",
+            "colour_truth": "green",
+            "colour": "green",
+            "centre_err_mm": 1.49,
+            "yaw_err_deg": 0.34,
+            "long_err_mm": 0.2,
+            "short_err_mm": -0.1,
+            "height_err_mm": 1.0,
+            "fit_iou": 0.99
+          },
+          {
+            "truth": "red cylinder",
+            "found": true,
+            "kind_truth": "cylinder",
+            "kind": "cylinder",
+            "colour_truth": "red",
+            "colour": "red",
+            "centre_err_mm": 0.37,
+            "yaw_err_deg": null,
+            "long_err_mm": -0.1,
+            "short_err_mm": -0.1,
+            "height_err_mm": 1.1,
+            "fit_iou": 0.984
+          }
+        ],
+        "false_positives": 0,
+        "seconds": 6.98,
+        "stats": {
+          "masks": 5,
+          "dropped_shadow": 0,
+          "dropped_flat": 1,
+          "dropped_loose": 0,
+          "sam_ms": 1219.7,
+          "fit_ms": 5706.8,
+          "total_ms": 6976.2,
+          "in_twin": 4
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              254.34,
+              304.23
+            ],
+            [
+              620.26,
+              192.43
+            ],
+            [
+              765.92,
+              408.88
+            ],
+            [
+              333.36,
+              576.09
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297.0,
+            210.0
+          ],
+          "hfov_deg": 70.0,
+          "orthogonality": 0.0089,
+          "camera_mm": [
+            47.4,
+            320.5,
+            412.7
+          ]
+        }
+      }
+    }
+  ]
+}
