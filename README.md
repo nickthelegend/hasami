@@ -15,7 +15,8 @@ SAM 2.1 (local, point prompt)  or  SAM 3.1 (Meta Model API, text prompt) ── 
    ▼
 mask + metric depth ── 3D centre, top height, yaw (minimum-area rectangle)
    ▼
-SO-101: closed-loop IK above → descend → close → lift → carry → lower → open   (MuJoCo, or LeRobot on a real arm)
+SO-101 in MuJoCo: closed-loop IK above → descend → close → lift → carry → lower → open
+   │  (optional mirror mode: a LeRobot follower repeats the joint targets; wired, never run on hardware)
    ▼
 result read from the physics state: in the tray or not
 ```
@@ -30,7 +31,7 @@ result read from the physics state: in the tray or not
 | Clicked runs | Click an object, then where it goes. Fully working without any key. |
 | Muse planner | `muse-spark-1.3` at `https://api.meta.ai/v1`. **Setup required: `MODEL_API_KEY`.** Without it `/api/plan` answers 503 `setup_required`; it never returns a canned plan. |
 | SAM 3.1 | `sam-3.1` on the Meta Model API (text prompts). **Setup required: `MODEL_API_KEY`.** Response parsing is unverified until a key exists. |
-| Real SO-101 | LeRobot adapter with the joint mapping and unit conversion tested. **BLOCKED: no arm attached** (`HASAMI_SO101_PORT` + `pip install lerobot[feetech]`). |
+| Real SO-101 | Wired into `Session` behind `HASAMI_SO101_PORT`: a connected LeRobot follower mirrors every joint target the simulated arm is commanded (≤ 6° per joint per command, ~30 Hz). `/api/status` says `"arm": "so101"` only while one is connected. Unit conversion tested; **never run on hardware. BLOCKED: no arm attached** (`HASAMI_SO101_PORT` + `pip install lerobot[feetech]`). |
 
 ## Measured
 
@@ -58,7 +59,7 @@ Two engineering notes that made the numbers real rather than lucky:
 | [`packages/perception`](packages/perception) | `hasami_perception` | `LocalSam2`, `MetaSam3`, `locate()` (mask + depth → centre, top height, yaw) |
 | [`packages/planner`](packages/planner) | `hasami_planner` | Muse client (`openai` SDK, forced `submit_plan` tool call, strict validation, `PlanError` with the raw output); `plan_from_clicks()` |
 | [`packages/core`](packages/core) | `hasami_core` | `Session`: observe, segment, run a plan with events, randomised reset, run records |
-| [`packages/robot`](packages/robot) | `hasami_robot` | LeRobot SO-101 follower adapter (BLOCKED without hardware) |
+| [`packages/robot`](packages/robot) | `hasami_robot` | LeRobot SO-101 follower adapter and `RealMirror` (mirror mode, wired into `Session`; untested on hardware, BLOCKED without it) |
 | [`packages/server`](packages/server) | `hasami_server` | FastAPI on :8420, REST + SSE, serves the dashboard |
 | [`packages/mcp`](packages/mcp) | `hasami_mcp` | MCP stdio server: `status`, `look`, `find`, `pick_place` |
 | [`packages/dashboard`](packages/dashboard) | — | Vite + React: live camera, click-to-pick, SAM mask overlay, Muse instruction, run timeline, results |
@@ -94,8 +95,9 @@ MCP client config:
 
 ## Limits
 
-- Simulation first: the real arm path is written and its unit conversion tested, but has not moved a
-  real SO-101. Real cameras add lighting, blur and calibration error the simulator does not have.
+- Simulation first, and a kind one: perfect metric depth, no sensor noise, ideal lighting, rigid boxes.
+  The real-arm path (mirror mode) is wired and its unit conversion tested, but has not moved a real
+  SO-101. Real cameras add lighting, blur and calibration error the simulator does not have.
 - Objects are boxes resting on a table; the grasp assumes a top-down approach.
 - SAM 2.1 needs a point; text prompts ("the red cube") need Muse or SAM 3.1, i.e. a Meta Model API key.
 - Not audited for safety around people. Do not run a real arm unattended.

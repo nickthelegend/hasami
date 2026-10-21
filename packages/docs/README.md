@@ -33,6 +33,10 @@
 - `hasami_robot` maps the five arm joints and the gripper to LeRobot's SO-101 follower keys
   (`shoulder_pan.pos` … in degrees, gripper 0–100). Calibration offsets come from LeRobot's calibration
   file for the specific arm.
+- With `HASAMI_SO101_PORT` set, `Session` connects the follower and runs it in **mirror mode**: every
+  joint target the simulated arm is commanded (~30 Hz of sim time) is sent to the real arm, at most 6°
+  per joint per command. The sim remains the source of truth for perception and success. This has never
+  been run on hardware.
 - The real camera needs intrinsics (from a checkerboard) and the camera-to-base transform (a few
   touches with the gripper on known points). Depth needs an RGB-D camera, or a known table height with a
   plain RGB camera (the top of a box is then the table height plus its size).
@@ -41,5 +45,5 @@
 
 ## Limits
 
-Simulation only so far; boxes on a table; top-down grasps only; the Muse and SAM 3.1 paths need a Meta
+Simulation only so far (perfect depth, no sensor noise, ideal lighting); boxes on a table; top-down grasps only; the Muse and SAM 3.1 paths need a Meta
 Model API key and their response handling is unverified until one is used. Not safety-audited.

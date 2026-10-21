@@ -329,12 +329,12 @@ section{padding:110px 0}
       <div class="scene" role="img" aria-label="Simulated SO-101 arm on a table with a red, a green and a blue cube and a dark tray, rendered from the demo camera">
         <img src="assets/hero.webp" alt="" width="2240" height="1620" fetchpriority="high" />
       </div>
-      <span class="cap"><i aria-hidden="true"></i>MuJoCo render · demo camera</span>
+      <span class="cap"><i aria-hidden="true"></i>MuJoCo simulation · official SO-101 model</span>
       <div class="wrap">
         <div>
           <div class="kana rv"><b aria-hidden="true">鋏</b>hasami · scissors, gripper</div>
           <h1 class="h-hero rv">Say it. <em>The arm</em> picks it up.</h1>
-          <p class="lead rv d1">Muse looks at the camera frame and plans the steps, SAM segments each object, depth turns the mask into a 3D grasp, and an SO-101 arm does it.</p>
+          <p class="lead rv d1">Muse looks at the camera frame and plans the steps, SAM segments each object, depth turns the mask into a 3D grasp, and a simulated SO-101 arm does it.</p>
           <div class="cta rv d2"><a class="btn btn-accent" href="#start">Run it locally <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a><a class="btn btn-ghost-light" href="#numbers">See the numbers</a></div>
         </div>
         <div class="widget rv d3" aria-label="One instruction, step by step">
@@ -358,8 +358,8 @@ section{padding:110px 0}
     <div class="built">
       <span class="pill">Built on Meta's models and open robotics</span>
       <div class="marquee" aria-hidden="true"><div class="track">
-        <span><i></i>Muse Spark</span><span><i></i>SAM 2.1</span><span><i></i>SAM 3.1</span><span><i></i>Meta Model API</span><span><i></i>MuJoCo</span><span><i></i>SO-101</span><span><i></i>LeRobot</span><span><i></i>MCP</span>
-        <span><i></i>Muse Spark</span><span><i></i>SAM 2.1</span><span><i></i>SAM 3.1</span><span><i></i>Meta Model API</span><span><i></i>MuJoCo</span><span><i></i>SO-101</span><span><i></i>LeRobot</span><span><i></i>MCP</span>
+        <span><i></i>Muse Spark</span><span><i></i>SAM 2.1</span><span><i></i>SAM 3.1</span><span><i></i>Meta Model API</span><span><i></i>MuJoCo</span><span><i></i>SO-101</span><span><i></i>LeRobot (adapter, untested on hardware)</span><span><i></i>MCP</span>
+        <span><i></i>Muse Spark</span><span><i></i>SAM 2.1</span><span><i></i>SAM 3.1</span><span><i></i>Meta Model API</span><span><i></i>MuJoCo</span><span><i></i>SO-101</span><span><i></i>LeRobot (adapter, untested on hardware)</span><span><i></i>MCP</span>
       </div></div>
     </div>
 
@@ -371,7 +371,7 @@ section{padding:110px 0}
             <div class="cta" style="margin-top: 34px"><a class="btn btn-dark" href="https://github.com/nickthelegend/hasami">Get the code <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a><a class="btn btn-outline" href="#scope">What's real today</a></div>
           </div>
           <div class="copy lead">
-            <p><b>A pick only counts if the jaws hold the cube.</b> The arm is the official SO-101 model with force-limited servos, so it sags, slips and misses like real hardware. Success is read from the physics state, never from the camera.</p>
+            <p><b>A pick only counts if the jaws hold the cube.</b> The arm is the official SO-101 model with force-limited servos, so it sags under load and the controller has to correct for it. The simulation is kinder than a real table: perfect depth, no sensor noise, ideal lighting. Success is read from the physics state, never from the camera.</p>
             <p><b>No key, still a robot.</b> Without a Meta Model API key you click an object and a target on the camera; SAM 2.1 runs locally from that click.</p>
           </div>
         </div>
@@ -409,11 +409,11 @@ section{padding:110px 0}
           <div class="sec-head"><div><h2 class="h-sec">Measured, not promised</h2><p class="lead muted">Local runs on the simulated arm, scored against MuJoCo ground truth.</p></div></div>
           <div class="stats">
             <div class="stat"><b>9/9</b><span>randomised picks placed in the tray: 3 seeds × 3 cubes, yaw within ±40°</span></div>
-            <div class="stat"><b>0.74–0.92</b><span>SAM 2.1 single-click IoU against the MuJoCo segmentation</span></div>
-            <div class="stat"><b>≤ 0.6<small>mm</small></b><span>centre error after fusing the mask with depth</span></div>
-            <div class="stat"><b>≤ 0.1°</b><span>yaw error against truth, from the minimum-area rectangle</span></div>
+            <div class="stat"><b>0.71–0.92</b><span>SAM 2.1 single-click IoU against the MuJoCo segmentation</span></div>
+            <div class="stat"><b>≤ 0.6<small>mm</small></b><span>centre error after fusing the mask with depth, in a 9-pick run (tests assert ≤ 3 mm)</span></div>
+            <div class="stat"><b>1.76°</b><span>worst yaw error over 60 randomised cubes (mean 0.18°), from the footprint's fourth-order moment</span></div>
           </div>
-          <p class="method">Ground-truth segmentation is used only to score perception, never as input. In-tray is checked from the physics state: the cube's centre inside the tray walls and resting low.</p>
+          <p class="method">All numbers are from MuJoCo with perfect depth and no camera noise; a real camera will do worse. Ground-truth segmentation is used only to score perception, never as input. In-tray is checked from the physics state: the cube's centre inside the tray walls and resting low.</p>
         </div>
       </section>
 
@@ -425,7 +425,7 @@ section{padding:110px 0}
             <div class="row" role="row"><b>SAM 2.1 hiera-tiny</b><span>Local, open weights, point prompt. The numbers above come from it.</span><span class="tag tag-live">running</span></div>
             <div class="row" role="row"><b>Muse planner</b><span>muse-spark-1.3 on the Meta Model API. Without a key the API answers setup_required, never a canned plan.</span><span class="tag tag-key">needs key</span></div>
             <div class="row" role="row"><b>SAM 3.1</b><span>Text-prompted segmentation on the Meta Model API. Its wire format is unverified until a key exists.</span><span class="tag tag-key">needs key</span></div>
-            <div class="row" role="row"><b>Real SO-101 arm</b><span>LeRobot follower adapter, sim radians to calibrated degrees. Runs when HASAMI_SO101_PORT points at the arm.</span><span class="tag tag-blocked">blocked</span></div>
+            <div class="row" role="row"><b>Real SO-101 arm</b><span>LeRobot follower wired into the session behind HASAMI_SO101_PORT: the real arm mirrors the simulated arm's joint targets (sim radians to calibrated degrees). Never run on hardware.</span><span class="tag tag-blocked">blocked</span></div>
           </div>
         </div>
       </section>
@@ -434,7 +434,7 @@ section{padding:110px 0}
         <div class="wrap faq">
           <div><h2 class="h-sec">Frequently asked questions</h2><p class="muted lead" style="margin-top: 18px">Straight answers about the sim, the keys and the real arm.</p></div>
           <div>
-            <details open><summary>Is this a real robot?</summary><p>Today it is a simulation of the official SO-101 model with force-limited servos, so a pick only succeeds if the jaws actually hold the cube. The real follower arm runs through LeRobot, and that path is blocked until an arm is connected.</p></details>
+            <details open><summary>Is this a real robot?</summary><p>No. Today it is a MuJoCo simulation of the official SO-101 model with force-limited servos, so a pick only succeeds if the jaws actually hold the cube. A LeRobot follower can be attached in mirror mode (it repeats the simulated arm's joint targets), but that path has never been run on hardware.</p></details>
             <details><summary>What needs an API key?</summary><p>The Muse planner and SAM 3.1 both run on the Meta Model API and need MODEL_API_KEY. Without it they report setup required. Clicking an object and a target works with no key, using SAM 2.1 locally.</p></details>
             <details><summary>How do you know a pick worked?</summary><p>From the physics state, not the camera: the cube's centre has to sit inside the tray walls and rest low. Perception is scored separately against MuJoCo's own segmentation.</p></details>
             <details><summary>Can an agent drive it?</summary><p>Yes. An MCP server exposes look, find, pick_place and status, and the dashboard and HTTP API show the same runs.</p></details>

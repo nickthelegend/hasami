@@ -17,7 +17,7 @@ turns the mask into a grasp, and an SO-101 arm picks and places it.
 Meta Model API) reads the overhead camera frame and the instruction and returns a validated plan of
 pick/place steps with pixel anchors. SAM (2.1 locally, or 3.1 on the Meta Model API) turns each anchor
 into a precise mask. Depth lifts the mask to a 3D centre and yaw, and closed-loop inverse kinematics
-drives an SO-101 to pick and place. Success is read from the physics state.
+drives a simulated SO-101 (MuJoCo) to pick and place. Success is read from the physics state.
 
 **Meta models used:** Muse Spark 1.3 (planning and visual grounding), SAM 3.1 (text-prompted
 segmentation), SAM 2.1 (open weights, point-prompted segmentation on device).
@@ -35,8 +35,10 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
 **Honest status:**
 - Muse and SAM 3.1 calls need a Meta Model API key (`MODEL_API_KEY`); the hackathon provides credits on
   acceptance. Until then the app says "Setup required" and clicked runs work.
-- The arm is simulated (official model, force-limited servos). The LeRobot path for a real SO-101 is
-  written and its unit conversion tested, but no real arm has been attached.
+- The arm is simulated (MuJoCo, official SO-101 model, force-limited servos) with perfect depth, no
+  sensor noise and ideal lighting. A LeRobot follower can be attached in mirror mode (it repeats the
+  simulated arm's joint targets); that path is wired and its unit conversion tested, but it has never
+  been run on hardware.
 
 **Links:**
 - Code: https://github.com/nickthelegend/hasami (create before submitting)
