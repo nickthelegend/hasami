@@ -342,6 +342,9 @@ export default function App() {
                     <option value="stack-two">stack 2</option>
                     <option value="clear-except-X">clear but 1</option>
                     <option value="tower-of-3">tower of 3</option>
+                    <option value="sort-by-shape">by shape</option>
+                    <option value="line-up">line up</option>
+                    <option value="pick-from-bin">from bin</option>
                     {scene === 'twin' && <option value="twin">twin</option>}
                   </select>
                 </label>
