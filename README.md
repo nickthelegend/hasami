@@ -65,6 +65,36 @@ python scripts/bench.py --family all --seeds 5 --planner muse                # n
 Results: [`20261021T052238Z.json`](deployments/bench/20261021T052238Z.json) (all-to-tray), [`20261021T052444Z.json`](deployments/bench/20261021T052444Z.json) (the other four), [`20261021T052717Z.json`](deployments/bench/20261021T052717Z.json) (disturbed). The Muse planner has not been benchmarked: no key yet
 (`--planner muse` prints `Setup required: MODEL_API_KEY` and writes nothing).
 
+## Your desk, twinned
+
+**Digital twin from one photo · simulated arm.** Photograph a desk with an A4 sheet on it. The sheet gives
+the table plane and the camera's pose; SAM 2.1, prompted at a grid of points on the plane, finds every
+object; each mask is fitted as an upright box or cylinder whose projected silhouette matches it (height
+estimated from the silhouette, or typed); MuJoCo builds the scene with the SO-101 beside the sheet and
+renders it from the photo's own viewpoint. Then the simulated arm runs a task on the twin (clear the desk,
+sort by colour, stack two) with the same grounding, checks and retries, scored by the same goal predicates.
+
+![Synthetic desk photo with the fitted shapes drawn, beside its MuJoCo twin rendered from the same viewpoint](packages/landing/assets/twin-sbs.webp)
+
+*Left: a synthetic photo (MuJoCo render), not a real one. Right: its twin.* Measured on 20 such photos
+(`scripts/twin_accuracy.py --seeds 20 --tasks`, [`accuracy-20261021T164701Z.json`](deployments/twins/accuracy-20261021T164701Z.json)),
+only the RGB image given to the pipeline:
+
+| | True field of view | Assumed 70° (a real photo's default) |
+|---|---:|---:|
+| Objects found / false positives | **86/86** / 0 | 83/86 / 1 |
+| Shape (box vs cylinder) / colour right | 83/86 / 86/86 | 83/83 / 83/83 |
+| Centre error, mean / max | **1.2 / 4.9 mm** | 3.3 / 14.3 mm |
+| Yaw error, median / max | 0.35° / 22° | 0.57° / 3.5° |
+| Height error, mean / median / max | **1.6** / 0.9 / 13.7 mm | 2.8 / 1.7 / 17.7 mm |
+| clear-desk on the twin (simulated-click planner) | **16/20** goals met | — |
+
+`POST /api/twin` (photo body), the dashboard's **Twin** tab (upload, or "Try a synthetic photo"), and
+`GET /api/twin/sample.png` for a rendered test photo. Limits: tested on rendered photos only (a real desk
+photo is pending); white objects on the sheet and objects the colour of the table are missed; an object over
+a sheet corner needs the corners clicked; the field of view is assumed unless known. Method:
+[`packages/docs`](packages/docs/README.md#your-desk-twinned-digital-twin-from-one-photo--simulated-arm).
+
 ## Pipeline
 
 ```
@@ -96,6 +126,7 @@ score (not used by the robot): physics state, goal predicate
 | Muse planner | `muse-spark-1.3` at `https://api.meta.ai/v1` (model id confirmed in the dev.meta.ai docs). **Setup required: `MODEL_API_KEY`.** Without it `/api/plan` answers 503 `setup_required`; never a canned plan. Grounding of its hints is tested in the sim with deliberately bad hints. |
 | SAM 3.1 | `sam-3.1` via `POST /v1/responses` (both confirmed in the docs); the special-token output is parsed per the docs, the mask payload only through Meta's `meta-sam-parser`. **Setup required: `MODEL_API_KEY`; unverified until then.** |
 | Real SO-101 | Wired into `Session` behind `HASAMI_SO101_PORT`: a connected LeRobot follower mirrors every joint target the simulated arm is commanded (≤ 6° per joint per command, ~30 Hz). `/api/status` says `"arm": "so101"` only while one is connected. Unit conversion tested; **never run on hardware. BLOCKED: no arm attached** (`HASAMI_SO101_PORT` + `pip install lerobot[feetech]`). |
+| Digital twin | One desk photo with an A4 sheet → a MuJoCo scene with the simulated arm (`POST /api/twin`, Twin tab). 86/86 objects found, 1.2 mm mean centre error on 20 rendered photos; **a real photo is pending.** |
 | Real camera | Dashboard tab: webcam frame (`HASAMI_REALCAM`) or a photo, A4 sheet / ArUco for the table plane, SAM 2.1 on a clicked object, x / y / yaw / size on the plane (typed height, parallax-corrected). Segment and locate only; the arm stays simulated. Geometry tested on synthetic cameras; **ruler check on real objects pending.** |
 
 ## Perception, measured
@@ -120,16 +151,16 @@ can replay any recorded run. `GET /api/runs/{id}/steps/{i}.png?kind=view|view_tr
 
 | Package | Import | What |
 |---|---|---|
-| [`packages/sim`](packages/sim) | `hasami_sim` | SO-101 scene, procedural scenes (MjSpec), DLS IK with sag correction, shape-aware grasps, stacking, gripper-position grasp check, cameras, ground truth |
-| [`packages/perception`](packages/perception) | `hasami_perception` | `LocalSam2`, `MetaSam3`, `locate()`, grounding, colour, real-camera geometry |
-| [`packages/planner`](packages/planner) | `hasami_planner` | Muse client (`openai` SDK, forced `submit_plan` tool call, strict validation, `PlanError` with the raw output); `plan_from_clicks()` |
-| [`packages/core`](packages/core) | `hasami_core` | `Session` (observe, segment, ground, run with verify + retry, records), benchmark tasks |
+| [`packages/sim`](packages/sim) | `hasami_sim` | SO-101 scene, procedural scenes (MjSpec), DLS IK with sag correction, shape-aware grasps, stacking, gripper-position grasp check, cameras, ground truth, synthetic desk photos (`photo.py`) |
+| [`packages/perception`](packages/perception) | `hasami_perception` | `LocalSam2` (single and batched point prompts), `MetaSam3`, `locate()`, grounding, colour, real-camera geometry, digital-twin geometry (sheet, automatic masks, box / cylinder fits) |
+| [`packages/planner`](packages/planner) | `hasami_planner` | Muse client (`openai` SDK, forced `submit_plan` tool call, strict validation, `PlanError` with the raw output); `plan_from_clicks()`; plan sources `muse`, `clicks`, `scripted` |
+| [`packages/core`](packages/core) | `hasami_core` | `Session` (observe, segment, ground, run with verify + retry, labelled disturbances, records), eight benchmark task families, the digital twin (scene, render, tasks) |
 | [`packages/robot`](packages/robot) | `hasami_robot` | LeRobot SO-101 follower adapter and `RealMirror` (mirror mode; untested on hardware, BLOCKED without it) |
-| [`packages/server`](packages/server) | `hasami_server` | FastAPI on :8420, REST + SSE, serves the dashboard |
+| [`packages/server`](packages/server) | `hasami_server` | FastAPI on :8420, REST + SSE (runs, real camera, `/api/twin`), serves the dashboard |
 | [`packages/mcp`](packages/mcp) | `hasami_mcp` | MCP stdio server: `status`, `look`, `find`, `pick_place` |
-| [`packages/dashboard`](packages/dashboard) | — | Vite + React, a camera viewfinder beside a lab notebook: live camera with SAM masks drawn as a cut line, click-to-pick, 3D target readout, Muse instruction, scene picker, run log, agent trace + replay, real camera |
-| [`packages/landing`](packages/landing) | — | One page built from real run data: the overhead frame of a recorded run with its SAM mask outlines, the benchmark sheets, and a contact sheet of a disturbed run (`scripts/landing_assets.py` rebuilds the images and outlines) |
-| [`packages/docs`](packages/docs) | — | Method, checks, Meta API confirmed vs unverified, sim-to-real, limits |
+| [`packages/dashboard`](packages/dashboard) | — | Vite + React, a camera viewfinder beside a lab notebook: live camera with SAM masks drawn as a cut line, click-to-pick, 3D target readout, Muse instruction, scene picker, run log, agent trace + replay, Twin tab, real camera |
+| [`packages/landing`](packages/landing) | — | One page built from real run data: the overhead frame of a recorded run with its SAM mask outlines, the benchmark sheets, a contact sheet of a disturbed run, the twin figure (`scripts/landing_assets.py` rebuilds the images and outlines) |
+| [`packages/docs`](packages/docs) | — | Method, checks, digital twin, Meta API confirmed vs unverified, sim-to-real, limits |
 
 ## Run it
 

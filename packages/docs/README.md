@@ -67,6 +67,45 @@ lands on the object, and a probability that the grip lets go just after the lift
 each step moves and clicks the middle of its colour blob in the RGB image. It measures perception,
 grasping, placing and recovery, not planning.
 
+## Your desk, twinned (digital twin from one photo · simulated arm)
+
+`POST /api/twin` (dashboard: **Twin** tab) turns one photo of a desk with an A4 sheet on it into a MuJoCo
+scene the simulated SO-101 can work in. Code: `hasami_perception.twin` (geometry), `hasami_core.twin`
+(scene, render, tasks).
+
+1. **Sheet.** The largest bright, unsaturated quadrilateral (or four clicked corners); its corners are
+   refined by fitting lines to the outline. The plane homography is fitted for both ways an A4 sheet can
+   lie, keeping the one whose camera pose is a rotation given the field of view (default 70° horizontal,
+   an assumption for a phone or webcam). That also gives the camera's pose.
+2. **Masks.** A grid of points on the table plane (the sheet plus 200 mm around it, every 12 mm) is
+   projected into the photo; points on the paper or on table-coloured pixels are skipped; the rest prompt
+   SAM 2.1, one click each, with the image encoded once. A prompt inside an accepted mask is skipped.
+3. **Shapes.** Each mask is fitted as an upright box or cylinder: single-view carving (plane points whose
+   column from the table to a trial height projects inside the mask) gives a start, then centre, yaw, size
+   and height are refined together to maximise the IoU between the mask and the extruded shape's
+   projected silhouette (plus half the IoU of the top face when shading shows a brighter top). A single
+   silhouette cannot tell a box from a flat cut-out of its outline; the upright-box prior can, because at
+   the wrong height the carved footprint is not a rectangle or a disc. Flat fits (< 8 mm: paper, cards),
+   shadows (the paper's or table's own colour, darker, touching an object) and masks no shape explains
+   (IoU < 0.6) are dropped. A typed height overrides the estimate.
+4. **Scene.** The arm's base stands 215 mm from the sheet's centre beyond the edge at the top of the photo
+   (or another side), facing across it, so the sheet's centre is mid-reach. Objects keep their measured
+   size and mean top-face colour; the tray and grey bin are added beside the sheet; objects out of view,
+   under the base or a container are left out with the reason; out-of-reach, too-wide and too-close ones
+   are noted. The photo's camera is added to the twin, so the side-by-side render is from the same viewpoint.
+5. **Tasks.** clear-desk, sort-by-colour and stack-two (when the objects allow) are ordinary benchmark
+   tasks: the simulated-click oracle plans, the arm runs with the same grounding, checks and retries, and
+   the goal predicate is read from the twin's physics.
+
+**Accuracy** (`scripts/twin_accuracy.py`, `deployments/twins/accuracy-20261021T164701Z.json`): 20 desk
+photos rendered by MuJoCo (a tilted camera at a random pose; no arm, no depth), only the RGB image given
+to the pipeline, 86 objects. With the camera's true field of view: 86/86 found, 0 false positives, shape
+83/86, colour 86/86, centre error mean 1.2 mm (max 4.9), yaw mean 1.0° (median 0.35°, max 22°), sides
+mean 0.8 / 0.6 mm, height mean 1.6 mm (median 0.9, max 13.7). With the 70° default instead of the true
+field of view: 83/86 found, centre mean 3.3 mm (max 14.3), height mean 2.8 mm. clear-desk met its goal on
+16 of the 20 twins. These are rendered photos (perfect lens, clean lighting, a plain desk); a real photo
+has not been measured yet.
+
 ## Meta Model API: what is confirmed and what is not
 
 Checked against dev.meta.ai on 2026-10-21 (no key, so no call has been made):
@@ -90,11 +129,16 @@ Checked against dev.meta.ai on 2026-10-21 (no key, so no call has been made):
   yaw and footprint on the plane. The object's height is typed (a webcam has no depth); with an assumed
   field of view the top face is corrected for parallax. The geometry is tested on synthetic cameras; it has
   not been measured against a ruler yet.
+- **Digital twin** (above): the same A4 geometry, but the whole photo becomes a scene and the arm works in
+  the twin. Tested only on MuJoCo-rendered photos; white objects on the sheet and objects the colour of the
+  table are not prompted, an object covering a sheet corner needs the corners clicked, and the field of
+  view is assumed unless given.
 - Expect larger localisation error from lighting, blur and calibration; the grasp tolerance (5 mm
-  clearance) and the verify-and-retry loop are the margins.
+  clearance) and the verify-and-retry loop are the margins. `HASAMI_DISTURB=depth_mm:2,cam_mm:3,light:0.3`
+  measures some of that in the sim: noisy depth, a camera calibration error and lighting jitter.
 
 ## Limits
 
 Simulation only so far; rigid objects on a table; top-down grasps only; the Muse and SAM 3.1 paths need a
-Meta Model API key; the real arm and the real camera are untested against the physical world. Not
-safety-audited.
+Meta Model API key; the real arm, the real camera and the twin from a real photo are untested against the
+physical world. Not safety-audited.
