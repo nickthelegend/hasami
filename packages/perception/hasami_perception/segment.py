@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from typing import Protocol
 
 import numpy as np
@@ -70,9 +71,15 @@ class LocalSam2:
 class MetaSam3:
     """SAM 3.1 on the Meta Model API: text-prompted segmentation ("the red cube").
 
-    The request goes to POST {base}/responses with the image inline; the response carries a
-    mask per instance. Without MODEL_API_KEY this raises SetupRequired; it never returns a
-    placeholder mask.
+    Wire format per dev.meta.ai/docs/media-segmentation and /docs/sam/reading-segmentation (read
+    2026-10-21): POST {base}/responses with model "sam-3.1" and one user message holding an input_text
+    (the prompt) and an input_image; the output is special-token text, one line per frame
+    ("<0f>id<|box;x1=..;y1=..;x2=..;y2=..;w=W;h=H[;c=conf]|><|mask;x=0;y=0;data=H,W,<enc>payload|>,id...").
+    Box corners are source pixels (documented). Masks are base85 payloads whose decoding the docs leave
+    to Meta's `meta-sam-parser` package; if it is installed the mask is used, otherwise SAM 2.1 is
+    prompted at the box centre by the caller (hasami_core grounding). Never run with a key yet: the
+    request and the parser are written to the docs but unverified. Without MODEL_API_KEY this raises
+    SetupRequired; it never returns a placeholder mask.
     """
 
     name = "sam-3.1 (Meta Model API)"
@@ -84,24 +91,22 @@ class MetaSam3:
         self.model = model
         self.base_url = base_url.rstrip("/")
 
-    def segment(self, rgb: np.ndarray, *, point: tuple[float, float] | None = None,
-                text: str | None = None) -> np.ndarray:
-        import urllib.error
-        import urllib.request
-
-        if not text:
-            raise ValueError("SAM 3.1 is prompted with text, e.g. 'red cube'")
+    def request_body(self, rgb: np.ndarray, text: str) -> dict:
         buf = io.BytesIO()
         Image.fromarray(rgb).save(buf, format="PNG")
         b64 = base64.b64encode(buf.getvalue()).decode()
-        body = {
-            "model": self.model,
-            "input": [{"role": "user", "content": [
-                {"type": "input_image", "image_url": f"data:image/png;base64,{b64}"},
-                {"type": "input_text", "text": text},
-            ]}],
-        }
-        req = urllib.request.Request(f"{self.base_url}/responses", data=json.dumps(body).encode(),
+        return {"model": self.model, "stream": False, "metadata": {"mask_encoding": "one_bit"},
+                "input": [{"type": "message", "role": "user", "content": [
+                    {"type": "input_text", "text": text},
+                    {"type": "input_image", "image_url": f"data:image/png;base64,{b64}"},
+                ]}]}
+
+    def detect(self, rgb: np.ndarray, text: str) -> list[dict]:
+        """All matches for `text`: [{id, box: (x1, y1, x2, y2) in frame pixels, conf, mask: array | None}]."""
+        import urllib.error
+        import urllib.request
+
+        req = urllib.request.Request(f"{self.base_url}/responses", data=json.dumps(self.request_body(rgb, text)).encode(),
                                      headers={"Authorization": f"Bearer {self.api_key}",
                                               "Content-Type": "application/json"})
         try:
@@ -109,35 +114,90 @@ class MetaSam3:
                 data = json.loads(r.read())
         except urllib.error.HTTPError as e:
             raise RuntimeError(f"SAM 3.1 request failed: HTTP {e.code} {e.read()[:300]!r}") from e
-        return _first_mask(data, rgb.shape[:2])
+        return parse_sam_output(_output_text(data), rgb.shape[:2])
+
+    def segment(self, rgb: np.ndarray, *, point: tuple[float, float] | None = None,
+                text: str | None = None) -> np.ndarray:
+        if not text:
+            raise ValueError("SAM 3.1 is prompted with text, e.g. 'red cube'")
+        found = self.detect(rgb, text)
+        if not found:
+            raise RuntimeError(f"SAM 3.1 found no {text!r}")
+        best = max(found, key=lambda d: d.get("conf") or 0.0)
+        if best["mask"] is None:
+            raise RuntimeError("SAM 3.1 returned a box but its mask could not be decoded "
+                               "(pip install meta-sam-parser); box " + str(best["box"]))
+        return best["mask"]
 
 
-def _first_mask(resp: dict, hw: tuple[int, int]) -> np.ndarray:
-    """Find the first instance mask in a SAM 3.1 response (PNG/base64 or RLE). Fail loudly otherwise."""
-    def walk(o):
-        if isinstance(o, dict):
-            yield o
-            for v in o.values():
-                yield from walk(v)
-        elif isinstance(o, list):
-            for v in o:
-                yield from walk(v)
+def _output_text(resp: dict) -> str:
+    """The text of a Responses API result (output_text, or the output message's text parts)."""
+    if isinstance(resp.get("output_text"), str):
+        return resp["output_text"]
+    parts = []
+    for item in resp.get("output", []) or []:
+        for c in item.get("content", []) or []:
+            if isinstance(c, dict) and isinstance(c.get("text"), str):
+                parts.append(c["text"])
+    if not parts:
+        raise RuntimeError(f"SAM 3.1 response had no output text; keys: {list(resp)[:10]}")
+    return "".join(parts)
 
-    for node in walk(resp):
-        for key in ("mask_png", "mask", "png"):
-            val = node.get(key)
-            if isinstance(val, str) and len(val) > 64:
-                raw = base64.b64decode(val.split(",", 1)[-1])
-                m = np.array(Image.open(io.BytesIO(raw)).convert("L").resize((hw[1], hw[0]))) > 127
-                if m.any():
-                    return m
-        rle = node.get("rle") or node.get("counts")
-        if isinstance(rle, list) and rle and isinstance(rle[0], int):
-            flat = np.zeros(hw[0] * hw[1], dtype=bool)
-            pos, val = 0, False
-            for n in rle:
-                flat[pos:pos + n] = val
-                pos += n
-                val = not val
-            return flat.reshape(hw[1], hw[0]).T
-    raise RuntimeError(f"SAM 3.1 response had no mask I could read; keys: {list(resp)[:10]}")
+
+_TOKEN = re.compile(r"<\|(box|mask);([^|]*)\|>")
+
+
+def parse_sam_output(text: str, hw: tuple[int, int]) -> list[dict]:
+    """Parse SAM 3.1's special-token output for one image (frame 0) into boxes (+ masks if decodable).
+
+    Documented grammar: '<0f>' then comma-separated records 'id<|box;k=v;...|><|mask;k=v;...;data=H,W,<enc>payload|>'.
+    """
+    line = text.strip().splitlines()[0] if text.strip() else ""
+    m = re.match(r"<(\d+)f>", line)
+    body = line[m.end():] if m else line
+    out: list[dict] = []
+    for rec in re.split(r",(?=\d+<\|)", body):
+        idm = re.match(r"(\d+)", rec)
+        if not idm:
+            continue
+        item: dict = {"id": int(idm.group(1)), "box": None, "conf": None, "mask": None}
+        for kind, fields in _TOKEN.findall(rec):
+            kv = dict(f.split("=", 1) for f in fields.split(";") if "=" in f)
+            if kind == "box":
+                sx = hw[1] / float(kv.get("w", hw[1]))
+                sy = hw[0] / float(kv.get("h", hw[0]))
+                item["box"] = (float(kv["x1"]) * sx, float(kv["y1"]) * sy, float(kv["x2"]) * sx, float(kv["y2"]) * sy)
+                if "c" in kv:
+                    item["conf"] = float(kv["c"])
+            elif kind == "mask":
+                if "c" in kv and item["conf"] is None:
+                    item["conf"] = float(kv["c"])
+                item["mask"] = _decode_mask(kv, item["box"], hw)
+        if item["box"] is not None:
+            out.append(item)
+    return out
+
+
+def _decode_mask(kv: dict, box, hw: tuple[int, int]) -> np.ndarray | None:
+    """Decode with Meta's meta-sam-parser when installed (the docs define the payload only through it).
+    The raster is placed at the box when its size matches the box, or used as is when it matches the frame."""
+    try:
+        import meta_sam_parser  # type: ignore[import-not-found]
+    except ImportError:
+        return None
+    try:  # the package's Python signature is not in the docs we read; any mismatch means "no mask"
+        raster = np.asarray(meta_sam_parser.decode_mask_to_raster(kv["data"]))
+        h, w = (int(v) for v in kv["data"].split(",")[:2])
+        raster = raster.reshape(h, w)
+    except Exception:  # noqa: BLE001
+        return None
+    full = np.zeros(hw, dtype=bool)
+    if (h, w) == hw:
+        return raster.astype(bool)
+    if box is not None:
+        x1, y1 = int(round(box[0])) + int(kv.get("x", 0)), int(round(box[1])) + int(kv.get("y", 0))
+        hh, ww = min(h, hw[0] - y1), min(w, hw[1] - x1)
+        if hh > 0 and ww > 0:
+            full[y1:y1 + hh, x1:x1 + ww] = raster[:hh, :ww].astype(bool)
+            return full
+    return None

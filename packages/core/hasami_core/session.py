@@ -25,6 +25,7 @@ from PIL import Image
 
 from hasami_perception import LocalSam2, MetaSam3, SetupRequired, Target, locate, mask_iou
 from hasami_perception.colour import blob_near, colour_mask, colour_word, mean_colour, rgb_to_hsv, similar_mask
+from hasami_perception.grounding import GroundingError, ground, validate_mask
 from hasami_planner import Plan, PlanStep, plan_from_clicks
 from hasami_sim.arm import ARM_JOINTS, GRIPPER, GRIPPER_OPEN, GRIPPER_PRE_GRASP, Arm, StepLog, in_container
 from hasami_sim.camera import Frame, capture
@@ -126,6 +127,7 @@ class Segmentation:
     target_error: str | None = None
     truth_label: str | None = None  # what the simulator says is under the prompt (scoring only)
     iou_vs_truth: float | None = None
+    grounding: dict | None = None  # for planner (Muse) prompts: how the label + hint became this mask
 
     def to_dict(self, with_mask: bool = True) -> dict:
         out: dict = {
@@ -140,6 +142,8 @@ class Segmentation:
         }
         if self.target_error:
             out["target_error"] = self.target_error
+        if self.grounding is not None:
+            out["grounding"] = self.grounding
         if with_mask:
             out["mask_png"] = mask_png_b64(self.mask)
         return out
@@ -171,6 +175,7 @@ class Session:
     disturb: Disturb | None = None  # None: read HASAMI_DISTURB
     max_retries: int = 2  # re-segment and retry a step that fails its checks, up to this many times
     _rng: np.random.Generator = field(default_factory=np.random.default_rng)
+    _planned: bool = False  # the running plan came from a planner (labels + hints), not clicks
 
     def __post_init__(self) -> None:
         if self.disturb is None:
@@ -417,6 +422,69 @@ class Session:
             self._score(seg, frame)
             return seg
 
+    def heights(self, frame: Frame) -> np.ndarray:
+        """Height above the table of every pixel (m), from depth."""
+        h, w = frame.depth.shape
+        vs, us = np.mgrid[0:h, 0:w]
+        fx, fy, cx, cy = frame.intrinsics()
+        z = frame.depth.astype(np.float64)
+        dirs = np.stack([(us - cx) / fx * z, -(vs - cy) / fy * z, -z], axis=-1)
+        return frame.cam_pos[2] + dirs @ frame.cam_mat[2]
+
+    def ground(self, frame: Frame, label: str, hint: tuple[float, float], segmenter: str = "local") -> Segmentation:
+        """A planner's label + hint pixel -> a validated mask (hasami_perception.grounding).
+
+        With the meta segmenter, SAM 3.1 is asked for the label first and its mask is validated like any
+        other; if it fails (or for 'local'), SAM 2.1 is prompted at the hint, then at the named colour's
+        nearest blob, then at the nearest raised blob. A label that cannot be grounded comes back with no
+        target and the reasons in target_error."""
+        heights = self.heights(frame)
+        exclude = heights > 0.08  # the parked arm, so a search never lands on it
+        tries: list[dict] = []
+        if segmenter == "meta":
+            sam3 = self.segmenter("meta")  # raises SetupRequired without MODEL_API_KEY
+            try:
+                found = sam3.detect(frame.rgb, label)
+            except Exception as e:  # noqa: BLE001 - an API failure falls back to SAM 2.1, and is recorded
+                found = []
+                tries.append({"source": "sam-3.1 text", "point": None, "rejected": [f"{type(e).__name__}: {e}"]})
+            for d in sorted(found, key=lambda d: -(d.get("conf") or 0.0)):
+                x1, y1, x2, y2 = d["box"]
+                centre = ((x1 + x2) / 2, (y1 + y2) / 2)
+                mask, source = d["mask"], "sam-3.1 text"
+                if mask is None:  # box only: let SAM 2.1 draw the mask from the box centre
+                    mask, source = self.sam.segment(frame.rgb, point=centre), "sam-3.1 box -> sam 2.1"
+                reasons = validate_mask(mask, label, frame.rgb, heights, hint=centre)
+                tries.append({"source": source, "point": _r(centre, 1), "rejected": reasons, "pixels": int(mask.sum())})
+                if not reasons:
+                    seg = Segmentation(mask=mask, segmenter=sam3.name, latency_ms=0.0, point=list(centre), text=label,
+                                       grounding={"source": source, "tries": tries})
+                    try:
+                        seg.target = locate(frame, mask)
+                    except ValueError as e:
+                        seg.target_error = str(e)
+                    self._score(seg, frame)
+                    if seg.target is not None:
+                        return seg
+        t0 = time.perf_counter()
+        try:
+            g = ground(label, (float(hint[0]), float(hint[1])), frame.rgb, heights,
+                       lambda pt: self.sam.segment(frame.rgb, point=pt), exclude=exclude)
+        except GroundingError as e:
+            seg = Segmentation(mask=np.zeros(frame.depth.shape, bool), segmenter=self.sam.name,
+                               latency_ms=(time.perf_counter() - t0) * 1000, point=[float(hint[0]), float(hint[1])],
+                               text=label, target_error=str(e), grounding={"source": None, "tries": tries + e.tries})
+            return seg
+        seg = Segmentation(mask=g.mask, segmenter=self.sam.name, latency_ms=(time.perf_counter() - t0) * 1000,
+                           point=[float(g.point[0]), float(g.point[1])], text=label,
+                           grounding={"source": g.source, "tries": tries + g.tries})
+        try:
+            seg.target = locate(frame, g.mask)
+        except ValueError as e:
+            seg.target_error = str(e)
+        self._score(seg, frame)
+        return seg
+
     def _surface_z(self, frame: Frame, xy, radius: float = 0.008) -> float:
         """Height of whatever surface is under (x, y), from depth: table, tray floor, top of an object."""
         u, v = frame.world_to_pixel(np.array([xy[0], xy[1], 0.0]))
@@ -473,6 +541,7 @@ class Session:
         plan = steps if isinstance(steps, Plan) else plan_from_clicks(
             [s.model_dump() if isinstance(s, PlanStep) else s for s in steps])
         run_id = run_id or new_run_id()
+        self._planned = plan.source == "muse"
         rec: dict = {
             "run_id": run_id, "started_at": _now(), "segmenter": segmenter, "seed": self.seed,
             "simulation": SIMULATION, "scene": self.scene.name,
@@ -559,9 +628,11 @@ class Session:
         res: dict = {"frame": frame, "record": rec, "verified": False, "reason": None, "pick": None, "place": None,
                      "obj": None, "pp": None, "physics_ok": False}
 
-        use_text = segmenter == "meta" and attempt == 1
-        pick = self.segment(point=None if use_text else pick_hint, text=step.pick if use_text else None,
-                            segmenter=segmenter if use_text else "local", frame=frame)
+        if self._planned:  # a planner named the object: validate its hint, fall back if it misses
+            pick = self.ground(frame, step.pick, tuple(pick_hint), segmenter if attempt == 1 else "local")
+        else:  # a person (or the click oracle) clicked it: the click is the intent
+            pick = self.segment(point=pick_hint, segmenter="local", frame=frame) if segmenter == "local" or attempt > 1 \
+                else self.segment(text=step.pick, segmenter=segmenter, frame=frame)
         t["segment_pick_ms"] = pick.latency_ms
         res["pick"] = pick
         emit("segment", {"step": i, "attempt": attempt, "role": "pick", **pick.to_dict()})
@@ -572,9 +643,14 @@ class Session:
         emit("target", {"step": i, "attempt": attempt, "role": "pick", "target": _target_dict(pick.target)})
         res["ref_colour"] = mean_colour(frame.rgb, pick.mask & self._raised(frame, pick.mask))
 
-        use_text = segmenter == "meta"
-        place = self.segment(point=None if use_text else place_hint, text=step.place if use_text else None,
-                             segmenter=segmenter, frame=frame)
+        if self._planned:
+            place = self.ground(frame, step.place, tuple(place_hint), segmenter)
+            if place.target is None:  # a bare-table destination has nothing to ground: use the hint as is
+                place = self.segment(point=place_hint, segmenter="local", frame=frame)
+        elif segmenter == "meta":
+            place = self.segment(text=step.place, segmenter=segmenter, frame=frame)
+        else:
+            place = self.segment(point=place_hint, segmenter="local", frame=frame)
         t["segment_place_ms"] = place.latency_ms
         res["place"] = place
         emit("segment", {"step": i, "attempt": attempt, "role": "place", **place.to_dict()})
@@ -737,17 +813,18 @@ class Session:
         colour nearest the previous pick pixel; else the blob of the colour the label names; else the
         same pixel again."""
         frame: Frame = att.get("after") or self.observe()
+        arm = self.heights(frame) > 0.08  # the parked arm is yellow too: never search on it
         ref = att.get("ref_colour")
         if ref is not None:
             try:
-                c = blob_near(similar_mask(frame.rgb, ref), tuple(hint), max_dist_px=140)
+                c = blob_near(similar_mask(frame.rgb, ref), tuple(hint), max_dist_px=140, exclude=arm)
                 if c is not None:
                     return [c[0], c[1]], "same-colour blob nearest the previous pick pixel"
             except ValueError:
                 pass
         word = colour_word(step.pick)
         if word:
-            c = blob_near(colour_mask(frame.rgb, word), tuple(hint), max_dist_px=140)
+            c = blob_near(colour_mask(frame.rgb, word), tuple(hint), max_dist_px=140, exclude=arm)
             if c is not None:
                 return [c[0], c[1]], f"'{word}' blob nearest the previous pick pixel"
         if att.get("pick") is not None and att["pick"].target is not None:
