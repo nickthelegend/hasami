@@ -18,7 +18,7 @@
   --bad: #ff8a94;
   --bad-bg: rgba(255, 138, 148, 0.12);
   --font: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --mono: 'Inconsolata', ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: dark;
 }
 
