@@ -320,6 +320,27 @@ h1, h2 { font-weight: 500; letter-spacing: -0.04em; margin: 0; }
 .tr-why { margin: 10px 0 0; font-size: 14px; color: var(--amber); }
 .tr-after { display: inline-block; margin-top: 10px; font-size: 13.5px; color: var(--lilac-deep); }
 
+/* ---- tabs + real camera ------------------------------------------------------------------------- */
+.tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--panel); margin: 30px 0 14px; }
+.tabs button { border: 0; background: none; cursor: pointer; height: 36px; padding: 0 16px; border-radius: 999px; color: var(--muted); font-size: 14.5px; }
+.tabs button[aria-selected='true'] { background: var(--panel-3); color: var(--text); }
+.realcam { display: grid; gap: 10px; }
+.realcam .sec-head { margin-bottom: 0; }
+.rc-arm { font-size: 12.5px; color: var(--amber); background: var(--amber-bg); border-radius: 999px; padding: 4px 12px; }
+.rc-act { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rc-h { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+.rc-h input { width: 64px; height: 32px; border-radius: 10px; border: 0; background: var(--panel); color: var(--text); padding: 0 10px; font: inherit; }
+.rc-step { margin: 0; }
+.rc-view { position: relative; max-width: 900px; }
+.rc-view img { display: block; width: 100%; height: auto; border-radius: 18px; cursor: crosshair; }
+.rc-view .rc-mask { position: absolute; inset: 0; opacity: 0.45; pointer-events: none; mix-blend-mode: screen; filter: sepia(1) hue-rotate(110deg) saturate(4); }
+.rc-dot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--lilac-deep); color: var(--frame); font-size: 12px; font-weight: 600; display: grid; place-items: center; pointer-events: none; }
+.rc-click { background: var(--mint); width: 14px; height: 14px; margin: -7px 0 0 -7px; }
+.rc-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 0; }
+.rc-out > div { background: var(--panel); border-radius: 14px; padding: 10px 12px; }
+.rc-out dt { font-size: 12.5px; color: var(--muted); }
+.rc-out dd { margin: 0; font-family: var(--mono); font-size: 14px; overflow-wrap: anywhere; }
+
 /* ---- responsive ------------------------------------------------------------------------------- */
 @media (max-width: 1100px) {
   /* one column: camera, then the controls, then the timeline */

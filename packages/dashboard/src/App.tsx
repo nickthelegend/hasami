@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { api, ApiError, pickPoint, setupName, subscribe, type Camera, type ClickStep, type Pixel, type SegmentResponse, type Status } from './api';
 import { CameraTile, type Marker } from './components/CameraTile';
 import { InstructionCard, Readout, Results, RunsTable, StepsCard, Timeline, type PlanView, type RunsView } from './components/Panels';
+import { RealCam } from './components/RealCam';
 import { RunTrace } from './components/RunTrace';
 import { LogoMark, StatusPills } from './components/TopBar';
 import { initialRun, runReducer } from './runState';
@@ -28,6 +29,7 @@ export default function App() {
   const [resetting, setResetting] = useState(false);
   const [scene, setScene] = useState('classic');
   const [traceId, setTraceId] = useState<string | null>(null);
+  const [tab, setTab] = useState<'runs' | 'realcam'>('runs');
   const [run, dispatch] = useReducer(runReducer, initialRun);
   const sub = useRef<{ close: () => void } | null>(null);
   const [, setFrameSize] = useState<{ w: number; h: number } | null>(null);
@@ -391,7 +393,16 @@ export default function App() {
         </div>
 
         {traceId && <RunTrace runId={traceId} onClose={() => setTraceId(null)} />}
+        <div className="tabs" role="tablist" aria-label="More">
+          {(['runs', 'realcam'] as const).map((t) => (
+            <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
+              {t === 'runs' ? 'Recorded runs' : 'Real camera'}
+            </button>
+          ))}
+        </div>
+        {tab === 'realcam' ? <RealCam /> : (
         <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={setTraceId} active={traceId} />
+        )}
       </main>
       <footer className="foot">
         Hasami — 鋏, scissors · MIT · Copyright (c) 2026 Nivesh Gajengi ·{' '}

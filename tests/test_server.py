@@ -184,3 +184,44 @@ def test_cors_allows_localhost_dev_ports(client):
     r = client.get("/api/status", headers={"Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in r.headers
 
+
+# ---- real camera endpoints (no webcam here: grab is Setup required; a synthetic photo is uploaded) ----
+def test_realcam_grab_needs_setup_and_order_is_enforced(client, monkeypatch):
+    monkeypatch.delenv("HASAMI_REALCAM", raising=False)
+    r = client.post("/api/realcam/grab")
+    assert r.status_code == 503 and r.json()["setup_required"] == "HASAMI_REALCAM"
+    assert client.post("/api/realcam/segment", json={"point": [10, 10], "height_mm": 30}).status_code == 409
+    assert client.post("/api/realcam/upload", content=b"not an image").status_code == 400
+
+
+def test_realcam_synthetic_photo_segment_and_locate(client):
+    """A rendered (synthetic, labelled as such) photo: an A4 sheet and a red 50 x 30 x 40 mm box seen by a
+    tilted pinhole camera. Upload, click the sheet's corners, click the box: SAM 2.1 + plane geometry."""
+    from test_realcam import _raster, a4_corners, camera, project
+
+    k, r, t = camera()
+    img = np.zeros((720, 1280, 3), np.uint8)
+    img[:] = (120, 104, 88)  # wooden table
+    sheet_px = project(k, r, t, np.c_[a4_corners(), np.zeros(4)])
+    img[_raster(sheet_px)] = (236, 236, 232)
+    cx, cy, hgt = 120.0, 330.0, 40.0
+    top = np.array([[145, 345], [95, 345], [95, 315], [145, 315]], float)
+    base_px = project(k, r, t, np.c_[top, np.zeros(4)])
+    top_px = project(k, r, t, np.c_[top, np.full(4, hgt)])
+    for a, b in ((0, 1), (1, 2), (2, 3), (3, 0)):  # the visible side faces, shaded
+        img[_raster(np.array([base_px[a], base_px[b], top_px[b], top_px[a]]))] = (150, 30, 30)
+    img[_raster(top_px)] = (220, 45, 45)
+    buf = io.BytesIO()
+    Image.fromarray(img).save(buf, format="PNG")
+    up = client.post("/api/realcam/upload", content=buf.getvalue())
+    assert up.status_code == 200 and up.json()["source"] == "upload"
+    cal = client.post("/api/realcam/calibrate", json={"corners": sheet_px.tolist(), "sheet": "a4", "hfov_deg": 70})
+    assert cal.status_code == 200, cal.text
+    centre_px = project(k, r, t, np.array([[cx, cy, hgt]]))[0]
+    res = client.post("/api/realcam/segment", json={"point": centre_px.tolist(), "height_mm": hgt}).json()
+    assert res["arm"] == "sim" and "not connected" in res["note"]
+    tgt = res["target"]
+    assert tgt and tgt["parallax_corrected"]
+    assert np.hypot(tgt["x_mm"] - cx, tgt["y_mm"] - cy) < 4.0, tgt
+    assert sorted(tgt["extent_mm"]) == pytest.approx([30, 50], abs=6)
+    assert png(client.get("/api/realcam/frame.png")).shape == (720, 1280, 3)

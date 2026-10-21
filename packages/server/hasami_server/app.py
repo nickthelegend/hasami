@@ -53,6 +53,17 @@ class RunReq(BaseModel):
     segmenter: Literal["local", "meta"] = "local"
 
 
+class CalibrateReq(BaseModel):
+    corners: list[list[float]] = Field(min_length=4, max_length=4, description="A4 corners clicked TL, TR, BR, BL")
+    sheet: Literal["a4", "a4-landscape"] = "a4"
+    hfov_deg: float | None = Field(default=70.0, ge=20, le=150, description="camera field of view; null: no parallax correction")
+
+
+class RealSegmentReq(BaseModel):
+    point: list[float] = Field(min_length=2, max_length=2)
+    height_mm: float = Field(ge=0, le=300)
+
+
 class ResetReq(BaseModel):
     seed: int | None = None
     family: str | None = None  # a benchmark task family (hasami_core.tasks): load its scene for this seed
@@ -369,6 +380,89 @@ def create_app(session: Session | None = None) -> FastAPI:
             return JSONResponse(status_code=404, content={"error": f"no {kind} image stored for this step"})
         return Response((folder / imgs[kind]).read_bytes(), media_type="image/png",
                         headers={"Cache-Control": "max-age=3600"})
+
+    # ---- real camera (segment + locate only; the arm stays simulated) --------------------------
+    real: dict = {"rgb": None, "h": None, "k": None, "source": None}
+    REAL_NOTE = "real camera: segment and locate only; the arm is simulated and not connected to this camera"
+
+    @app.post("/api/realcam/grab")
+    def realcam_grab():
+        from hasami_perception.realcam import grab_frame
+
+        try:
+            rgb = grab_frame()
+        except SetupRequired as e:
+            return _setup_response(e)
+        except Exception as e:  # noqa: BLE001
+            return JSONResponse(status_code=502, content={"error": f"{type(e).__name__}: {e}"})
+        real.update(rgb=rgb, h=None, k=None, source="webcam")
+        return {"width": rgb.shape[1], "height": rgb.shape[0], "source": "webcam", "note": REAL_NOTE}
+
+    @app.post("/api/realcam/upload")
+    async def realcam_upload(request: Request):
+        import io
+
+        import numpy as np
+        from PIL import Image, UnidentifiedImageError
+
+        data = await request.body()
+        if not data or len(data) > 15_000_000:
+            return JSONResponse(status_code=400, content={"error": "send a PNG or JPEG photo (under 15 MB) as the body"})
+        try:
+            img = Image.open(io.BytesIO(data)).convert("RGB")
+        except (UnidentifiedImageError, OSError):
+            return JSONResponse(status_code=400, content={"error": "not an image"})
+        img.thumbnail((1280, 1280))
+        real.update(rgb=np.asarray(img).copy(), h=None, k=None, source="upload")
+        return {"width": img.width, "height": img.height, "source": "upload", "note": REAL_NOTE}
+
+    @app.get("/api/realcam/frame.png")
+    def realcam_frame():
+        from hasami_core import png_bytes
+
+        if real["rgb"] is None:
+            return JSONResponse(status_code=404, content={"error": "no real-camera frame yet: grab or upload one"})
+        return Response(png_bytes(real["rgb"]), media_type="image/png", headers={"Cache-Control": "no-store"})
+
+    @app.post("/api/realcam/calibrate")
+    def realcam_calibrate(body: CalibrateReq):
+        import numpy as np
+
+        from hasami_perception.realcam import a4_corners, homography, intrinsics_from_fov
+
+        if real["rgb"] is None:
+            return JSONResponse(status_code=409, content={"error": "grab or upload a frame first"})
+        try:
+            h = homography(a4_corners(body.sheet == "a4-landscape"), np.array(body.corners))
+        except ValueError as e:
+            return JSONResponse(status_code=400, content={"error": str(e)})
+        hh, ww = real["rgb"].shape[:2]
+        real.update(h=h, k=None if body.hfov_deg is None else intrinsics_from_fov(ww, hh, body.hfov_deg))
+        return {"ok": True, "sheet": body.sheet, "hfov_deg": body.hfov_deg,
+                "parallax": "corrected with an assumed field of view" if body.hfov_deg else "not corrected"}
+
+    @app.post("/api/realcam/segment")
+    def realcam_segment(body: RealSegmentReq, request: Request):
+        from hasami_core import mask_png_b64
+        from hasami_perception.realcam import locate_on_plane
+
+        if real["rgb"] is None or real["h"] is None:
+            return JSONResponse(status_code=409, content={"error": "grab or upload a frame and click the sheet's corners first"})
+        hh, ww = real["rgb"].shape[:2]
+        if not (0 <= body.point[0] < ww and 0 <= body.point[1] < hh):
+            return JSONResponse(status_code=400, content={"error": "point is outside the frame"})
+        s = sess(request)
+        t0 = time.perf_counter()
+        with s.lock:
+            mask = s.sam.segment(real["rgb"], point=(body.point[0], body.point[1]))
+        ms = (time.perf_counter() - t0) * 1000
+        try:
+            target = locate_on_plane(mask, real["h"], real["k"], body.height_mm).to_dict()
+            err = None
+        except ValueError as e:
+            target, err = None, str(e)
+        return {"mask_png": mask_png_b64(mask), "target": target, "target_error": err, "latency_ms": round(ms, 1),
+                "segmenter": s.sam.name, "source": real["source"], "arm": "sim", "note": REAL_NOTE}
 
     if DASHBOARD_DIST.is_dir():
         app.mount("/", StaticFiles(directory=DASHBOARD_DIST, html=True), name="dashboard")
