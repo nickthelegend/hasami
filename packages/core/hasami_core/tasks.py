@@ -7,6 +7,11 @@ Families:
   stack-two        put one cube on another
   clear-except-X   everything into the tray except one named object, which must not move
   tower-of-3       three cubes stacked into a tower in a named order
+  sort-by-shape    the cylinders into the tray, the cubes into the grey bin, blocks and flat boxes stay
+  line-up          three cubes of three sizes in a row on the table, smallest to largest, left to right as
+                   the overhead camera sees it (+y to -y)
+  pick-from-bin    three objects start inside the grey bin: take the named one out into the tray, the
+                   other two stay in the bin
 
 Goal predicates are pure functions of a World (object poses and sizes), so they are tested on hand-placed
 poses (tests/test_tasks.py) as well as used on the simulator's state after a run.
@@ -26,7 +31,12 @@ from hasami_perception.colour import blob_near, colour_mask
 from hasami_sim.scene import (COLOURS, SIDE_BIN, SIDE_TRAY, TRAY, ContainerSpec, ObjectSpec, SceneSpec, classic,
                               place_objects)
 
-FAMILIES = ["all-to-tray", "sort-by-colour", "stack-two", "clear-except-X", "tower-of-3"]
+MAX_YAW_BIN = np.radians(30.0)
+
+FAMILIES = ["all-to-tray", "sort-by-colour", "stack-two", "clear-except-X", "tower-of-3", "sort-by-shape", "line-up",
+            "pick-from-bin"]
+# line-up: the row's three slots on the table (world m), smallest first; left to right in the overhead image
+LINE_SLOTS = [(0.215, 0.065), (0.215, 0.0), (0.215, -0.065)]
 ORACLE_LABEL = ("simulated-click oracle: the task says which object each step moves; the click is the middle "
                 "of that object's colour blob in the rendered RGB image")
 
@@ -71,6 +81,34 @@ def moved(w0: World, w1: World, name: str, tol: float = 0.01) -> bool:
     return bool(np.linalg.norm(w1.pos(name) - w0.pos(name)) > tol)
 
 
+def upright_on_table(w: World, name: str, tol: float = 0.004) -> bool:
+    return bool(abs(w.pos(name)[2] - w.bodies[name].dims[2] / 2) < tol)
+
+
+def in_row(w: World, names: list[str], max_off: float = 0.010, max_gap: float = 0.09,
+           max_tilt_deg: float = 30.0) -> dict[str, bool]:
+    """Objects stand in a straight row on the table in this order along -y (left to right in the overhead
+    image): every centre within `max_off` of the best-fit line, the line within `max_tilt_deg` of the y
+    axis, neighbours apart (not touching, at most `max_gap` between centres), each upright on the table."""
+    p = np.array([w.pos(n)[:2] for n in names])
+    c = p.mean(axis=0)
+    _, _, vt = np.linalg.svd(p - c)
+    d = vt[0] if vt[0][1] < 0 else -vt[0]  # points along -y
+    off = np.abs((p - c) @ np.array([-d[1], d[0]]))
+    t = (p - c) @ d
+    tilt = np.degrees(np.arccos(min(1.0, abs(d[1]))))
+    out = {"on the table": all(upright_on_table(w, n) for n in names),
+           "in a straight line": bool(off.max() < max_off and tilt < max_tilt_deg),
+           "in order, left to right": bool(np.all(np.diff(t) > 0))}
+    gaps = []
+    for a, b in zip(names, names[1:]):
+        dist = float(np.hypot(*(w.pos(a)[:2] - w.pos(b)[:2])))
+        need = 0.5 * (max(w.bodies[a].dims[:2]) + max(w.bodies[b].dims[:2])) * 1.05
+        gaps.append(need < dist < max_gap)
+    out["apart, not touching"] = all(gaps)
+    return out
+
+
 # ---- tasks ----------------------------------------------------------------------------------------
 @dataclass
 class Task:
@@ -86,11 +124,24 @@ class Task:
         """Is the goal met in w1 (w0: the start)? Returns (ok, per-condition detail)."""
         detail: dict[str, bool] = {}
         f = self.family
-        if f in ("all-to-tray", "clear-except-X", "sort-by-colour"):
+        if f in ("all-to-tray", "clear-except-X", "sort-by-colour", "sort-by-shape"):
             for obj, dest in self.moves:
                 detail[f"{obj} in {dest}"] = in_box(w1, obj, dest)
             for obj in self.keep:
                 detail[f"{obj} not moved"] = not moved(w0, w1, obj) and not in_any_box(w1, obj)
+        elif f == "pick-from-bin":
+            for obj, dest in self.moves:
+                detail[f"{obj} in {dest}"] = in_box(w1, obj, dest)
+            for obj in self.keep:
+                if obj in self.params.get("in_bin", []):
+                    detail[f"{obj} still in the bin"] = in_box(w1, obj, "bin") and not moved(w0, w1, obj, 0.015)
+                else:
+                    detail[f"{obj} not moved"] = not moved(w0, w1, obj)
+        elif f == "line-up":
+            row = in_row(w1, [obj for obj, _ in self.moves])
+            detail.update({f"row: {k}": v for k, v in row.items()})
+            for obj in self.keep:
+                detail[f"{obj} not moved"] = not moved(w0, w1, obj)
         elif f in ("stack-two", "tower-of-3"):
             for obj, dest in self.moves:
                 detail[f"{obj} on {dest}"] = on_top(w1, obj, dest)
@@ -169,6 +220,57 @@ def make_task(family: str, seed: int) -> Task:
                     f"then the {c.colour} cube on top", spec, [(b.name, a.name), (c.name, b.name)],
                     [a.name] + [o.name for o in spec.objects[3:]])
 
+    if family == "sort-by-shape":
+        n_cyl, n_cube = int(rng.integers(1, 3)), int(rng.integers(1, 3))
+        n_other = int(rng.integers(1, 3))
+        kinds = (["cylinder"] * n_cyl + [str(rng.choice(["cube", "small cube", "big cube"])) for _ in range(n_cube)]
+                 + [str(rng.choice(["block", "flat box"])) for _ in range(n_other)])
+        cols = [str(c) for c in rng.choice(list(COLOURS), size=len(kinds), replace=len(kinds) > len(COLOURS))]
+        objs = [ObjectSpec("", k, c, 0.0, 0.0) for k, c in zip(kinds, cols)]
+        spec = _layout(rng, objs, [SIDE_TRAY, SIDE_BIN], seed, family)
+        moves = [(o.name, "tray") for o in spec.objects if o.shape == "cylinder"]
+        moves += [(o.name, "bin") for o in spec.objects if o.shape == "cube"]
+        keep = [o.name for o in spec.objects if o.shape not in ("cylinder", "cube")]
+        return Task(family, seed, "put the cylinders in the tray and the cubes in the grey bin; leave the blocks "
+                    "and flat boxes where they are", spec, moves, keep, {"tray": "cylinder", "bin": "cube"})
+
+    if family == "line-up":
+        sizes = ["small cube", "cube", "big cube"]
+        cols = [str(c) for c in rng.choice(list(COLOURS), size=3 + int(rng.integers(0, 3)), replace=False)]
+        objs = [ObjectSpec("", k, c, 0.0, 0.0) for k, c in zip(sizes, cols[:3])]
+        objs += [ObjectSpec("", str(rng.choice(["cylinder", "block"])), c, 0.0, 0.0) for c in cols[3:]]
+        order = [int(i) for i in rng.permutation(len(objs))]  # sizes are not in layout order
+        objs = [objs[i] for i in order]
+        avoid = [(x, y, 0.03) for x, y in LINE_SLOTS]
+        if not place_objects(rng, objs, [SIDE_TRAY], avoid=avoid):
+            raise ValueError(f"{family}: no layout for seed {seed}")
+        spec = SceneSpec(_names(objs), [SIDE_TRAY], seed=seed, name=family)
+        cubes = sorted([o for o in spec.objects if o.shape == "cube"], key=lambda o: o.dims[0])
+        moves = [(o.name, f"@{x:.3f},{y:.3f}") for o, (x, y) in zip(cubes, LINE_SLOTS)]
+        keep = [o.name for o in spec.objects if o.shape != "cube"]
+        return Task(family, seed, "line up the three cubes in a row on the table, smallest to largest, left to "
+                    "right", spec, moves, keep, {"order": [o.name for o in cubes]})
+
+    if family == "pick-from-bin":
+        cols = [str(c) for c in rng.choice(list(COLOURS), size=3 + int(rng.integers(0, 3)), replace=False)]
+        kinds = [str(rng.choice(["cube", "small cube", "block"])) for _ in cols]
+        inside = [ObjectSpec("", k, c, 0.0, 0.0) for k, c in zip(kinds[:3], cols[:3])]
+        d = 0.026  # quadrant centres: ~27 mm between neighbours' sides, ~20 mm to the walls
+        spots = [(SIDE_BIN.x + sx * d, SIDE_BIN.y + sy * d) for sx, sy in ((-1, -1), (1, 1), (1, -1), (-1, 1))]
+        for o, i in zip(inside, rng.permutation(4)[:3]):
+            o.x, o.y = float(spots[i][0] + rng.uniform(-0.003, 0.003)), float(spots[i][1] + rng.uniform(-0.003, 0.003))
+            o.yaw = float(rng.uniform(-MAX_YAW_BIN, MAX_YAW_BIN))
+            o.base_z = SIDE_BIN.floor_h
+        outside = [ObjectSpec("", k, c, 0.0, 0.0) for k, c in zip(kinds[3:], cols[3:])]
+        if outside and not place_objects(rng, outside, [SIDE_TRAY, SIDE_BIN]):
+            raise ValueError(f"{family}: no layout for seed {seed}")
+        spec = SceneSpec(_names(inside + outside), [SIDE_TRAY, SIDE_BIN], seed=seed, name=family)
+        target = spec.objects[int(rng.integers(0, 3))]
+        keep = [o.name for o in spec.objects if o.name != target.name]
+        return Task(family, seed, f"take the {_label(target)} out of the grey bin and put it in the tray; leave the "
+                    "other things in the bin", spec, [(target.name, "tray")], keep,
+                    {"in_bin": [o.name for o in spec.objects[:3] if o.name != target.name]})
+
     raise ValueError(f"unknown family {family!r}; known: {FAMILIES}")
 
 
@@ -209,6 +311,13 @@ def oracle_steps(task: Task, session) -> list[dict]:
     for obj, dest in task.moves:
         o = session.scene.object(obj)
         pick = oracle_click(frame, session, obj)
+        if dest.startswith("@"):  # a spot on the bare table (line-up)
+            x, y = (float(v) for v in dest[1:].split(","))
+            place = frame.world_to_pixel(np.array([x, y, 0.0]))
+            steps.append({"pick": _label(o), "pick_point": [round(pick[0], 1), round(pick[1], 1)], "place": "table",
+                          "place_point": [round(float(place[0]), 1), round(float(place[1]), 1)],
+                          "reason": "simulated-click oracle"})
+            continue
         if dest in {c.name for c in session.scene.containers}:
             c = session.scene.container(dest)
             k = used.get(dest, 0)
@@ -245,5 +354,6 @@ def setup_task(task: Task, session) -> dict:
     return session.load_scene(task.scene)
 
 
-__all__ = ["FAMILIES", "ORACLE_LABEL", "Body", "Task", "World", "container_spots", "in_any_box", "in_box", "make_task",
-           "moved", "on_top", "oracle_click", "oracle_steps", "setup_task", "world_from", "TRAY"]
+__all__ = ["FAMILIES", "LINE_SLOTS", "ORACLE_LABEL", "Body", "Task", "World", "container_spots", "in_any_box", "in_box",
+           "in_row", "make_task", "moved", "on_top", "oracle_click", "oracle_steps", "setup_task", "upright_on_table",
+           "world_from", "TRAY"]

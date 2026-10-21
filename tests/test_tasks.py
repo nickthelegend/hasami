@@ -6,13 +6,13 @@ import copy
 import numpy as np
 import pytest
 
-from hasami_core.tasks import FAMILIES, Body, World, in_box, make_task, moved, on_top
+from hasami_core.tasks import FAMILIES, LINE_SLOTS, Body, World, in_box, in_row, make_task, moved, on_top
 from hasami_sim.scene import SIDE_TRAY, classic
 
 
 def start_world(task) -> World:
     spec = task.scene or classic(task.seed)
-    bodies = {o.name: Body(np.array([o.x, o.y, o.height / 2]), o.dims, o.label) for o in spec.objects}
+    bodies = {o.name: Body(np.array([o.x, o.y, o.base_z + o.height / 2]), o.dims, o.label) for o in spec.objects}
     return World(bodies, {c.name: c for c in spec.containers})
 
 
@@ -22,7 +22,10 @@ def solved(task, w0: World) -> World:
     used: dict[str, int] = {}
     for obj, dest in task.moves:
         b = w.bodies[obj]
-        if dest in w.containers:
+        if dest.startswith("@"):
+            x, y = (float(v) for v in dest[1:].split(","))
+            b.pos = np.array([x, y, b.dims[2] / 2])
+        elif dest in w.containers:
             c = w.containers[dest]
             k = used.get(dest, 0)
             used[dest] = k + 1
@@ -101,3 +104,66 @@ def test_predicates_on_single_poses():
     assert not on_top(w2, "c", "b")
     w2.bodies["b"].pos = np.array([0.225, 0.0, 0.0125])
     assert moved(w, w2, "b", tol=0.004) and not moved(w, w2, "b")
+
+
+def test_sort_by_shape_moves_cylinders_and_cubes_and_keeps_the_rest():
+    for seed in range(6):
+        t = make_task("sort-by-shape", seed)
+        objs = {o.name: o for o in t.scene.objects}
+        assert all(objs[o].shape == ("cylinder" if dest == "tray" else "cube") for o, dest in t.moves)
+        assert t.keep and all(objs[o].shape in ("block", "flat") for o in t.keep)
+        assert {o for o, _ in t.moves} | set(t.keep) == set(objs)
+
+
+def test_line_up_slots_are_free_and_sizes_ordered():
+    for seed in range(6):
+        t = make_task("line-up", seed)
+        objs = {o.name: o for o in t.scene.objects}
+        sizes = [objs[o].dims[0] for o, _ in t.moves]
+        assert sizes == sorted(sizes) and len(set(sizes)) == 3
+        for o in t.scene.objects:  # nothing starts on a slot
+            assert all(np.hypot(o.x - x, o.y - y) > 0.03 for x, y in LINE_SLOTS)
+
+
+def test_in_row_predicate():
+    cube = lambda s: (s, s, s)  # noqa: E731
+    w = World({"s": Body(np.array([0.215, 0.065, 0.010]), cube(0.02)),
+               "m": Body(np.array([0.217, 0.0, 0.0125]), cube(0.025)),
+               "l": Body(np.array([0.214, -0.065, 0.015]), cube(0.03))})
+    assert all(in_row(w, ["s", "m", "l"]).values())
+    assert not in_row(w, ["l", "m", "s"])["in order, left to right"]
+    w2 = copy.deepcopy(w)
+    w2.bodies["m"].pos = np.array([0.232, 0.0, 0.0125])  # 17 mm off the line
+    assert not in_row(w2, ["s", "m", "l"])["in a straight line"]
+    w3 = copy.deepcopy(w)
+    w3.bodies["m"].pos = np.array([0.215, 0.044, 0.0125])  # touching the small cube
+    assert not in_row(w3, ["s", "m", "l"])["apart, not touching"]
+    w4 = copy.deepcopy(w)
+    w4.bodies["l"].pos = np.array([0.214, -0.065, 0.021])  # lying on something / tipped
+    assert not in_row(w4, ["s", "m", "l"])["on the table"]
+
+
+def test_pick_from_bin_starts_in_the_bin():
+    for seed in range(6):
+        t = make_task("pick-from-bin", seed)
+        w0 = start_world(t)
+        (target, dest), = t.moves
+        assert dest == "tray" and in_box(w0, target, "bin")
+        assert len(t.params["in_bin"]) == 2 and all(in_box(w0, o, "bin") for o in t.params["in_bin"])
+
+
+@pytest.mark.parametrize("family,seed", [("line-up", 0), ("pick-from-bin", 0), ("sort-by-shape", 0)])
+def test_new_families_in_the_simulator(session, family, seed):
+    """One seed of each new family run by the simulated-click oracle in MuJoCo (physics, SAM 2.1, verify
+    and retry), goal checked on the physics state."""
+    from hasami_core.tasks import oracle_steps, setup_task, world_from
+
+    task = make_task(family, seed)
+    try:
+        setup_task(task, session)
+        w0 = world_from(session)
+        rec = session.run(oracle_steps(task, session))
+        ok, detail = task.goal(w0, world_from(session))
+        assert ok, (detail, [s["result"].get("note") for s in rec["steps"]])
+    finally:
+        session.reset(1)

@@ -60,6 +60,7 @@ class ObjectSpec:
     # any box, or "cylinder") and the mean colour seen in the photo (`colour` is then its nearest name).
     form: Shape | None = None
     rgba: tuple[float, float, float, float] | None = None
+    base_z: float = 0.0  # height it stands on (a container's floor when it starts inside one)
 
     @property
     def shape(self) -> Shape:
@@ -183,7 +184,7 @@ def build_objects(s: mujoco.MjSpec, objects: list[ObjectSpec], z0: float = 0.0) 
     wb = s.worldbody
     for o in objects:
         dx, dy, dz = o.dims
-        b = wb.add_body(name=o.name, pos=[o.x, o.y, z0 + dz / 2], quat=[np.cos(o.yaw / 2), 0, 0, np.sin(o.yaw / 2)])
+        b = wb.add_body(name=o.name, pos=[o.x, o.y, z0 + o.base_z + dz / 2], quat=[np.cos(o.yaw / 2), 0, 0, np.sin(o.yaw / 2)])
         b.add_freejoint(name=o.name)
         if o.shape == "cylinder":
             g = b.add_geom(name=o.name, type=mujoco.mjtGeom.mjGEOM_CYLINDER, size=[dx / 2, dz / 2, 0])
@@ -218,9 +219,11 @@ def reachable(x: float, y: float, r_obj: float, containers: list[ContainerSpec],
 
 
 def place_objects(rng: np.random.Generator, objs: list[ObjectSpec], containers: list[ContainerSpec] | None = None,
-                  gap: float = 0.024, tries: int = 400) -> bool:
+                  gap: float = 0.024, tries: int = 400,
+                  avoid: list[tuple[float, float, float]] | None = None) -> bool:
     """Give each object a random x, y, yaw in reach, at least `gap` between footprints (room for the jaws)
-    and clear of the containers. Returns False if no layout was found."""
+    and clear of the containers (and of each (x, y, radius) in `avoid`). Returns False if no layout was
+    found."""
     containers = containers or []
     for _ in range(50):
         placed: list[ObjectSpec] = []
@@ -229,6 +232,8 @@ def place_objects(rng: np.random.Generator, objs: list[ObjectSpec], containers: 
             for _ in range(tries):
                 x, y = rng.uniform(*REGION_X), rng.uniform(*REGION_Y)
                 if not reachable(x, y, r, containers):
+                    continue
+                if avoid and any(np.hypot(x - ax, y - ay) < ar + r for ax, ay, ar in avoid):
                     continue
                 if all(np.hypot(x - p.x, y - p.y) >= r + footprint_radius(p) + gap for p in placed):
                     o.x, o.y = float(x), float(y)
