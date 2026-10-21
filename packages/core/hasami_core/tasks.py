@@ -186,7 +186,11 @@ def oracle_click(frame, session, name: str) -> tuple[float, float]:
     p = session.arm.object_pos(name)
     top = np.array([p[0], p[1], p[2] + o.height / 2])
     u, v = frame.world_to_pixel(top)
-    c = blob_near(colour_mask(frame.rgb, o.colour), (u, v), max_dist_px=25, min_pixels=20)
+    try:
+        cm = colour_mask(frame.rgb, o.colour)
+    except KeyError:  # a twin's grey / white / dark object: no hue to search by, click the projection
+        return round(u, 1), round(v, 1)
+    c = blob_near(cm, (u, v), max_dist_px=25, min_pixels=20)
     return (round(c[0], 1), round(c[1], 1)) if c is not None else (round(u, 1), round(v, 1))
 
 
