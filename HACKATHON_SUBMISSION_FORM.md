@@ -40,10 +40,16 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
   `scripts/bench.py --family all --seeds 20`.
 - The same plans in Muse's format with every pick hint 20 px off (written by code, not a model): 76/80, the
   same as with exact clicks, so the grounding layer absorbs a planner's misplaced pixels.
-- A less kind camera (2 mm depth noise, 3 mm calibration error, ±30 % lighting): 63/80. Injected grasp
-  faults (6 mm offset on every first grasp, 20 % slips): 41/64 with 184 retries.
+- A less kind camera (2 mm depth noise, 3 mm calibration error, ±30 % lighting): 64/80 (63/80 before the
+  target check). Injected grasp faults (6 mm offset on every first grasp, 20 % slips): 41/64 with 172
+  retries.
+- Before any move the located target is checked: it must fit the open jaws, match the scene's object
+  sizes and heights, sit inside the workspace, and its mask must not run off the frame. A failing
+  target gets a boxed SAM re-prompt, then a colour / raised-blob search, then the step is skipped as
+  `implausible`. Under the noisy camera the arm used to be sent to the table's middle (once 594 mm wide);
+  in that sweep no step ends with the arm aimed at something that is not an object.
 - Every step is checked the way a real robot could (the gripper's own position, then SAM on the new
-  frame) and retried up to twice; the check agreed with the physics in 1172 of 1175 checks.
+  frame) and retried up to twice; the check agreed with the physics in 1106 of 1111 checks.
 - SAM 2.1 single-click IoU 0.71–0.92; centre error ≤ 0.6 mm in a 9-pick run (tests assert ≤ 3 mm); yaw
   error max 1.76°, mean 0.18°.
 - Agent trace: replay any run step by step (frame, SAM mask vs truth, 3D target, each arm phase's error,
@@ -61,7 +67,7 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
 **Honest status:**
 - The arm is a MuJoCo simulation of the official SO-101 model (force-limited servos) with perfect depth,
   no sensor noise and ideal lighting by default (one benchmark sheet adds noise, a calibration error and
-  lighting jitter: 63/80 instead of 76/80 on the same seeds). A LeRobot follower can be attached in mirror mode (it repeats the
+  lighting jitter: 64/80 instead of 76/80 on the same seeds). A LeRobot follower can be attached in mirror mode (it repeats the
   simulated arm's joint targets); wired and unit-tested, never run on hardware.
 - Muse and SAM 3.1 need a Meta Model API key (`MODEL_API_KEY`); the hackathon provides credits on
   acceptance. The real-camera geometry is tested on synthetic cameras; a ruler check on real objects is

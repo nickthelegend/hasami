@@ -22,62 +22,102 @@ Eight families: all-to-tray, sort-by-colour, stack-two, clear-except-X, tower-of
 (cylinders to the tray, cubes to the bin, the rest stay), **line-up** (three cubes in a row on the table,
 smallest to largest, left to right), **pick-from-bin** (take the named object out of a bin of three).
 
-Clean, 20 seeds per family ([`20261021T165535Z.json`](deployments/bench/20261021T165535Z.json)):
+Every pick target is checked before the arm moves (`hasami_perception.plausible`). The narrow side must fit
+the open jaws (41 mm). The long side must be within the scene's object sizes, allowing for an object
+lying down or leaning on an edge. The top must be at an object's height, the centre inside the reach
+annulus or a container, and the mask must not run off the frame. A target that fails gets SAM 2.1 again
+with a box (from the step's last good mask, or one object-size around the pixel). Then the colour the label
+names, or a raised blob, is searched near the pixel, and each candidate is checked again, colour included.
+If nothing passes, the step is **skipped as `implausible`** and the arm is not moved.
 
-| Family | Planner | Tasks solved | Steps placed | Failures (segment / grasp / place / goal) | Retries | Check agrees |
+Clean, 20 seeds per family ([`20261021T173703Z.json`](deployments/bench/20261021T173703Z.json), with the check):
+
+| Family | Planner | Tasks solved | Steps placed | Failures (segment / implausible / grasp / place / goal) | Retries | Check agrees |
 |---|---|---:|---:|---|---:|---:|
-| all-to-tray | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 | 0 | 60/60 |
-| sort-by-colour | simulated-click planner | **20/20** | 62/62 | 0 / 0 / 0 / 0 | 0 | 62/62 |
-| stack-two | simulated-click planner | **20/20** | 20/20 | 0 / 0 / 0 / 0 | 0 | 20/20 |
-| clear-except-X | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 | 0 | 60/60 |
-| tower-of-3 | simulated-click planner | **12/20** | 37/40 | 1 / 2 / 0 / 5 | 16 | 56/56 |
-| sort-by-shape | simulated-click planner | **20/20** | 59/59 | 0 / 0 / 0 / 0 | 0 | 59/59 |
-| line-up | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 | 0 | 60/60 |
-| pick-from-bin | simulated-click planner | **14/20** | 16/20 | 0 / 4 / 0 / 2 | 9 | 29/29 |
-| **all** | | **146/160** | 374/381 | | 25 | 406/406 |
+| all-to-tray | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 / 0 | 0 | 60/60 |
+| sort-by-colour | simulated-click planner | **20/20** | 62/62 | 0 / 0 / 0 / 0 / 0 | 0 | 62/62 |
+| stack-two | simulated-click planner | **20/20** | 20/20 | 0 / 0 / 0 / 0 / 0 | 0 | 20/20 |
+| clear-except-X | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 / 0 | 0 | 60/60 |
+| tower-of-3 | simulated-click planner | **12/20** | 37/40 | 0 / 2 / 1 / 0 / 5 | 14 | 52/52 |
+| sort-by-shape | simulated-click planner | **20/20** | 59/59 | 0 / 0 / 0 / 0 / 0 | 0 | 59/59 |
+| line-up | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 / 0 | 0 | 60/60 |
+| pick-from-bin | simulated-click planner | **14/20** | 16/20 | 0 / 0 / 4 / 0 / 2 | 9 | 29/29 |
+| **all** | | **146/160** | 374/381 | | 23 | 402/402 |
 
-Failure classes: **segment** (the mask, or the object it led to, was wrong), **grasp** (the jaws never
-held it), **place** (held but did not end up at the target), **goal** (every step passed its check but the
-final arrangement did not, e.g. a stack shifted). *Check agrees*: how often the robot's own check (gripper
-position + camera) matched the physics outcome. What fails: towers of three (seeds 10-19 are harder than
-0-9, where 9/10 pass: five stacks shift after every step passed), and picking out of the bin (four grasps
-stop on the way down, the jaws meeting the bin's wall or a neighbour; twice a neighbour is dragged).
+Failure classes: **segment** (the mask, or the object it led to, was wrong), **implausible** (skipped
+before any move: no located target passed the check), **grasp** (the jaws never held it), **place** (held
+but did not end up at the target), **goal** (every step passed its check but the final arrangement did not,
+e.g. a stack shifted). *Check agrees*: how often the robot's own check (gripper position + camera) matched
+the physics outcome. What fails: towers of three (seeds 10-19 are harder than 0-9, where 9/10 pass: five
+stacks shift after every step passed), and picking out of the bin (four grasps stop on the way down, the
+jaws meeting the bin's wall or a neighbour; twice a neighbour is dragged).
 
-The same tasks under three changes, each its own file:
+### Before and after the target check (same seeds, same commands)
 
-| Family | Scripted plan, hints 20 px off (seeds 0-9) | Noisy camera (seeds 0-9) | Grasp offset + slips (seeds 0-7) |
+| Sweep | Before: tasks | After: tasks | Before: failures | After: failures | Retries | Skipped as implausible | Check agrees |
+|---|---:|---:|---|---|---:|---:|---:|
+| Clean, seeds 0-19 | 146/160 | 146/160 | segment 1, grasp 6, goal 7 | implausible 2, grasp 5, goal 7 | 25 → 23 | 2 steps | 406/406 → 402/402 |
+| Scripted plan, hints 20 px off, seeds 0-9 | 76/80 | 76/80 | grasp 3, goal 1 | implausible 1, grasp 2, goal 1 | 9 → 8 | 1 step | 198/198 → 196/196 |
+| Noisy camera, seeds 0-9 | 63/80 | **64/80** | segment 12, grasp 5 | segment 3, implausible 11, grasp 2 | 51 → 35 | 18 steps | 237/240 → 201/206 |
+| Grasp offset + slips, seeds 0-7 | 41/64 | 41/64 | grasp 13, segment 7, goal 2, place 1 | implausible 10, grasp 9, goal 2, segment 1, place 1 | 184 → 172 | 13 steps | 331/331 → 307/307 |
+
+Files, before → after: clean [`165535Z`](deployments/bench/20261021T165535Z.json) →
+[`173703Z`](deployments/bench/20261021T173703Z.json); scripted [`170448Z`](deployments/bench/20261021T170448Z.json) →
+[`174610Z`](deployments/bench/20261021T174610Z.json); noisy [`170928Z`](deployments/bench/20261021T170928Z.json) →
+[`175048Z`](deployments/bench/20261021T175048Z.json); grasp faults [`171443Z`](deployments/bench/20261021T171443Z.json) →
+[`175539Z`](deployments/bench/20261021T175539Z.json). Before = b1d6bfa, after = with the target check.
+
+Per family, after (tasks solved; before in brackets where it changed):
+
+| Family | Scripted plan, hints 20 px off | Noisy camera | Grasp offset + slips |
 |---|---:|---:|---:|
 | all-to-tray | 10/10 | 10/10 | 7/8 |
 | sort-by-colour | 10/10 | 6/10 | 6/8 |
 | stack-two | 10/10 | 9/10 | 7/8 |
 | clear-except-X | 10/10 | 6/10 | 4/8 |
 | tower-of-3 | 9/10 | 8/10 | 5/8 |
-| sort-by-shape | 10/10 | 5/10 | 0/8 |
+| sort-by-shape | 10/10 | **6/10** (5/10) | 0/8 |
 | line-up | 10/10 | 10/10 | 7/8 |
 | pick-from-bin | 7/10 | 9/10 | 5/8 |
-| **all** | **76/80**, 9 retries | **63/80**, 51 retries | **41/64**, 184 retries |
-| Check agrees with physics | 198/198 | 237/240 | 331/331 |
-| File | [`170448Z`](deployments/bench/20261021T170448Z.json) | [`170928Z`](deployments/bench/20261021T170928Z.json) | [`171443Z`](deployments/bench/20261021T171443Z.json) |
+| **all** | **76/80**, 8 retries | **64/80** (63/80), 35 retries | **41/64**, 172 retries |
+
+What changed, honestly:
+
+- **The arm is no longer sent to things that are not objects.** Before, the noisy-camera sweep had 24 step
+  records where the arm aimed more than 100 mm off (IK residual over 100 mm, or a localisation error over
+  50 mm), and the grasp-fault sweep had 13. After, the noisy sweep has none. The grasp-fault sweep has one,
+  a lift that stalled on a correctly located cylinder (0.8 mm off), which is not a leak.
+- **It mostly relabels losses; it rarely turns them into wins.** Most of the noisy-camera segment losses
+  are now `implausible`. In those cases the object had already left the pick pixel: a tipped cylinder fell
+  into the tray, rolled off, or a cube fell off a tower. So the boxed re-prompt and the colour search find
+  nothing of the right colour nearby, and the step is skipped rather than flown to the table's middle.
+  Skipping costs fewer retries (51 → 35) and saved one sort-by-shape task. The bench JSON records only each
+  step's final outcome. A step the fallback rescued shows up as a placed step, so the sweeps do not count
+  rescues on their own; `tests/test_plausible.py` runs both rescue paths on demand.
+- **Some skips are real objects out of reach:** a cube or cylinder knocked to 84-103 mm from the base axis
+  (inside the base's dead zone; the reach annulus starts at 160 mm), or out to 293-298 mm. The old code
+  tried those and stopped in the air; now they count as `implausible`, not `grasp`.
+- **Still open:** three noisy-camera `segment` losses where SAM's plausible mask was the wrong object
+  (right size, wrong one), and the check disagreeing with physics 5 times in the noisy sweep (all "image
+  says failed, physics says placed"; 3 before).
+- Fewer checks after (e.g. 406 → 402): a skipped attempt never moves, so it has no image check.
+
+The sweeps, unchanged from the last pass:
 
 - **Scripted plan** (`--planner scripted --hint-px 20`): each task's plan written by code in the Muse
   format, the object named by colour and shape and its hint pixel moved 20 px in a random direction, so the
-  grounding layer has to find it. It is not a language model either. Every misplaced hint was grounded: the
-  result equals the click oracle's on the same seeds.
+  grounding layer has to find it. It is not a language model either.
 - **Noisy camera** (`HASAMI_DISTURB=depth_mm:2,cam_mm:3,light:0.3`): 2 mm Gaussian noise on every depth
-  pixel, the camera's believed position 3 mm off, lighting brightness ±30 % with a tint. First localisation
-  stays within a few mm, but the losses (12 of 17 segment-class) share one pattern: a first grasp 3 mm off
-  tips or shoves the object, the retry re-segments at the old pixel, and on noisy depth the new mask is
-  "raised" enough to pass, so the arm is sent to a target that is not an object (once 594 mm wide) and
-  stops in the air. A width sanity check before moving is the obvious next fix; it is not in these numbers.
-  The check disagreed with physics 3 times.
+  pixel, the camera's believed position 3 mm off, lighting brightness ±30 % with a tint.
 - **Grasp offset + slips** (`HASAMI_DISTURB=offset_mm:6,slip:0.2`): every first grasp aimed 6 mm off so
-  the fixed finger lands on the object, 20 % of grips let go after the lift. 184 retries recover most steps;
-  what is lost is the disturbance's own damage, worst for 40 mm cylinders, which the misaimed finger knocks
-  over (sort-by-shape 0/8: a lying cylinder is not graspable top-down).
+  the fixed finger lands on the object, 20 % of grips let go after the lift. What is lost is the
+  disturbance's own damage, worst for 40 mm cylinders, which the misaimed finger knocks over (sort-by-shape
+  0/8).
 
-Over the four files the robot's own check matched the physics in 1172 of 1175 checks. Earlier results (five
-families: [`052238Z`](deployments/bench/20261021T052238Z.json), [`052444Z`](deployments/bench/20261021T052444Z.json),
-[`052717Z`](deployments/bench/20261021T052717Z.json)) are kept; seeds 0-9 reproduce exactly.
+Over the four new files the robot's own check matched the physics in 1106 of 1111 checks (1172 of 1175
+before). Earlier results are kept: the four pre-check files above, and the five-family files
+[`052238Z`](deployments/bench/20261021T052238Z.json), [`052444Z`](deployments/bench/20261021T052444Z.json),
+[`052717Z`](deployments/bench/20261021T052717Z.json).
 
 Reproduce:
 
@@ -165,7 +205,7 @@ score (not used by the robot): physics state, goal predicate
 | Yaw (fourth-order moment / minimum-area rectangle) | max 1.76°, mean 0.18° over 60 cubes |
 | Real-camera geometry (synthetic tilted camera, 50 × 30 × 40 mm box) | centre within 1 mm, yaw within 1.5° with parallax correction; > 10 mm off without it |
 | Recorded demo runs (replay them in the dashboard's Agent trace) | [`20261021T053112874Z`](deployments/runs/20261021T053112874Z.json): 3/3 in the tray, no retries. [`20261021T053203432Z`](deployments/runs/20261021T053203432Z.json): 6 mm offset injected on every first attempt, each first attempt fails at the descent, each retry places the cube: 3/3. Videos (captioned "MuJoCo simulation · official SO-101 model") are shared separately until hosted. |
-| Test suite | `180 passed, 1 skipped` (the skip is the live Muse call) (see [TESTING.md](TESTING.md)) |
+| Test suite | `190 passed, 1 skipped` (the skip is the live Muse call) (see [TESTING.md](TESTING.md)) |
 
 ## Watch the agent think
 

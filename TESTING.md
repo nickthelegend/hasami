@@ -5,7 +5,9 @@ real session, and the MCP server spawned as a subprocess over stdio with the off
 No external API is mocked. The one test that needs a key (a live Muse plan) is skipped without
 `MODEL_API_KEY`, not faked. Two tests use a stand-in on purpose and say so: a recording object in place of
 the SO-101 follower (there is no arm here; it checks units and the step limit), and a flood fill in place
-of SAM for the grounding decision logic (it checks accept / fall back / give up exactly).
+of SAM for the grounding decision logic (it checks accept / fall back / give up exactly). Three tests in
+`test_plausible.py` inject a fault into the real SAM 2.1 (labelled, like `HASAMI_DISTURB`): chosen prompts
+return the whole-table mask the noisy-camera sweep produced, so the target check's retry path runs on demand.
 
 ## Command
 
@@ -15,9 +17,9 @@ export HF_HOME=/path/to/huggingface-cache   # where SAM 2.1 weights are cached (
 .venv/bin/python -m pytest -q
 ```
 
-## Results (2026-10-21 ~17:30 UTC; Mac, CPU, no MODEL_API_KEY, no SO-101, no webcam)
+## Results (2026-10-21 ~23:05 UTC; Mac, CPU, no MODEL_API_KEY, no SO-101, no webcam)
 
-`180 passed, 1 skipped in 111.74s`
+`190 passed, 1 skipped in 120.04s` (180 passed before the target check)
 
 | File | What it checks | Passed | Skipped |
 |---|---|---:|---:|
@@ -34,8 +36,9 @@ export HF_HOME=/path/to/huggingface-cache   # where SAM 2.1 weights are cached (
 | `tests/test_robot.py` | sim -> LeRobot conversion; Setup required without / with a missing port; step limit; the sim arm streams joint targets to the hook; RealMirror units against a recording stand-in; a session stays sim-only when the port is missing | 13 | 0 |
 | `tests/test_realcam.py` | homography and camera pose from four A4 corners on a synthetic tilted camera; a 50 x 30 x 40 mm box located within 1 mm / 1.5 deg with parallax correction (> 10 mm off without); capture Setup required | 5 | 0 |
 | `tests/test_server.py` | status; frames; segment; 503 setup_required; 422s; clicked run over SSE, 409 while busy, recorded; per-step images and composites with IoU matching the record; reset to a task family; CORS; real-camera endpoints; **twin: a rendered photo through POST /api/twin -> side-by-side PNG -> adjust a height -> run clear-desk over SSE, `goal` before `done`, recorded with the twin's label; 422 without a sheet or with bad corners, 400 for a non-image, 404 for an unknown twin** | 17 | 0 |
+| `tests/test_plausible.py` | the target check before any move: a synthetic **594 mm-wide** leak (wider than the jaws, longer than any object, 6 mm tall, off the frame edge) is rejected; a normal cube passes; a lying cylinder and a leaning cube pass, an out-of-reach centre and a noise speck fail, a target inside a bin counts as workspace; a bare-table mask on a real noisy frame locates hundreds of mm wide and is rejected, a cube's mask passes; **retry path** with SAM 2.1 fault-injected: a leaked first mask is re-prompted with a box and the step places the cube; every prompt leaking falls back to the red blob; nothing plausible near a bare-table click skips the step as `implausible` with no pick-and-place phase and no object moved; **the sweep's own case, no injection:** tower-of-3 seed 0 under the noisy camera no longer sends the arm to the 594 mm target (step 2 is `implausible`); a clean run passes the check first time. 6 of these 10 fail on b1d6bfa's code (the other 4 test the new module directly) | 10 | 0 |
 | `tests/test_mcp.py` | `python -m hasami_mcp` over stdio: tools, status, look, find, Setup required by label, call log | 1 | 0 |
-| **Total** | | **180** | **1** |
+| **Total** | | **190** | **1** |
 
 ## Dashboard (not part of pytest)
 
@@ -52,15 +55,18 @@ events in order. `pnpm build` (tsc + vite) passes.
 See the README's tables; JSON in `deployments/bench/` and `deployments/twins/`. Commands:
 
 ```bash
-python scripts/bench.py --family all --seeds 20                                   # 146/160
-python scripts/bench.py --family all --seeds 10 --planner scripted --hint-px 20   # 76/80
-HASAMI_DISTURB=depth_mm:2,cam_mm:3,light:0.3 python scripts/bench.py --family all --seeds 10   # 63/80
-HASAMI_DISTURB=offset_mm:6,slip:0.2 python scripts/bench.py --family all --seeds 8              # 41/64, 184 retries
+python scripts/bench.py --family all --seeds 20                                   # 146/160 (unchanged)
+python scripts/bench.py --family all --seeds 10 --planner scripted --hint-px 20   # 76/80 (unchanged)
+HASAMI_DISTURB=depth_mm:2,cam_mm:3,light:0.3 python scripts/bench.py --family all --seeds 10   # 64/80 (63/80 before)
+HASAMI_DISTURB=offset_mm:6,slip:0.2 python scripts/bench.py --family all --seeds 8              # 41/64, 172 retries (184 before)
 python scripts/twin_accuracy.py --seeds 20 --tasks                                 # 86/86 found, 1.2 mm, 16/20 cleared
 ```
 
 The planner in these runs is the simulated-click oracle or the scripted Muse-format plan (both labelled in
-every JSON), not Muse. The twin's photos are MuJoCo renders.
+every JSON), not Muse. Before → after the target check, same seeds: clean 146/160 → 146/160 (165535Z →
+173703Z), scripted 76/80 → 76/80 (170448Z → 174610Z), noisy camera 63/80 → 64/80 with 51 → 35 retries
+(170928Z → 175048Z), grasp faults 41/64 → 41/64 with 184 → 172 retries (171443Z → 175539Z). The old files
+are kept; the README has the per-sweep failure breakdown. The twin's photos are MuJoCo renders.
 
 ## Pending (needs a person, a key or hardware)
 

@@ -142,6 +142,10 @@ Checked against dev.meta.ai on 2026-10-21 (no key, so no call has been made):
 - Expect larger localisation error from lighting, blur and calibration; the grasp tolerance (5 mm
   clearance) and the verify-and-retry loop are the margins. `HASAMI_DISTURB=depth_mm:2,cam_mm:3,light:0.3`
   measures some of that in the sim: noisy depth, a camera calibration error and lighting jitter.
+- A noisy depth image can turn a leaked mask into a "target" that is the table itself. Every pick target is
+  checked before the arm moves (`hasami_perception.plausible`: jaw width, the scene's object sizes,
+  height, workspace, mask on the frame edge). A failing target gets a boxed SAM re-prompt, then a colour /
+  raised-blob search, then the step is skipped as `implausible` rather than moving the arm.
 
 ## Limits
 
