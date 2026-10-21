@@ -68,6 +68,31 @@ class LocalSam2:
         return masks[order[0]]
 
 
+    def segment_many(self, rgb: np.ndarray, points: list[tuple[float, float]], batch: int = 16
+                     ) -> list[tuple[np.ndarray, np.ndarray]]:
+        """Every point as its own single-click prompt (the image is encoded once). Returns, per point, SAM's
+        three hypotheses (3 x H x W bool) and their predicted IoU scores (3,). Used for automatic masks."""
+        if not len(points):
+            return []
+        img = Image.fromarray(rgb)
+        key = hashlib.blake2b(rgb.tobytes(), digest_size=16).hexdigest()
+        out: list[tuple[np.ndarray, np.ndarray]] = []
+        for i in range(0, len(points), batch):
+            chunk = [[[float(u), float(v)]] for u, v in points[i:i + batch]]
+            inp = self.processor(images=img, input_points=[chunk], input_labels=[[[1] for _ in chunk]],
+                                 return_tensors="pt").to(self.device)
+            with self._torch.no_grad():
+                if self._cache_key != key:
+                    self._cache_emb = self.model.get_image_embeddings(inp["pixel_values"])
+                    self._cache_key = key
+                res = self.model(input_points=inp["input_points"], input_labels=inp["input_labels"],
+                                 image_embeddings=self._cache_emb, multimask_output=True)
+            masks = self.processor.post_process_masks(res.pred_masks.cpu(), inp["original_sizes"].cpu())[0].numpy() > 0
+            scores = res.iou_scores[0].cpu().numpy()
+            out.extend((masks[j], scores[j]) for j in range(len(chunk)))
+        return out
+
+
 class MetaSam3:
     """SAM 3.1 on the Meta Model API: text-prompted segmentation ("the red cube").
 
