@@ -24,8 +24,10 @@ import numpy as np
 from PIL import Image
 
 from hasami_perception import LocalSam2, MetaSam3, SetupRequired, Target, locate, mask_iou
-from hasami_perception.colour import blob_near, colour_mask, colour_word, mean_colour, rgb_to_hsv, similar_mask
+from hasami_perception.colour import (blob_near, blob_mask_near, colour_mask, colour_word, mean_colour, name_colour,
+                                      rgb_to_hsv, similar_mask)
 from hasami_perception.grounding import GroundingError, ground, validate_mask
+from hasami_perception.plausible import LEAN, Priors, box_around, check_target, grow_box, in_workspace, priors_for
 from hasami_planner import Plan, PlanStep, plan_from_clicks
 from hasami_sim.arm import ARM_JOINTS, GRIPPER, GRIPPER_OPEN, GRIPPER_PRE_GRASP, Arm, StepLog, in_container
 from hasami_sim.camera import Frame, capture
@@ -242,6 +244,13 @@ class Session:
     @property
     def sam_loaded(self) -> bool:
         return self._sam is not None
+
+    @property
+    def priors(self) -> Priors:
+        """What a pickable target can look like here: the open jaws' width, the size range of the objects the
+        scene declares (the labels a planner is told come with these sizes), the reach and the containers."""
+        return priors_for([o.dims for o in self.scene.objects], self.arm.jaw_gap(GRIPPER_PRE_GRASP),
+                          [(c.x, c.y, c.half) for c in self.scene.containers])
 
     def segmenter(self, name: str):
         if name == "local":
@@ -653,9 +662,14 @@ class Session:
         pick_hint = [float(step.pick_point[0]), float(step.pick_point[1])]
         place_hint = [float(step.place_point[0]), float(step.place_point[1])]
         att: dict = {}
+        good_mask: np.ndarray | None = None  # the last pick mask that passed the target check
         for attempt in range(1, self.max_retries + 2):
-            att = self._attempt(i, attempt, step, pick_hint, place_hint, segmenter, emit)
+            att = self._attempt(i, attempt, step, pick_hint, place_hint, segmenter, emit, good_mask)
             out["attempts"].append(att["record"])
+            if att.get("good_mask") is not None:
+                good_mask = att["good_mask"]
+            if att.get("skip"):  # no plausible target: the arm was not moved, and is not sent anywhere
+                break
             if att["verified"] or attempt > self.max_retries:
                 break
             hint, how = self._reground(att, step, pick_hint)
@@ -675,7 +689,7 @@ class Session:
         return out
 
     def _attempt(self, i: int, attempt: int, step: PlanStep, pick_hint: list[float], place_hint: list[float],
-                 segmenter: str, emit: EventFn) -> dict:
+                 segmenter: str, emit: EventFn, good_mask: np.ndarray | None = None) -> dict:
         t: dict[str, float] = {}
         t0 = time.perf_counter()
         self.park()
@@ -697,6 +711,28 @@ class Session:
         if pick.target is None:
             rec["timings"] = _round_t(t)
             return self._fail_attempt(res, "segment", f"pick target not found: {pick.target_error}")
+        # Before any move: is this an object the arm could pick? If not, re-prompt, then search, then skip.
+        priors = self.priors
+        first = check_target(pick.target, pick.mask, priors)
+        check: dict = {"ok": not first, "source": "first" if not first else None,
+                       "tries": [{"source": "first", "point": _r(pick.point, 1) if pick.point else None,
+                                  "rejected": first, "pixels": int(pick.mask.sum()),
+                                  "extent_mm": [round(v * 1000, 1) for v in pick.target.extent or []],
+                                  "top_mm": round(pick.target.top_z * 1000, 1)}]}
+        if first:
+            check["priors"] = priors.to_dict()
+            found = self._recover_pick(frame, step.pick, pick_hint, good_mask, priors, check["tries"])
+            if found is None:
+                rec["target_check"] = check
+                rec["timings"] = _round_t(t)
+                res["skip"] = True
+                return self._fail_attempt(res, "implausible", "skipped: implausible target: " + "; ".join(first))
+            pick, check["ok"], check["source"] = found, True, check["tries"][-1]["source"]
+            res["pick"] = pick
+            emit("segment", {"step": i, "attempt": attempt, "role": "pick", **pick.to_dict()})
+            rec["pick"] = pick.to_dict(with_mask=False)
+        rec["target_check"] = check
+        res["good_mask"] = pick.mask
         emit("target", {"step": i, "attempt": attempt, "role": "pick", "target": _target_dict(pick.target)})
         res["ref_colour"] = mean_colour(frame.rgb, pick.mask & self._raised(frame, pick.mask))
 
@@ -719,6 +755,13 @@ class Session:
         except ValueError as e:
             rec["timings"] = _round_t(t)
             return self._fail_attempt(res, "place", str(e))
+        if not in_workspace(place_xy, priors):
+            rec["timings"] = _round_t(t)
+            res["skip"] = True
+            r_mm = float(np.hypot(*place_xy[:2])) * 1000
+            return self._fail_attempt(res, "implausible",
+                                      f"skipped: implausible target: place point {r_mm:.0f} mm from the base, "
+                                      "outside the workspace")
         rec.update(place_xy=_r(place_xy), place_how=how, surface_z=_r(surface),
                    grasp={"jaw_yaw": _r(jaw_yaw), "period": None if period is None else _r(period),
                           "width_mm": round(width * 1000, 1)})
@@ -791,6 +834,90 @@ class Session:
             else:
                 res["reason"] = "no raised object of the right colour at the place spot in the image"
         return res
+
+    def _recover_pick(self, frame: Frame, label: str, hint: list[float], good_mask: np.ndarray | None,
+                      priors: Priors, tries: list[dict]) -> Segmentation | None:
+        """The located pick target failed check_target. Try, in order, on the same frame:
+
+        1. a tighter prompt: SAM 2.1 at the pick pixel with a box (the previous good mask's box, grown 8 px,
+           or a box the size of the largest object around the pixel), so the mask cannot spread over the table;
+        2. the colour the label names (or the previous good mask's colour): its blob nearest the pixel, as a
+           boxed SAM prompt and then the blob itself; then the same for the nearest raised blob (from depth);
+
+        each one located and checked again (and, if the label names a colour, the mask must be that colour).
+        Every try is appended to `tries`. Returns the first plausible segmentation, or None: the step is then
+        skipped rather than sending the arm to a target that is not an object."""
+        shape = frame.depth.shape
+        heights = self.heights(frame)
+        arm = heights > 0.08  # the parked arm: never search on it
+        word = colour_word(label)
+        fx = frame.intrinsics()[0]
+        u0, v0 = int(np.clip(round(hint[0]), 0, shape[1] - 1)), int(np.clip(round(hint[1]), 0, shape[0] - 1))
+        pitch = float(frame.depth[v0, u0]) / fx  # metres per pixel near the pick pixel
+        half_px = 0.5 * LEAN * priors.dim_max / max(pitch, 1e-6) + 6
+
+        def attempt(source: str, point: tuple[float, float], box=None, mask: np.ndarray | None = None) -> Segmentation | None:
+            t0 = time.perf_counter()
+            if mask is None:
+                mask = self.sam.segment(frame.rgb, point=point, box=box)
+            seg = Segmentation(mask=mask, segmenter=self.sam.name, latency_ms=(time.perf_counter() - t0) * 1000,
+                               point=[float(point[0]), float(point[1])], text=label)
+            try:
+                seg.target = locate(frame, mask)
+            except ValueError as e:
+                seg.target_error = str(e)
+            reasons = check_target(seg.target, mask, priors) if seg.target is not None else [str(seg.target_error)]
+            if not reasons and word:
+                top = mask & (heights > 0.005)
+                seen = name_colour(frame.rgb[top if top.any() else mask])
+                if seen != word:
+                    reasons.append(f"mask looks {seen or 'uncoloured'}, label says {word}")
+            entry: dict = {"source": source, "point": _r(point, 1), "rejected": reasons, "pixels": int(mask.sum())}
+            if box is not None:
+                entry["box"] = _r(box, 1)
+            if seg.target is not None:
+                entry.update(extent_mm=[round(v * 1000, 1) for v in seg.target.extent or []],
+                             top_mm=round(seg.target.top_z * 1000, 1))
+            tries.append(entry)
+            if reasons:
+                return None
+            seg.grounding = {"source": source, "tries": tries}
+            self._score(seg, frame)
+            return seg
+
+        # 1. tighter prompt
+        box = grow_box(good_mask, 8.0) if good_mask is not None and good_mask.any() else None
+        if box is None:
+            box = box_around((hint[0], hint[1]), half_px, shape)
+        inside = box[0] <= hint[0] <= box[2] and box[1] <= hint[1] <= box[3]
+        point = (hint[0], hint[1]) if inside else ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+        got = attempt("tighter prompt (box)", point, box)
+        if got is not None:
+            return got
+        # 2. colour blob, then raised blob, near the pick pixel
+        searches: list[tuple[str, np.ndarray]] = []
+        if word:
+            searches.append((f"'{word}' blob", colour_mask(frame.rgb, word)))
+        elif good_mask is not None and good_mask.any():
+            try:
+                ref = mean_colour(frame.rgb, good_mask & (heights > 0.005))
+                searches.append(("same-colour blob", similar_mask(frame.rgb, ref)))
+            except ValueError:
+                pass
+        searches.append(("raised blob", heights > 0.008))
+        for name, m in searches:
+            blob = blob_mask_near(m, (hint[0], hint[1]), max_dist_px=140, exclude=arm)
+            if blob is None:
+                tries.append({"source": name, "point": None, "rejected": ["nothing found near the pick pixel"]})
+                continue
+            vs, us = np.nonzero(blob)
+            centre = (float(np.median(us)), float(np.median(vs)))
+            got = attempt(f"{name} (boxed SAM)", centre, grow_box(blob, 6.0))
+            if got is None:
+                got = attempt(f"{name} (the blob itself)", centre, mask=blob)
+            if got is not None:
+                return got
+        return None
 
     def _fail_attempt(self, res: dict, failure: str, reason: str) -> dict:
         res["record"]["failure"] = failure
