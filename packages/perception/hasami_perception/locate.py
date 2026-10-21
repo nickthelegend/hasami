@@ -14,9 +14,23 @@ class Target:
     yaw: float  # rotation about z of the footprint's principal axis, folded into [-pi/4, pi/4)
     pixels: int  # mask pixels that sit above the table
     centroid_px: list[float]  # u, v of those pixels
+    extent: list[float] | None = None  # footprint size (m) along yaw and across it
+    round: bool = False  # footprint is a disc (a cylinder seen from above): no preferred yaw
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    def grasp(self) -> tuple[float, float | None, float]:
+        """(jaw yaw, period, width across the jaws) for Arm.pick_place.
+
+        Round: any direction (period None), width = diameter. Elongated: jaws across the narrow side
+        (period pi). Square: any face (period pi/2)."""
+        e0, e1 = self.extent or [self.top_z, self.top_z]
+        if self.round:
+            return 0.0, None, float((e0 + e1) / 2)
+        if max(e0, e1) / max(min(e0, e1), 1e-6) > 1.2:
+            return (self.yaw if e0 < e1 else self.yaw + np.pi / 2), np.pi, float(min(e0, e1))
+        return self.yaw, np.pi / 2, float((e0 + e1) / 2)
 
 
 def mask_iou(a: np.ndarray, b: np.ndarray) -> float:
@@ -47,8 +61,37 @@ def locate(frame, mask: np.ndarray, table_z: float = 0.0, min_height: float = 0.
     xy = band[:, :2]
     c = xy.mean(axis=0)
     yaw = footprint_yaw(xy)
+    pitch = float(np.median(z[keep])) / fx  # metres per pixel at the top face
     return Target(center=[float(c[0]), float(c[1]), (top + table_z) / 2], top_z=top, yaw=yaw,
-                  pixels=int(keep.sum()), centroid_px=[float(us_k.mean()), float(vs_k.mean())])
+                  pixels=int(keep.sum()), centroid_px=[float(us_k.mean()), float(vs_k.mean())],
+                  extent=footprint_extent(xy, yaw, pitch), round=is_round(xy))
+
+
+def footprint_extent(xy: np.ndarray, yaw: float, pitch: float = 0.0) -> list[float]:
+    """Size of a footprint along `yaw` and across it (m); `pitch` adds one pixel's width (points are
+    pixel centres)."""
+    p = xy - xy.mean(axis=0)
+    c, s = np.cos(yaw), np.sin(yaw)
+    along = p @ np.array([c, s])
+    across = p @ np.array([-s, c])
+    return [float(np.ptp(along) + pitch), float(np.ptp(across) + pitch)]
+
+
+def is_round(xy: np.ndarray, bins: int = 36, max_cv: float = 0.045) -> bool:
+    """A disc's outline is the same distance from its centre in every direction; a square's varies by
+    up to 41 % (half-side to half-diagonal). Compare the outermost point per direction."""
+    if len(xy) < 30:
+        return False
+    p = xy - xy.mean(axis=0)
+    ang = np.arctan2(p[:, 1], p[:, 0])
+    r = np.hypot(p[:, 0], p[:, 1])
+    idx = ((ang + np.pi) / (2 * np.pi) * bins).astype(int) % bins
+    rmax = np.zeros(bins)
+    np.maximum.at(rmax, idx, r)
+    rmax = rmax[rmax > 0]
+    if len(rmax) < bins * 0.8:
+        return False
+    return bool(np.std(rmax) / np.mean(rmax) < max_cv)
 
 
 def footprint_yaw(xy: np.ndarray) -> float:
