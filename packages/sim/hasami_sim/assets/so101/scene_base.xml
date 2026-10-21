@@ -1,0 +1,31 @@
+<mujoco model="hasami_base">
+  <!-- SO-101 (TheRobotStudio, Apache-2.0) on a tabletop, cameras and lights; no objects. -->
+  <include file="so101_new_calib.xml" />
+
+  <option timestep="0.002" integrator="implicitfast" cone="elliptic" impratio="10" />
+
+  <visual>
+    <headlight diffuse="0.32 0.32 0.32" ambient="0.22 0.22 0.22" specular="0 0 0" />
+    <global offwidth="1280" offheight="960" azimuth="150" elevation="-28" />
+    <quality shadowsize="4096" />
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.93 0.92 0.9" rgb2="0.78 0.79 0.82" width="512" height="3072" />
+    <texture type="2d" name="wood" builtin="flat" rgb1="0.78 0.74 0.68" width="64" height="64" />
+    <material name="table" texture="wood" rgba="0.78 0.74 0.68 1" reflectance="0.03" />
+    <material name="tray" rgba="0.18 0.20 0.24 1" />
+  </asset>
+
+  <worldbody>
+    <light pos="0.25 -0.3 0.9" dir="-0.2 0.3 -1" directional="true" castshadow="true" diffuse="0.6 0.6 0.6" />
+    <geom name="table" type="plane" size="0.6 0.6 0.02" material="table" friction="1 0.005 0.0001" />
+
+    <!-- Overhead camera the perception stack sees: looks straight down at the workspace. -->
+    <camera name="overhead" pos="0.23 0 0.62" fovy="52" mode="fixed" xyaxes="0 -1 0 1 0 0" />
+    <!-- A three-quarter camera for the demo video only. -->
+    <camera name="demo" pos="0.62 -0.43 0.43" xyaxes="0.731 0.683 -0.000 -0.335 0.359 0.871" fovy="44" />
+
+    <!-- Objects and containers are added by hasami_sim.scene (mujoco.MjSpec). -->
+  </worldbody>
+</mujoco>
