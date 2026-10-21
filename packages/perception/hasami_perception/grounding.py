@@ -23,6 +23,7 @@ import numpy as np
 from .colour import blob_near, colour_mask, colour_word, name_colour
 
 CONTAINER_WORDS = ("tray", "bin", "box", "basket", "container")
+SURFACE_WORDS = ("table", "desk", "surface", "floor")
 SegmentFn = Callable[[tuple[float, float]], np.ndarray]
 
 
@@ -43,6 +44,13 @@ class Grounded:
 def is_container(label: str) -> bool:
     words = label.lower().replace("-", " ").split()
     return any(w in CONTAINER_WORDS for w in words) and not any(w in ("cube", "block", "cylinder") for w in words)
+
+
+def is_surface(label: str) -> bool:
+    """'the table', 'a free spot on the desk': a place on the bare surface, not a thing to segment."""
+    words = label.lower().replace("-", " ").split()
+    return any(w in SURFACE_WORDS for w in words) and not is_container(label) and \
+        not any(w in ("cube", "block", "cylinder") for w in words)
 
 
 def validate_mask(mask: np.ndarray, label: str, rgb: np.ndarray, heights: np.ndarray | None,
@@ -91,6 +99,10 @@ def ground(label: str, hint: tuple[float, float], rgb: np.ndarray, heights: np.n
     `exclude` masks pixels (e.g. the parked arm) out of the searches."""
     tries: list[dict] = []
     seen: set[tuple[int, int]] = set()
+    if is_surface(label):  # nothing to find: searching for a raised blob would land on another object
+        tries.append({"source": "surface", "point": [round(hint[0], 1), round(hint[1], 1)],
+                      "rejected": ["a spot on the bare table: the hint is used as is"]})
+        raise GroundingError(f"{label!r} is the bare table: the hint is the place", tries)
 
     def attempt(point: tuple[float, float] | None, source: str) -> Grounded | None:
         if point is None:

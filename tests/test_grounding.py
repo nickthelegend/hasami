@@ -155,3 +155,14 @@ def test_planned_step_with_a_bad_hint_is_grounded_and_placed(session):
     assert seg["grounding"]["tries"][0]["source"] == "hint" and seg["grounding"]["tries"][0]["rejected"]
     assert seg["truth_label"] == "red cube"
     assert rec["ok"] and rec["steps"][0]["result"]["in_tray"]
+
+
+# ---- instruction level, no key: Muse-format plans written from every task family ----------------------
+def test_bare_table_label_is_not_searched():
+    from hasami_perception.grounding import GroundingError, ground, is_surface
+
+    assert is_surface("the table") and is_surface("a free spot on the desk")
+    assert not is_surface("tray") and not is_surface("red cube") and not is_surface("table tennis cube")
+    with pytest.raises(GroundingError, match="bare table"):
+        ground("the table", (10.0, 10.0), np.zeros((20, 20, 3), np.uint8), np.ones((20, 20)), lambda p: None)
+

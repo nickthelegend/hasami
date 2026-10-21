@@ -388,11 +388,14 @@ class Session:
         return "table" if body == "world" else ("arm" if body else None)
 
     def _score(self, seg: Segmentation, frame: Frame) -> None:
-        if seg.point is not None:
-            body = self.truth_at(frame, seg.point)
-        else:  # text prompt: the known object the mask overlaps most
+        body = self.truth_at(frame, seg.point) if seg.point is not None else None
+        if body not in self.objects and seg.mask.any():
+            # a text prompt, or a hint that landed beside the object (the mask is what counts): the known
+            # object the mask overlaps most, if it overlaps one substantially
             ious = {n: mask_iou(seg.mask, self._truth_mask(frame, n)) for n in self.objects}
-            body = max(ious, key=ious.get) if ious and max(ious.values()) > 0 else None
+            best = max(ious, key=ious.get) if ious else None
+            if best is not None and (ious[best] > 0.3 or (seg.point is None and ious[best] > 0)):
+                body = best
         if body in self.objects:
             seg.truth_label = self.objects[body]
             seg.iou_vs_truth = mask_iou(seg.mask, self._truth_mask(frame, body))
