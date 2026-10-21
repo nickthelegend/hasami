@@ -244,7 +244,7 @@ export function Results({ run }: { run: RunState }) {
           <span className="cap">mean IoU vs truth</span>
         </div>
       </div>
-      <p className="muted small foot-note">From this run's events. In-tray is read from the physics state, never from the camera.</p>
+      <p className="muted small foot-note">From this run's events. Placed is read from the physics state; the arm itself only sees the gripper reading and the camera.</p>
     </section>
   );
 }
@@ -256,6 +256,8 @@ const KIND_LABEL: Record<TimelineRow['kind'], string> = {
   segment: 'segment',
   target: 'target',
   phase: 'phase',
+  verify: 'check',
+  retry: 'retry',
   result: 'result',
   done: 'done',
   error: 'error',

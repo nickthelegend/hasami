@@ -1,7 +1,7 @@
 import type { PlanStep, RunEvent, RunResult, Target } from './api';
 import { mm, deg } from './format';
 
-export type RowKind = 'plan' | 'segment' | 'target' | 'phase' | 'result' | 'done' | 'error';
+export type RowKind = 'plan' | 'segment' | 'target' | 'phase' | 'verify' | 'retry' | 'result' | 'done' | 'error';
 
 export interface TimelineRow {
   id: number;
@@ -25,6 +25,9 @@ export interface RunState {
   results: RunResult[];
   ious: number[];
   plan: PlanStep[] | null;
+  /** verify events seen, and how many retries */
+  checks: number;
+  retries: number;
   lastTarget: { object?: string; target: Target } | null;
   lastMask: string | null;
   error: string | null;
@@ -38,6 +41,8 @@ export const initialRun: RunState = {
   results: [],
   ious: [],
   plan: null,
+  checks: 0,
+  retries: 0,
   lastTarget: null,
   lastMask: null,
   error: null,
@@ -99,6 +104,30 @@ function eventRow(e: RunEvent): TimelineRow {
         errorMm: typeof e.data.error_mm === 'number' ? e.data.error_mm : undefined,
         ok: Boolean(e.data.ok),
       });
+    case 'verify': {
+      const v = e.data;
+      const inj = v.injected && (v.injected.offset_mm || v.injected.slip)
+        ? ` · injected ${[v.injected.offset_mm ? `${v.injected.offset_mm} mm offset` : null, v.injected.slip ? 'slip' : null].filter(Boolean).join(' + ')}`
+        : '';
+      const grip = v.grasp_held == null ? 'jaws never closed' : v.grasp_held ? `held (${v.jaw_gap_mm ?? '?'} mm)` : `empty grasp (${v.jaw_gap_mm ?? '?'} mm)`;
+      return row({
+        kind: 'verify',
+        title: `Check · attempt ${v.attempt ?? 1}${inj}`,
+        detail: `gripper ${grip} · pick spot ${v.pick_clear ? 'clear' : 'still occupied'} · place spot ${v.place_raised ? 'object seen' : 'nothing seen'}`,
+        mono: typeof v.physics_ok === 'boolean' ? `physics ${v.physics_ok ? 'ok' : 'failed'} · check ${v.agree ? 'agrees' : 'disagrees'}` : undefined,
+        ok: v.ok,
+        pill: v.ok ? 'verified' : 'failed check',
+      });
+    }
+    case 'retry':
+      return row({
+        kind: 'retry',
+        title: `Retry · attempt ${e.data.attempt}`,
+        detail: e.data.reason ?? undefined,
+        mono: e.data.how,
+        ok: false,
+        pill: 're-segment',
+      });
     case 'result':
       return row({
         kind: 'result',
@@ -106,8 +135,8 @@ function eventRow(e: RunEvent): TimelineRow {
         detail: e.data.note,
         mono: typeof e.data.localisation_error_mm === 'number' ? `localisation ${e.data.localisation_error_mm.toFixed(2)} mm` : undefined,
         errorMm: typeof e.data.error_mm === 'number' ? e.data.error_mm : undefined,
-        ok: Boolean(e.data.in_tray),
-        pill: e.data.in_tray ? 'in tray' : 'not in tray',
+        ok: Boolean(e.data.ok ?? e.data.in_tray),
+        pill: e.data.ok ?? e.data.in_tray ? `placed${(e.data.attempts ?? 1) > 1 ? ` after ${e.data.attempts} attempts` : ''}` : `failed${e.data.failure ? ` · ${e.data.failure}` : ''}`,
       });
     case 'done': {
       const d = e.data as { placed?: number; total?: number; total_ms?: number; ok?: boolean };
@@ -152,6 +181,8 @@ export function runReducer(state: RunState, action: RunAction): RunState {
       }
       if (e.type === 'target' && e.data.target) next.lastTarget = { object: e.data.role ?? e.data.object, target: e.data.target };
       if (e.type === 'result') next.results = [...state.results, e.data];
+      if (e.type === 'verify') next.checks = state.checks + 1;
+      if (e.type === 'retry') next.retries = state.retries + 1;
       if (e.type === 'done') next.phase = 'done';
       if (e.type === 'error') {
         next.phase = 'failed';
@@ -163,7 +194,7 @@ export function runReducer(state: RunState, action: RunAction): RunState {
 }
 
 export function summarise(results: RunResult[], ious: number[]) {
-  const placed = results.filter((r) => r.in_tray).length;
+  const placed = results.filter((r) => r.ok ?? r.in_tray).length;
   const errs = results
     .map((r) => (typeof r.localisation_error_mm === 'number' ? r.localisation_error_mm : r.error_mm))
     .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));

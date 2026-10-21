@@ -71,6 +71,7 @@ export interface RunResponse {
 
 /** One phase of a pick-and-place (hasami_sim.arm.StepLog). */
 export interface StepLog {
+  attempt?: number;
   phase: string;
   target: number[];
   reached: number[];
@@ -82,6 +83,12 @@ export interface StepLog {
 export interface RunResult {
   object: string | null;
   in_tray: boolean;
+  /** attempts this step took (1 + retries) */
+  attempts?: number;
+  /** the camera + gripper check passed on the last attempt */
+  verified?: boolean;
+  /** ground-truth failure class when ok is false */
+  failure?: 'segment' | 'grasp' | 'place' | null;
   /** where the object ended up vs the place target */
   error_mm: number | null;
   /** depth-fused centre vs simulator truth, when the server reports it */
@@ -255,10 +262,35 @@ export type RunEvent =
   | { type: 'target'; data: { object?: string; role?: 'pick' | 'place'; step?: number; target: Target | null } }
   | { type: 'phase'; data: StepLog & { object?: string; step?: number } }
   | { type: 'result'; data: RunResult }
+  | { type: 'verify'; data: VerifyData }
+  | { type: 'retry'; data: RetryData }
   | { type: 'done'; data: Record<string, unknown> }
   | { type: 'error'; data: { message: string; setup_required?: string } };
 
-export const EVENT_TYPES = ['plan', 'segment', 'target', 'phase', 'result', 'done', 'error'] as const;
+/** After each attempt: the gripper reading and the camera's verdict (physics_ok is ground truth, for scoring). */
+export interface VerifyData {
+  step?: number;
+  attempt?: number;
+  ok: boolean;
+  grasp_held: boolean | null;
+  jaw_gap_mm?: number | null;
+  completed?: boolean;
+  pick_clear: boolean;
+  place_raised: boolean;
+  physics_ok?: boolean;
+  agree?: boolean;
+  injected?: { offset_mm?: number; slip?: boolean };
+}
+
+export interface RetryData {
+  step?: number;
+  attempt: number;
+  reason: string | null;
+  how?: string;
+  pick_point?: Pixel | null;
+}
+
+export const EVENT_TYPES = ['plan', 'segment', 'target', 'phase', 'verify', 'retry', 'result', 'done', 'error'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
 function asRecord(v: unknown): Record<string, unknown> {
@@ -325,6 +357,10 @@ export function parseEvent(name: string, raw: string): (RunEvent & { run_id?: st
     }
     case 'segment':
       return { type, run_id, data: rec as Extract<RunEvent, { type: 'segment' }>['data'] };
+    case 'verify':
+      return { type, run_id, data: rec as unknown as VerifyData };
+    case 'retry':
+      return { type, run_id, data: rec as unknown as RetryData };
     default:
       return { type: 'done', run_id, data: rec };
   }

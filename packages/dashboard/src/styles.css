@@ -240,6 +240,9 @@ h1, h2 { font-weight: 500; letter-spacing: -0.04em; margin: 0; }
 .tl-err { font-size: 12.5px; color: var(--text); }
 .tl-plan .tl-kind, .tl-segment .tl-kind, .tl-target .tl-kind { color: var(--lilac-deep); }
 .tl-result { background: rgba(56, 242, 196, 0.06); }
+.tl-verify .tl-kind { color: var(--lilac-deep); }
+.tl-retry { background: rgba(255, 196, 92, 0.10); }
+.tl-retry .tl-kind { color: #a86a00; }
 .tl-error { background: var(--bad-bg); }
 .tl-done .tl-kind { color: var(--mint); }
 .tl-wait { color: var(--muted); grid-template-columns: 1fr; }
