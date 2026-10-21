@@ -83,3 +83,33 @@ def test_a_grip_that_always_slips_fails_as_grasp_after_two_retries(session):
     assert "empty grasp" in result["note"]
     # the dropped cube is back on the table, not in the tray
     assert not result["in_tray"] and np.asarray(result["final_pos"])[2] < 0.02
+
+
+def test_perception_disturbances_noisy_depth_miscalibrated_camera_and_light():
+    """depth_mm, cam_mm and light make the camera less kind; what the pipeline sees changes by the stated
+    amounts, reproducibly per scene, and the ground truth used for scoring does not."""
+    d = Disturb.parse("depth_mm:2,cam_mm:3,light:0.3")
+    assert d is not None and d.perception and not d.offset_mm
+    assert d.to_dict() == {"depth_mm": 2.0, "cam_mm": 3.0, "light": 0.3, "offset_mm": 0.0, "slip": 0.0,
+                           "label": "injected disturbance (test)"}
+    with pytest.raises(ValueError):
+        Disturb.parse("light:1.5")
+    clean = Session(seed=4, connect_real=False, disturb=Disturb())
+    noisy = Session(seed=4, connect_real=False, disturb=d)
+    f0, f1 = clean.observe(), noisy.observe()
+    noise = (f1.depth - f0.depth).astype(np.float64)
+    assert 0.0015 < noise.std() < 0.0025 and abs(noise.mean()) < 2e-4
+    assert np.linalg.norm(f1.cam_pos - f0.cam_pos) == pytest.approx(0.003, abs=1e-9)
+    assert noisy._light["scale"] != 1.0 and 0.7 <= noisy._light["scale"] <= 1.3
+    assert not np.array_equal(f0.rgb, f1.rgb)
+    assert np.array_equal(f0.seg_geom, f1.seg_geom)  # the truth is untouched
+    again = Session(seed=4, connect_real=False, disturb=d)
+    assert again._light == noisy._light and np.array_equal(again._cam_err, noisy._cam_err)
+    # a located cube is off by about the calibration error
+    from hasami_perception import locate
+
+    cube = noisy.arm.object_pos("red_cube")
+    u, v = simulated_click(f1.rgb, "red cube")
+    seg = noisy.sam.segment(f1.rgb, point=(u, v))
+    t = locate(f1, seg)
+    assert 0.0015 < np.linalg.norm(np.array(t.center[:2]) - cube[:2]) < 0.006

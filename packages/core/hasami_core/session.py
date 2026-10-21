@@ -58,15 +58,24 @@ DISTURB_ENV = "HASAMI_DISTURB"
 
 @dataclass
 class Disturb:
-    """Injected disturbances for testing recovery (HASAMI_DISTURB=offset_mm:6,slip:0.2). Always labelled
-    in events and run records.
+    """Injected disturbances for testing recovery and a less kind camera
+    (HASAMI_DISTURB=offset_mm:6,slip:0.2 or depth_mm:2,cam_mm:3,light:0.3). Always labelled in events and
+    run records.
 
     offset_mm: on each step's first attempt, the grasp point is shifted this far towards the moving jaw,
       so the fixed finger lands on the object (a localisation error of that size).
-    slip: probability that the jaws let go for a moment just after the lift (a slipping grip)."""
+    slip: probability that the jaws let go for a moment just after the lift (a slipping grip).
+    depth_mm: Gaussian noise (sigma, mm) on every depth pixel the pipeline sees.
+    cam_mm: camera calibration error: the pipeline believes the camera is this far (horizontally, a random
+      direction fixed per scene) from where it is, so every located point is off by about that much.
+    light: lighting jitter per scene: the lights' brightness scaled by 1 +- light and tinted (per channel
+      +- light / 3)."""
 
     offset_mm: float = 0.0
     slip: float = 0.0
+    depth_mm: float = 0.0
+    cam_mm: float = 0.0
+    light: float = 0.0
 
     @classmethod
     def parse(cls, text: str | None) -> "Disturb | None":
@@ -76,19 +85,30 @@ class Disturb:
         for part in text.split(","):
             key, _, val = part.partition(":")
             key = key.strip()
-            if key not in ("offset_mm", "slip") or not val.strip():
-                raise ValueError(f"{DISTURB_ENV}: expected offset_mm:<mm>,slip:<0-1>, got {part!r}")
+            if key not in DISTURB_KEYS or not val.strip():
+                raise ValueError(f"{DISTURB_ENV}: expected offset_mm:<mm>,slip:<0-1>,depth_mm:<mm>,cam_mm:<mm>,"
+                                 f"light:<0-1>, got {part!r}")
             setattr(out, key, float(val))
         if not 0 <= out.slip <= 1:
             raise ValueError(f"{DISTURB_ENV}: slip is a probability in [0, 1]")
+        if not 0 <= out.light < 1 or out.depth_mm < 0 or out.cam_mm < 0:
+            raise ValueError(f"{DISTURB_ENV}: light is in [0, 1), depth_mm and cam_mm are >= 0")
         return out if out.active else None
 
     @property
     def active(self) -> bool:
-        return bool(self.offset_mm or self.slip)
+        return bool(self.offset_mm or self.slip or self.depth_mm or self.cam_mm or self.light)
+
+    @property
+    def perception(self) -> bool:
+        return bool(self.depth_mm or self.cam_mm or self.light)
 
     def to_dict(self) -> dict:
-        return {"offset_mm": self.offset_mm, "slip": self.slip, "label": "injected disturbance (test)"}
+        out = {k: getattr(self, k) for k in DISTURB_KEYS if getattr(self, k) or k in ("offset_mm", "slip")}
+        return out | {"label": "injected disturbance (test)"}
+
+
+DISTURB_KEYS = ("offset_mm", "slip", "depth_mm", "cam_mm", "light")
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -303,12 +323,32 @@ class Session:
     def _after_reset(self, seed: int) -> dict:
         self.seed = seed
         self._rng = np.random.default_rng([seed, 7])
+        self._perturb_perception(seed)
         for o in self.scene.objects:  # keep the spec's poses in step with the physics
             p = self.arm.object_pos(o.name)
             o.x, o.y, o.yaw = float(p[0]), float(p[1]), float(self.arm.object_yaw(o.name))
         self.initial_poses = self.poses()
         self._snapshots.clear()
         return {"seed": seed, "scene": self.scene.name, "objects": self.initial_poses}
+
+    def _perturb_perception(self, seed: int) -> None:
+        """Per scene: the camera calibration error and the lighting jitter of HASAMI_DISTURB (if any)."""
+        d = self.disturb
+        rng = np.random.default_rng([seed, 11])
+        self._noise_rng = np.random.default_rng([seed, 13])
+        a = rng.uniform(0, 2 * np.pi)
+        self._cam_err = np.array([np.cos(a), np.sin(a), 0.0]) * (d.cam_mm / 1000 if d is not None else 0.0)
+        m = self.arm.model
+        base = getattr(self.arm, "_light_base", None)
+        if base is None:
+            base = (m.light_diffuse.copy(), m.vis.headlight.diffuse.copy(), m.vis.headlight.ambient.copy())
+            self.arm._light_base = base
+        k = 1.0 + (rng.uniform(-d.light, d.light) if d is not None and d.light else 0.0)
+        tint = 1.0 + (rng.uniform(-d.light / 3, d.light / 3, size=3) if d is not None and d.light else np.zeros(3))
+        m.light_diffuse[:] = np.clip(base[0] * k * tint, 0, 1)
+        m.vis.headlight.diffuse[:] = np.clip(base[1] * k * tint, 0, 1)
+        m.vis.headlight.ambient[:] = np.clip(base[2] * k * tint, 0, 1)
+        self._light = {"scale": round(float(k), 3), "tint": [round(float(t), 3) for t in tint]}
 
     def _all_visible(self, min_pixels: int = 300) -> bool:
         f = capture(self.arm.model, self.arm.data)
@@ -335,8 +375,16 @@ class Session:
 
     # ---- camera ------------------------------------------------------------------------
     def observe(self, camera: str = "overhead") -> Frame:
+        """What the pipeline sees: RGB + depth (+ ground-truth segmentation for scoring only). With a
+        perception disturbance the depth is noisy and the believed camera position is off."""
         with self.lock:
-            return capture(self.arm.model, self.arm.data, camera)
+            f = capture(self.arm.model, self.arm.data, camera)
+        d = self.disturb
+        if d is not None and d.depth_mm:
+            f.depth = (f.depth + self._noise_rng.normal(0.0, d.depth_mm / 1000, f.depth.shape)).astype(np.float32)
+        if d is not None and d.cam_mm:
+            f.cam_pos = f.cam_pos + self._cam_err
+        return f
 
     def _render_png(self, camera: str) -> bytes:
         # A fresh renderer per call: a GL context cached by one thread hangs when another thread
@@ -555,6 +603,9 @@ class Session:
         }
         if self.disturb is not None:
             rec["disturb"] = self.disturb.to_dict()
+            if self.disturb.perception:
+                rec["disturb"]["applied"] = {"light": self._light,
+                                             "cam_err_mm": [round(float(v) * 1000, 2) for v in self._cam_err[:2]]}
         t_run = time.perf_counter()
         with self.lock:
             rec["initial_poses"] = self.poses()
