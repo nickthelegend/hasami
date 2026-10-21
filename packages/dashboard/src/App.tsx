@@ -274,10 +274,10 @@ export default function App() {
             <label className="scene-pick">
               <span className="sr">Scene</span>
               <select value={scene} onChange={(e) => setScene(e.target.value)} disabled={!reachable || live || resetting}>
-                <option value="classic">3 cubes + tray</option>
-                <option value="sort-by-colour">sort by colour</option>
-                <option value="stack-two">stack two</option>
-                <option value="clear-except-X">clear except one</option>
+                <option value="classic">3 cubes</option>
+                <option value="sort-by-colour">sort</option>
+                <option value="stack-two">stack 2</option>
+                <option value="clear-except-X">clear but 1</option>
                 <option value="tower-of-3">tower of 3</option>
               </select>
             </label>

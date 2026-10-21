@@ -230,7 +230,7 @@ export function RunTrace({ runId, onClose }: { runId: string; onClose: () => voi
           <p className="muted small trace-meta">
             {rec.simulation ?? 'MuJoCo simulation'} · plan from {rec.plan?.source === 'muse' ? rec.plan.model ?? 'Muse' : 'clicks'}
             {rec.plan?.instruction ? ` · “${rec.plan.instruction}”` : ''}
-            {rec.disturb ? ` · injected disturbances: ${rec.disturb.offset_mm} mm offset, slip ${rec.disturb.slip}` : ''}
+            {rec.disturb ? ` · injected disturbances: ${[rec.disturb.offset_mm ? `${rec.disturb.offset_mm} mm offset on first attempts` : null, rec.disturb.slip ? `slip p=${rec.disturb.slip}` : null].filter(Boolean).join(', ')}` : ''}
             {typeof rec.placed === 'number' ? ` · ${rec.placed}/${rec.total} placed` : ''}
           </p>
           {rec.error && <div className="notice notice-error">{rec.error}</div>}
