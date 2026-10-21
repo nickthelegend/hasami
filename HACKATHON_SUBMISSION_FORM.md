@@ -8,7 +8,7 @@
 
 **Track:** Indie developer
 
-**Theme:** Push the Frontier
+**Theme:** Push the Frontier (to confirm against the official rules when they are published)
 
 **One line:** Say what you want moved: Muse plans from the camera frame, SAM segments each object, depth
 turns the mask into a grasp, and an SO-101 arm picks and places it.
@@ -33,29 +33,39 @@ drives a simulated SO-101 (MuJoCo) to pick and place. Success is read from the p
 dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real arm.
 
 **What works today (measured in simulation, scored against ground truth):**
-- Benchmark of five task families (all-to-tray, sort by colour into two bins, stack two, clear all but
-  one, tower of three) on seeded procedural scenes: **69/70 tasks** with a simulated-click oracle as the
-  planner (labelled; it is not Muse). All-to-tray: **90/90 cubes** over 30 scenes, reproducible with
-  `scripts/bench.py --family all-to-tray --seeds 30`.
+- Benchmark of eight task families (all-to-tray, sort by colour, stack two, clear all but one, tower of
+  three, sort by shape, line up by size, pick from a bin) on seeded procedural scenes, 20 seeds each:
+  **146/160 tasks** with a simulated-click oracle as the planner (labelled; it is not Muse). Six families
+  are 20/20; towers of three 12/20 and picking out of a bin 14/20 are the open problems.
+  `scripts/bench.py --family all --seeds 20`.
+- The same plans in Muse's format with every pick hint 20 px off (written by code, not a model): 76/80, the
+  same as with exact clicks, so the grounding layer absorbs a planner's misplaced pixels.
+- A less kind camera (2 mm depth noise, 3 mm calibration error, ±30 % lighting): 63/80. Injected grasp
+  faults (6 mm offset on every first grasp, 20 % slips): 41/64 with 184 retries.
 - Every step is checked the way a real robot could (the gripper's own position, then SAM on the new
-  frame) and retried up to twice; with injected disturbances (6 mm grasp offset, 20% slips) 78 retries
-  recover 64/73 steps. The check agreed with the physics in all 333 checks.
+  frame) and retried up to twice; the check agreed with the physics in 1172 of 1175 checks.
 - SAM 2.1 single-click IoU 0.71–0.92; centre error ≤ 0.6 mm in a 9-pick run (tests assert ≤ 3 mm); yaw
   error max 1.76°, mean 0.18°.
 - Agent trace: replay any run step by step (frame, SAM mask vs truth, 3D target, each arm phase's error,
   the check, why it retried).
+- **Your desk, twinned:** one desk photo with an A4 sheet becomes a MuJoCo scene ("digital twin from one
+  photo · simulated arm"): the sheet gives the plane and camera pose, SAM 2.1 automatic masks find the
+  objects, each is fitted as an upright box or cylinder, and the simulated arm runs a task on the twin. On
+  20 MuJoCo-rendered photos: 86/86 objects found, 0 false positives, centre error mean 1.2 mm, height mean
+  1.6 mm; clear-desk met its goal on 16/20 twins. Not yet measured on a real photo.
 - Real-camera tab: webcam or photo, A4 sheet for the table plane, SAM 2.1 on a clicked real object, its
   position and yaw on the table (segment and locate only; the arm stays simulated).
-- 138 automated tests (real physics, real SAM weights, real HTTP and MCP), 1 skipped (live Muse call).
+- 181 automated tests: 180 pass (real physics, real SAM weights, real HTTP and MCP, MuJoCo-rendered photos for the twin), 1 skipped (live Muse call).
 - MCP server so any agent can `look`, `find` and `pick_place`.
 
 **Honest status:**
 - The arm is a MuJoCo simulation of the official SO-101 model (force-limited servos) with perfect depth,
-  no sensor noise and ideal lighting. A LeRobot follower can be attached in mirror mode (it repeats the
+  no sensor noise and ideal lighting by default (one benchmark sheet adds noise, a calibration error and
+  lighting jitter: 63/80 instead of 76/80 on the same seeds). A LeRobot follower can be attached in mirror mode (it repeats the
   simulated arm's joint targets); wired and unit-tested, never run on hardware.
 - Muse and SAM 3.1 need a Meta Model API key (`MODEL_API_KEY`); the hackathon provides credits on
   acceptance. The real-camera geometry is tested on synthetic cameras; a ruler check on real objects is
-  pending.
+  pending. The digital twin is measured only on MuJoCo-rendered photos so far.
 
 **Links:**
 - Code: https://github.com/nickthelegend/hasami (create before submitting)

@@ -62,10 +62,16 @@ lands on the object, and a probability that the grip lets go just after the lift
 
 `hasami_sim.scene` builds scenes with `mujoco.MjSpec`: cubes of 20/25/30 mm, blocks, flat boxes and
 40 mm cylinders in six colours, 4–8 objects in the measured reach annulus, one or two containers.
-`hasami_core.tasks` defines five families with seeded samplers and goal predicates over the physics state;
-`scripts/bench.py` runs them. The benchmark's planner is a **simulated-click oracle**: it knows which object
-each step moves and clicks the middle of its colour blob in the RGB image. It measures perception,
-grasping, placing and recovery, not planning.
+`hasami_core.tasks` defines eight families with seeded samplers and goal predicates over the physics state:
+all-to-tray, sort-by-colour, stack-two, clear-except-X, tower-of-3, sort-by-shape (cylinders to the tray,
+cubes to the bin), line-up (three cubes in a row on the bare table by size: `in_row` checks the line, the
+order along -y, the spacing and that each stands on the table) and pick-from-bin (objects start on the
+bin's floor; the named one goes to the tray, the others must stay within 15 mm). `scripts/bench.py` runs
+them. The benchmark's planner is a **simulated-click oracle**: it knows which object each step moves and
+clicks the middle of its colour blob in the RGB image. It measures perception, grasping, placing and
+recovery, not planning. `--planner scripted` writes the same plans in Muse's format (label + hint) with
+each pick hint moved `--hint-px` off, so the grounding layer is exercised without a key; a place named
+"the table" is used as given rather than searched. Neither is a language model.
 
 ## Your desk, twinned (digital twin from one photo · simulated arm)
 

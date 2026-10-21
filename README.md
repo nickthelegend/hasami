@@ -6,7 +6,8 @@ grasp, and an SO-101 arm picks and places it, checking every step and retrying w
 
 **Sim-first, scored against ground truth.** The arm is the official SO-101 model in MuJoCo. The pipeline
 sees only RGB + depth and the gripper's own position; the simulator's ground truth is used only to score
-it. The simulation is kind (perfect depth, no sensor noise, ideal lighting), and every number below is from it.
+it. The simulation is kind by default (perfect depth, no sensor noise, ideal lighting); one benchmark sheet
+adds depth noise, a calibration error and lighting jitter to measure that. Every number below is from the sim.
 
 Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon)
 (Indie track). Hasami is Japanese for scissors, the shape of the SO-101's gripper.
@@ -14,56 +15,82 @@ Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/m
 ## Benchmark
 
 `scripts/bench.py` runs seeded task families and checks each goal against the physics state. Planner:
-**simulated-click oracle** (it knows which object each step moves and clicks the middle of its colour blob
-in the rendered image; it is not a language model, so this measures perception, grasping, placing and
-recovery, not planning). Segmenter: SAM 2.1 hiera-tiny, local. Up to 2 retries per step.
+**simulated-click planner** (an oracle: it knows which object each step moves and clicks the middle of its
+colour blob in the rendered image; it is not a language model, so this measures perception, grasping,
+placing and recovery, not planning). Segmenter: SAM 2.1 hiera-tiny, local. Up to 2 retries per step.
+Eight families: all-to-tray, sort-by-colour, stack-two, clear-except-X, tower-of-3, **sort-by-shape**
+(cylinders to the tray, cubes to the bin, the rest stay), **line-up** (three cubes in a row on the table,
+smallest to largest, left to right), **pick-from-bin** (take the named object out of a bin of three).
 
-| Family | Seeds | Tasks solved | Steps placed | Failures (segment / grasp / place / goal) | Retries | Check agrees |
-|---|---:|---:|---:|---|---:|---:|
-| all-to-tray | 30 | **30/30** | 90/90 | 0 / 0 / 0 / 0 | 0 | 90/90 |
-| sort-by-colour | 10 | **10/10** | 29/29 | 0 / 0 / 0 / 0 | 0 | 29/29 |
-| stack-two | 10 | **10/10** | 10/10 | 0 / 0 / 0 / 0 | 0 | 10/10 |
-| clear-except-X | 10 | **10/10** | 30/30 | 0 / 0 / 0 / 0 | 0 | 30/30 |
-| tower-of-3 | 10 | **9/10** | 19/20 | 0 / 1 / 0 / 0 | 4 | 24/24 |
-| **all** | 70 | **69/70** | 178/179 | | 4 | 183/183 |
+Clean, 20 seeds per family ([`20261021T165535Z.json`](deployments/bench/20261021T165535Z.json)):
+
+| Family | Planner | Tasks solved | Steps placed | Failures (segment / grasp / place / goal) | Retries | Check agrees |
+|---|---|---:|---:|---|---:|---:|
+| all-to-tray | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 | 0 | 60/60 |
+| sort-by-colour | simulated-click planner | **20/20** | 62/62 | 0 / 0 / 0 / 0 | 0 | 62/62 |
+| stack-two | simulated-click planner | **20/20** | 20/20 | 0 / 0 / 0 / 0 | 0 | 20/20 |
+| clear-except-X | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 | 0 | 60/60 |
+| tower-of-3 | simulated-click planner | **12/20** | 37/40 | 1 / 2 / 0 / 5 | 16 | 56/56 |
+| sort-by-shape | simulated-click planner | **20/20** | 59/59 | 0 / 0 / 0 / 0 | 0 | 59/59 |
+| line-up | simulated-click planner | **20/20** | 60/60 | 0 / 0 / 0 / 0 | 0 | 60/60 |
+| pick-from-bin | simulated-click planner | **14/20** | 16/20 | 0 / 4 / 0 / 2 | 9 | 29/29 |
+| **all** | | **146/160** | 374/381 | | 25 | 406/406 |
 
 Failure classes: **segment** (the mask, or the object it led to, was wrong), **grasp** (the jaws never
 held it), **place** (held but did not end up at the target), **goal** (every step passed its check but the
 final arrangement did not, e.g. a stack shifted). *Check agrees*: how often the robot's own check (gripper
-position + camera) matched the physics outcome.
+position + camera) matched the physics outcome. What fails: towers of three (seeds 10-19 are harder than
+0-9, where 9/10 pass: five stacks shift after every step passed), and picking out of the bin (four grasps
+stop on the way down, the jaws meeting the bin's wall or a neighbour; twice a neighbour is dragged).
 
-With labelled disturbances injected (`HASAMI_DISTURB=offset_mm:6,slip:0.2`: every step's first grasp is
-aimed 6 mm off so the fixed finger lands on the object, and 20% of grips let go after the lift), the
-verify-and-retry loop has to do the work:
+The same tasks under three changes, each its own file:
 
-| Family | Seeds | Tasks solved | Steps placed | Failures (segment / grasp / place / goal) | Retries | Check agrees |
-|---|---:|---:|---:|---|---:|---:|
-| all-to-tray | 6 | **5/6** | 17/18 | 0 / 1 / 0 / 0 | 19 | 37/37 |
-| sort-by-colour | 6 | **4/6** | 17/19 | 1 / 1 / 0 / 0 | 20 | 39/39 |
-| stack-two | 6 | **5/6** | 6/6 | 0 / 0 / 0 / 1 | 5 | 11/11 |
-| clear-except-X | 6 | **2/6** | 14/18 | 2 / 2 / 0 / 0 | 21 | 38/38 |
-| tower-of-3 | 6 | **3/6** | 10/12 | 0 / 2 / 0 / 1 | 13 | 25/25 |
-| **all** | 30 | **19/30** | 64/73 | | 78 | 150/150 |
+| Family | Scripted plan, hints 20 px off (seeds 0-9) | Noisy camera (seeds 0-9) | Grasp offset + slips (seeds 0-7) |
+|---|---:|---:|---:|
+| all-to-tray | 10/10 | 10/10 | 7/8 |
+| sort-by-colour | 10/10 | 6/10 | 6/8 |
+| stack-two | 10/10 | 9/10 | 7/8 |
+| clear-except-X | 10/10 | 6/10 | 4/8 |
+| tower-of-3 | 9/10 | 8/10 | 5/8 |
+| sort-by-shape | 10/10 | 5/10 | 0/8 |
+| line-up | 10/10 | 10/10 | 7/8 |
+| pick-from-bin | 7/10 | 9/10 | 5/8 |
+| **all** | **76/80**, 9 retries | **63/80**, 51 retries | **41/64**, 184 retries |
+| Check agrees with physics | 198/198 | 237/240 | 331/331 |
+| File | [`170448Z`](deployments/bench/20261021T170448Z.json) | [`170928Z`](deployments/bench/20261021T170928Z.json) | [`171443Z`](deployments/bench/20261021T171443Z.json) |
 
-Without disturbances 69/70 tasks pass. All 4 retries were in tower-of-3: in seed 1 the top cube needed two
-retries before its check passed; in seed 3 the top cube's first attempt failed its check and both retries
-aimed at a re-found blob out of reach, so the step failed (classed grasp). With disturbances, 78 retries recover most steps (64/73
-placed; without retries the offset alone would fail every first attempt). What is not recovered is
-mostly the disturbance's own damage: a 40 mm cylinder knocked over by the misaimed finger (a lying
-cylinder is not graspable top-down) or a cube pushed against a neighbour so the jaws cannot get around it.
-In all 333 checks the robot's own verdict (gripper position + camera) matched the physics outcome.
+- **Scripted plan** (`--planner scripted --hint-px 20`): each task's plan written by code in the Muse
+  format, the object named by colour and shape and its hint pixel moved 20 px in a random direction, so the
+  grounding layer has to find it. It is not a language model either. Every misplaced hint was grounded: the
+  result equals the click oracle's on the same seeds.
+- **Noisy camera** (`HASAMI_DISTURB=depth_mm:2,cam_mm:3,light:0.3`): 2 mm Gaussian noise on every depth
+  pixel, the camera's believed position 3 mm off, lighting brightness ±30 % with a tint. First localisation
+  stays within a few mm, but the losses (12 of 17 segment-class) share one pattern: a first grasp 3 mm off
+  tips or shoves the object, the retry re-segments at the old pixel, and on noisy depth the new mask is
+  "raised" enough to pass, so the arm is sent to a target that is not an object (once 594 mm wide) and
+  stops in the air. A width sanity check before moving is the obvious next fix; it is not in these numbers.
+  The check disagreed with physics 3 times.
+- **Grasp offset + slips** (`HASAMI_DISTURB=offset_mm:6,slip:0.2`): every first grasp aimed 6 mm off so
+  the fixed finger lands on the object, 20 % of grips let go after the lift. 184 retries recover most steps;
+  what is lost is the disturbance's own damage, worst for 40 mm cylinders, which the misaimed finger knocks
+  over (sort-by-shape 0/8: a lying cylinder is not graspable top-down).
+
+Over the four files the robot's own check matched the physics in 1172 of 1175 checks. Earlier results (five
+families: [`052238Z`](deployments/bench/20261021T052238Z.json), [`052444Z`](deployments/bench/20261021T052444Z.json),
+[`052717Z`](deployments/bench/20261021T052717Z.json)) are kept; seeds 0-9 reproduce exactly.
 
 Reproduce:
 
 ```bash
-python scripts/bench.py --family all-to-tray --seeds 30                      # 30 scenes x 3 cubes
-python scripts/bench.py --family sort-by-colour,stack-two,clear-except-X,tower-of-3 --seeds 10
-HASAMI_DISTURB=offset_mm:6,slip:0.2 python scripts/bench.py --family all --seeds 6
+python scripts/bench.py --family all --seeds 20
+python scripts/bench.py --family all --seeds 10 --planner scripted --hint-px 20
+HASAMI_DISTURB=depth_mm:2,cam_mm:3,light:0.3 python scripts/bench.py --family all --seeds 10
+HASAMI_DISTURB=offset_mm:6,slip:0.2 python scripts/bench.py --family all --seeds 8
 python scripts/bench.py --family all --seeds 5 --planner muse                # needs MODEL_API_KEY
 ```
 
-Results: [`20261021T052238Z.json`](deployments/bench/20261021T052238Z.json) (all-to-tray), [`20261021T052444Z.json`](deployments/bench/20261021T052444Z.json) (the other four), [`20261021T052717Z.json`](deployments/bench/20261021T052717Z.json) (disturbed). The Muse planner has not been benchmarked: no key yet
-(`--planner muse` prints `Setup required: MODEL_API_KEY` and writes nothing).
+The Muse planner has not been benchmarked: no key yet (`--planner muse` prints
+`Setup required: MODEL_API_KEY` and writes nothing).
 
 ## Your desk, twinned
 
@@ -138,7 +165,7 @@ score (not used by the robot): physics state, goal predicate
 | Yaw (fourth-order moment / minimum-area rectangle) | max 1.76°, mean 0.18° over 60 cubes |
 | Real-camera geometry (synthetic tilted camera, 50 × 30 × 40 mm box) | centre within 1 mm, yaw within 1.5° with parallax correction; > 10 mm off without it |
 | Recorded demo runs (replay them in the dashboard's Agent trace) | [`20261021T053112874Z`](deployments/runs/20261021T053112874Z.json): 3/3 in the tray, no retries. [`20261021T053203432Z`](deployments/runs/20261021T053203432Z.json): 6 mm offset injected on every first attempt, each first attempt fails at the descent, each retry places the cube: 3/3. Videos (captioned "MuJoCo simulation · official SO-101 model") are shared separately until hosted. |
-| Test suite | `138 passed, 1 skipped` (the skip is the live Muse call) (see [TESTING.md](TESTING.md)) |
+| Test suite | `180 passed, 1 skipped` (the skip is the live Muse call) (see [TESTING.md](TESTING.md)) |
 
 ## Watch the agent think
 
@@ -177,7 +204,7 @@ python -m pytest -q                               # see TESTING.md
 python -m hasami_mcp                              # MCP over stdio (HASAMI_MCP_LOG=calls.jsonl logs every call)
 ```
 
-Optional: `HASAMI_DISTURB=offset_mm:6,slip:0.2` (labelled disturbances), `HASAMI_SO101_PORT` (real arm,
+Optional: `HASAMI_DISTURB=offset_mm:6,slip:0.2` or `depth_mm:2,cam_mm:3,light:0.3` (labelled disturbances), `HASAMI_SO101_PORT` (real arm,
 mirror mode), `HASAMI_REALCAM=0` (webcam for the Real camera tab; opened only when you press Grab).
 
 MCP client config:
