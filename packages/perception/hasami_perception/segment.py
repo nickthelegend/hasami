@@ -44,21 +44,30 @@ class LocalSam2:
         self._cache_emb = None
 
     def segment(self, rgb: np.ndarray, *, point: tuple[float, float] | None = None,
-                text: str | None = None) -> np.ndarray:
+                text: str | None = None, box: tuple[float, float, float, float] | None = None) -> np.ndarray:
+        """Mask of the object at `point`. With `box` (x1, y1, x2, y2) SAM is also given the box, a tighter
+        prompt that keeps the mask from spreading past it; the mask is cut to the box."""
         if point is None:
             raise ValueError("SAM 2.1 needs a point prompt (u, v); text prompts need SAM 3.1 (MetaSam3)")
         img = Image.fromarray(rgb)
+        extra = {} if box is None else {"input_boxes": [[[float(v) for v in box]]]}
         inp = self.processor(images=img, input_points=[[[[float(point[0]), float(point[1])]]]],
-                             input_labels=[[[1]]], return_tensors="pt").to(self.device)
+                             input_labels=[[[1]]], return_tensors="pt", **extra).to(self.device)
         key = hashlib.blake2b(rgb.tobytes(), digest_size=16).hexdigest()
         with self._torch.no_grad():
             if self._cache_key != key:  # the image encoder is most of the cost: run it once per frame
                 self._cache_emb = self.model.get_image_embeddings(inp["pixel_values"])
                 self._cache_key = key
             out = self.model(input_points=inp["input_points"], input_labels=inp["input_labels"],
-                             image_embeddings=self._cache_emb, multimask_output=True)
+                             input_boxes=inp.get("input_boxes"), image_embeddings=self._cache_emb,
+                             multimask_output=True)
         masks = self.processor.post_process_masks(out.pred_masks.cpu(), inp["original_sizes"].cpu())[0][0].numpy() > 0
         scores = out.iou_scores[0, 0].cpu().numpy()
+        if box is not None:
+            x1, y1, x2, y2 = (int(round(v)) for v in box)
+            keep = np.zeros(masks.shape[1:], dtype=bool)
+            keep[max(0, y1):y2 + 1, max(0, x1):x2 + 1] = True
+            masks = masks & keep
         # Of SAM's three hypotheses, keep the best-scored one that contains the clicked pixel.
         u, v = int(round(point[0])), int(round(point[1]))
         order = np.argsort(-scores)

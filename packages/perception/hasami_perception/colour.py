@@ -114,16 +114,33 @@ def components(mask: np.ndarray, min_pixels: int = 1) -> list[np.ndarray]:
     return out
 
 
-def blob_near(mask: np.ndarray, near: tuple[float, float], max_dist_px: float = 80.0, min_pixels: int = 40,
-              exclude: np.ndarray | None = None) -> tuple[float, float] | None:
-    """Centre (u, v) of the blob of `mask` closest to pixel `near` (by its nearest pixel), within
-    `max_dist_px`, ignoring pixels in `exclude`. None if there is none."""
+def _nearest_component(mask: np.ndarray, near: tuple[float, float], max_dist_px: float, min_pixels: int,
+                       exclude: np.ndarray | None) -> np.ndarray | None:
     m = mask & ~exclude if exclude is not None else mask
     best, best_d = None, max_dist_px
     for comp in components(m, min_pixels):
         d = float(np.min(np.hypot(comp[:, 1] - near[0], comp[:, 0] - near[1])))
         if d <= best_d:
             best, best_d = comp, d
+    return best
+
+
+def blob_near(mask: np.ndarray, near: tuple[float, float], max_dist_px: float = 80.0, min_pixels: int = 40,
+              exclude: np.ndarray | None = None) -> tuple[float, float] | None:
+    """Centre (u, v) of the blob of `mask` closest to pixel `near` (by its nearest pixel), within
+    `max_dist_px`, ignoring pixels in `exclude`. None if there is none."""
+    best = _nearest_component(mask, near, max_dist_px, min_pixels, exclude)
     if best is None:
         return None
     return float(np.median(best[:, 1])), float(np.median(best[:, 0]))
+
+
+def blob_mask_near(mask: np.ndarray, near: tuple[float, float], max_dist_px: float = 80.0, min_pixels: int = 40,
+                   exclude: np.ndarray | None = None) -> np.ndarray | None:
+    """The blob blob_near would pick, as a boolean mask of the frame. None if there is none."""
+    best = _nearest_component(mask, near, max_dist_px, min_pixels, exclude)
+    if best is None:
+        return None
+    out = np.zeros(mask.shape, dtype=bool)
+    out[best[:, 0], best[:, 1]] = True
+    return out
