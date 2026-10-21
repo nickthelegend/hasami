@@ -52,6 +52,7 @@ class Arm:
     command_hook: Callable[[np.ndarray, float], None] | None = None
     command_every: int = 17  # ~30 Hz of simulated time at a 2 ms timestep
     _renderer: mujoco.Renderer | None = None
+    _gap_table: tuple[np.ndarray, np.ndarray] | None = None
     _steps: int = 0
     clearance: float = 0.005  # gap left on the fixed-finger side; the moving jaw closes it
 
@@ -184,12 +185,15 @@ class Arm:
         mujoco.mj_kinematics(self.model, d)
         return d.site_xmat[self.site].reshape(3, 3)[:, 2].copy()
 
-    def grasp_pose(self, center: np.ndarray, yaw: float, half: float) -> tuple[np.ndarray, float]:
-        """Site target and wrist roll that put an axis-aligned box of half-size `half` between the jaws.
+    def grasp_pose(self, center: np.ndarray, yaw: float, half: float,
+                   period: float | None = np.pi / 2) -> tuple[np.ndarray, float]:
+        """Site target and wrist roll that put an object of half-width `half` (across the jaws) between them.
 
-        The fixed finger's inner face is the site's z = 0 plane and the moving jaw closes onto it,
-        so the box centre must sit `half` along site z. Wrist roll turns site z about the vertical
-        approach axis; pick the face normal (yaw + k*90 deg) that needs the least roll.
+        The fixed finger's inner face is the site's z = 0 plane and the moving jaw closes onto it, so the
+        object's centre must sit `half` along site z. Wrist roll turns site z about the vertical approach
+        axis. `yaw` is a direction the jaw axis may point along; `period` says which other directions are
+        equivalent: pi/2 for a square footprint (any face), pi for an elongated one (`yaw` is then across
+        its narrow side), None for a round one (any direction: keep the current roll).
         """
         q0, _ = self.ik(center + np.array([0, 0, 0.05]), roll=0.0)
         lo, hi = self.model.jnt_range[self._jid("wrist_roll")]
@@ -200,15 +204,17 @@ class Arm:
             z = self.jaw_axis(q)
             return float(np.arctan2(z[1], z[0]))
 
-        a0, a1 = heading(0.0), heading(0.1)
-        sign = np.sign(np.angle(np.exp(1j * (a1 - a0)))) or 1.0
         best = None
-        for k in range(-4, 5):
-            want = yaw + k * np.pi / 2
-            r = float(np.angle(np.exp(1j * (want - a0)))) / sign
-            for r2 in (r, r + 2 * np.pi * sign, r - 2 * np.pi * sign):
-                if lo <= r2 <= hi and (best is None or abs(r2) < abs(best)):
-                    best = r2
+        if period is not None:
+            a0, a1 = heading(0.0), heading(0.1)
+            sign = np.sign(np.angle(np.exp(1j * (a1 - a0)))) or 1.0
+            n = int(round(2 * np.pi / period))
+            for k in range(-n, n + 1):
+                want = yaw + k * period
+                r = float(np.angle(np.exp(1j * (want - a0)))) / sign
+                for r2 in (r, r + 2 * np.pi * sign, r - 2 * np.pi * sign):
+                    if lo <= r2 <= hi and (best is None or abs(r2) < abs(best)):
+                        best = r2
         roll = float(best if best is not None else 0.0)
         q = q0.copy()
         q[4] = roll
@@ -216,6 +222,59 @@ class Arm:
         z[2] = 0.0
         z /= np.linalg.norm(z) or 1.0
         return center - z * (half + self.clearance), roll
+
+    def jaw_dir(self, site_target: np.ndarray, roll: float) -> np.ndarray:
+        """Horizontal unit vector from the fixed finger towards the moving jaw at a grasp pose."""
+        q, _ = self.ik(site_target, roll=roll)
+        z = self.jaw_axis(q)
+        z[2] = 0.0
+        return z / (np.linalg.norm(z) or 1.0)
+
+    # ---- gripper state (what the STS3215 reports: its position) --------------------------------------
+    def gripper_angle(self) -> float:
+        return float(self.data.qpos[self.model.jnt_qposadr[self._jid(GRIPPER)]])
+
+    def jaw_gap(self, angle: float | None = None) -> float:
+        """Gap between the jaws (m) at a gripper angle: the moving jaw's collision hull measured along the
+        fixed finger's normal (site z), over the fingertip zone. Computed once from the model's kinematics."""
+        if self._gap_table is None:
+            m = self.model
+            d = mujoco.MjData(m)
+            d.qpos[:] = self.data.qpos
+            jb = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "moving_jaw_so101_v1")
+            g = next(i for i in range(m.ngeom) if m.geom_bodyid[i] == jb and m.geom_type[i] == mujoco.mjtGeom.mjGEOM_MESH
+                     and m.geom_group[i] == 3)
+            mid = m.geom_dataid[g]
+            verts = m.mesh_vert[m.mesh_vertadr[mid]:m.mesh_vertadr[mid] + m.mesh_vertnum[mid]]
+            qa = m.jnt_qposadr[self._jid(GRIPPER)]
+            angles = np.linspace(GRIPPER_CLOSED, GRIPPER_OPEN, 60)
+            gaps = []
+            for a in angles:
+                d.qpos[qa] = a
+                mujoco.mj_kinematics(m, d)
+                w = d.geom_xpos[g] + verts @ d.geom_xmat[g].reshape(3, 3).T
+                sframe = (w - d.site_xpos[self.site]) @ d.site_xmat[self.site].reshape(3, 3)
+                zone = (sframe[:, 0] > -0.035) & (sframe[:, 0] < 0.002)
+                gaps.append(float(sframe[zone, 2].min()) if zone.any() else np.nan)
+            self._gap_table = (angles, np.maximum.accumulate(np.nan_to_num(np.array(gaps), nan=0.0)))
+        a = self.gripper_angle() if angle is None else angle
+        return float(np.interp(a, *self._gap_table))
+
+    def angle_for_gap(self, gap: float) -> float:
+        """Gripper angle at which the jaws are `gap` apart (inverse of jaw_gap)."""
+        self.jaw_gap(GRIPPER_OPEN)
+        angles, gaps = self._gap_table  # type: ignore[misc]
+        return float(np.interp(gap, gaps, angles))
+
+    def grasp_held(self, width: float) -> tuple[bool, float]:
+        """Is something of `width` between the jaws? Only the gripper position is used (the real STS3215
+        reports it too). With nothing between them the jaws close to their stop (a 2.5 mm reading);
+        a held object stops them early (measured readings: 14-25 mm for the 20-30 mm objects here; the
+        hinged jaw meets a round object nearer its tip, so a cylinder reads lowest). A reading under
+        max(30% of the width, empty + 3 mm) means the jaws closed past the object: an empty grasp."""
+        gap = self.jaw_gap()
+        empty = self.jaw_gap(GRIPPER_CLOSED)
+        return bool(gap >= max(0.3 * width, empty + 0.003)), gap
 
     def move_to(self, q: np.ndarray, steps: int = 600) -> None:
         """Interpolate the position targets from the current command to q (minimum-jerk)."""
@@ -242,7 +301,7 @@ class Arm:
 
     # ---- skills ----------------------------------------------------------------------
     def go(self, phase: str, target: np.ndarray, roll: float | None, log: list[StepLog], steps: int = 600,
-           tol_mm: float = 4.0) -> bool:
+           tol_mm: float = 4.0, segments: int = 1) -> bool:
         """Move the gripper site to target, closing the loop on the measured position.
 
         The STS3215 position servos are force-limited, so the arm sags under gravity and lands a few
@@ -250,6 +309,11 @@ class Arm:
         solved again, up to three times.
         """
         target = np.asarray(target, float)
+        if segments > 1:  # straight vertical-ish lines: pass through intermediate IK waypoints first
+            start = self.gripper_pos()
+            for k in range(1, segments):
+                q, _ = self.ik(start + (target - start) * k / segments, roll=roll)
+                self.move_to(q, max(120, steps // segments))
         aim = target.copy()
         ik_err = 0.0
         for attempt in range(4):
@@ -269,50 +333,128 @@ class Arm:
 
     def pick_place(self, pick_xy: tuple[float, float], place_xy: tuple[float, float], yaw: float = 0.0,
                    object_height: float = 0.025, hover: float = 0.065,
-                   on_log: Callable[[StepLog], None] | None = None, open_to: float = GRIPPER_OPEN) -> list[StepLog]:
-        """Pick the box at pick_xy (centre, from perception) and drop it at place_xy.
+                   on_log: Callable[[StepLog], None] | None = None, open_to: float = GRIPPER_OPEN,
+                   grip_width: float | None = None, yaw_period: float | None = np.pi / 2,
+                   place_surface_z: float | None = None, pick_surface_z: float = 0.0,
+                   jaw_offset: float = 0.0, slip: bool = False) -> "PickPlaceLog":
+        """Pick the object at pick_xy (centre, from perception) and put it down at place_xy.
 
         `on_log`, if given, is called with each StepLog as soon as its phase is final.
         `open_to` is how far the jaws open before the grasp and on release. Fully open (the default)
         the moving jaw sweeps about 100 mm sideways as it closes; GRIPPER_PRE_GRASP leaves about 40 mm
-        between the jaws, enough for a 25 mm cube, so neighbouring objects stay out of its path.
+        between the jaws, enough for the objects here, so neighbouring objects stay out of its path.
+        `grip_width` is the object's width across the jaws (default: object_height, i.e. a cube);
+        `yaw_period` as in grasp_pose.
+        `place_surface_z` is the measured height of the surface under the place point (table, tray
+        floor, the top of another object). With it, the object is lowered until its bottom is 4 mm above
+        that surface before the jaws open, so it can be stacked. Without it (legacy), the object is
+        released from 35 mm.
+        After closing, and again after the lift and after the carry, the gripper's own position says
+        whether the object is still held (`grasp_held`); an empty grasp stops the move.
+        `jaw_offset` and `slip` are injected disturbances (HASAMI_DISTURB) for testing recovery: the
+        grasp point shifted towards the moving jaw so the fixed finger lands on the object, and the jaws
+        briefly opening during the carry.
         """
         log: list[StepLog] = _NotifyList(on_log) if on_log else []
-        self._pick_place(log, pick_xy, place_xy, yaw, object_height, hover, open_to)
+        out = PickPlaceLog()
+        self._pick_place(log, out, pick_xy, place_xy, yaw, object_height, hover, open_to,
+                         grip_width if grip_width is not None else object_height, yaw_period, place_surface_z,
+                         pick_surface_z, jaw_offset, slip)
         if isinstance(log, _NotifyList):
             log.flush()
-        return list(log)
+        out.extend(log)
+        return out
 
-    def _pick_place(self, log: list[StepLog], pick_xy: tuple[float, float], place_xy: tuple[float, float],
-                    yaw: float, object_height: float, hover: float, open_to: float) -> list[StepLog]:
-        half = object_height / 2
-        center = np.array([pick_xy[0], pick_xy[1], half])
-        site, roll_pick = self.grasp_pose(center, yaw, half)
-        grasp = np.array([site[0], site[1], half - 0.004])
-        above = np.array([site[0], site[1], hover])
-        drop_center = np.array([place_xy[0], place_xy[1], half])
-        drop_site, roll_place = self.grasp_pose(drop_center, 0.0, half)
+    def _check_grip(self, log: list[StepLog], out: "PickPlaceLog", phase: str, width: float) -> bool:
+        held, gap = self.grasp_held(width)
+        out.held, out.jaw_gap_mm = held, round(gap * 1000, 1)
+        out.gripper_angle = round(self.gripper_angle(), 4)
+        out.checks.append({"after": phase, "held": held, "jaw_gap_mm": out.jaw_gap_mm,
+                           "object_width_mm": round(width * 1000, 1)})
+        if not held:
+            pos = [round(float(v), 4) for v in self.gripper_pos()]
+            log.append(StepLog("grasp check", pos, pos, 0.0, False,
+                               f"empty grasp after '{phase}': jaws closed to {gap * 1000:.1f} mm, "
+                               f"object is {width * 1000:.0f} mm"))
+        return held
+
+    def _pick_place(self, log: list[StepLog], out: "PickPlaceLog", pick_xy, place_xy, yaw: float,
+                    object_height: float, hover: float, open_to: float, width: float,
+                    yaw_period: float | None, place_surface_z: float | None, pick_surface_z: float,
+                    jaw_offset: float, slip: bool) -> None:
+        half_h = object_height / 2
+        center = np.array([pick_xy[0], pick_xy[1], pick_surface_z + half_h])
+        site, roll_pick = self.grasp_pose(center, yaw, width / 2, yaw_period)
+        if jaw_offset:
+            site = site + self.jaw_dir(site + np.array([0, 0, 0.05]), roll_pick) * jaw_offset
+        # The fixed fingertip reaches ~6 mm below the site: keep it off the surface.
+        grasp_z = max(pick_surface_z + half_h - 0.004, pick_surface_z + 0.0075)
+        grasp = np.array([site[0], site[1], grasp_z])
+        below = grasp_z - pick_surface_z  # site height above the held object's bottom
+        if place_surface_z is None:
+            lower_z = hover - 0.03
+            carry = hover
+        else:
+            lower_z = place_surface_z + below + 0.004
+            carry = max(hover, place_surface_z + below + 0.015, pick_surface_z + object_height + 0.03)
+        above = np.array([site[0], site[1], carry])
+        drop_center = np.array([place_xy[0], place_xy[1], (place_surface_z or 0.0) + half_h])
+        drop_site, roll_place = self.grasp_pose(drop_center, 0.0, width / 2, yaw_period)
         self.set_gripper(open_to, 200)
         if not self.go("above object", above, roll_pick, log):
-            return log
+            return
         if not self.go("descend", grasp, roll_pick, log, steps=500):
-            return log
+            self.go("back off", above, roll_pick, log)
+            return
         self.set_gripper(GRIPPER_CLOSED)
         log.append(StepLog("close jaws", [round(float(v), 4) for v in grasp], [round(float(v), 4) for v in self.gripper_pos()], 0.0, True))
-        for phase, tgt, roll in [
-            ("lift", above, roll_pick),
-            ("above target", np.array([drop_site[0], drop_site[1], hover]), roll_place),
-            ("lower", np.array([drop_site[0], drop_site[1], hover - 0.03]), roll_place),
-        ]:
-            if not self.go(phase, tgt, roll, log, steps=900):
-                return log
-        self.set_gripper(open_to)
+        if not self._check_grip(log, out, "close jaws", width):
+            self.set_gripper(open_to, 200)
+            self.go("back off", above, roll_pick, log)
+            return
+        if not self.go("lift", above, roll_pick, log, steps=900):
+            return
+        if slip:  # injected: the jaws let go for a moment just after the lift, as a slipping grip would
+            out.injected.append("slip")
+            self.set_gripper(GRIPPER_PRE_GRASP, 60)
+            self.set_gripper(GRIPPER_CLOSED, 200)
+        if not self._check_grip(log, out, "lift", width):
+            self.set_gripper(open_to, 200)
+            return
+        if not self.go("above target", np.array([drop_site[0], drop_site[1], carry]), roll_place, log, steps=900):
+            return
+        if not self._check_grip(log, out, "above target", width):
+            self.set_gripper(open_to, 200)
+            return
+        if not self.go("lower", np.array([drop_site[0], drop_site[1], lower_z]), roll_place, log, steps=900, segments=3):
+            return
+        # Release by opening just past the object (8 mm beyond its width or the held reading, if larger):
+        # the moving jaw swings on a hinge, and a full opening can knock a stacked object off.
+        release = min(open_to, self.angle_for_gap(max((out.jaw_gap_mm or 0) / 1000, width) + 0.008))
+        self.set_gripper(release)
         log.append(StepLog("open jaws", [round(float(v), 4) for v in drop_site], [round(float(v), 4) for v in self.gripper_pos()], 0.0, True))
         # The object is already placed; a sloppy retreat is logged but does not fail the run.
-        self.go("retreat", np.array([drop_site[0], drop_site[1], hover + 0.02]), roll_place, log)
+        self.go("retreat", np.array([drop_site[0], drop_site[1], max(carry, lower_z + 0.03) + 0.02]), roll_place, log,
+                segments=4)
         log[-1].ok = True
+        out.completed = True
         self.settle(400)
-        return log
+
+
+class PickPlaceLog(list):
+    """The phases of one pick-and-place (a list of StepLog) plus what the gripper reported.
+
+    held: the last grasp check (None if the jaws never closed); jaw_gap_mm / gripper_angle: its reading;
+    checks: every grasp check; completed: the object was released at the target; injected: disturbances."""
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.held: bool | None = None
+        self.jaw_gap_mm: float | None = None
+        self.gripper_angle: float | None = None
+        self.checks: list[dict] = []
+        self.completed = False
+        self.injected: list[str] = []
 
 
 class _NotifyList(list):
@@ -338,3 +480,12 @@ def in_tray(arm: Arm, name: str, tray: str = "tray", half: float = 0.044) -> boo
     p = arm.object_pos(name)
     t = arm.object_pos(tray)
     return bool(abs(p[0] - t[0]) < half and abs(p[1] - t[1]) < half and p[2] < 0.04)
+
+
+def in_container(arm: Arm, name: str, container) -> bool:
+    """Ground truth from the physics state: is the object's centre inside a container's walls and resting
+    low (below the wall tops)? `container` is a hasami_sim.scene.ContainerSpec."""
+    p = arm.object_pos(name)
+    t = arm.object_pos(container.name)
+    lim = container.inner_half
+    return bool(abs(p[0] - t[0]) < lim and abs(p[1] - t[1]) < lim and p[2] < container.floor_h + 0.045)
