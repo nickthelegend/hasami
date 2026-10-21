@@ -14,3 +14,4 @@ CLAUDE.md
 hasami.egg-info/
 MUJOCO_LOG.TXT
 deployments/runs/*.mp4
+.test-out/

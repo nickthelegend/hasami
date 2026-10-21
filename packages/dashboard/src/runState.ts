@@ -31,6 +31,8 @@ export interface RunState {
   lastTarget: { object?: string; target: Target } | null;
   lastMask: string | null;
   error: string | null;
+  /** events received before POST /api/run answered with our run id: kept aside, then filtered by it */
+  pending: (RunEvent & { run_id?: string })[];
 }
 
 export const initialRun: RunState = {
@@ -46,6 +48,7 @@ export const initialRun: RunState = {
   lastTarget: null,
   lastMask: null,
   error: null,
+  pending: [],
 };
 
 export type RunAction =
@@ -155,8 +158,13 @@ export function runReducer(state: RunState, action: RunAction): RunState {
   switch (action.type) {
     case 'start':
       return { ...initialRun, phase: 'starting', label: action.label };
-    case 'started':
-      return { ...state, phase: state.phase === 'starting' ? 'running' : state.phase, runId: action.runId };
+    case 'started': {
+      // GET /api/events replays from the start of the latest run, which can be the previous one: only the
+      // buffered events that carry this run's id are applied.
+      let next: RunState = { ...state, phase: state.phase === 'starting' ? 'running' : state.phase, runId: action.runId, pending: [] };
+      for (const e of state.pending) if (e.run_id === action.runId) next = applyEvent(next, e);
+      return next;
+    }
     case 'fail':
       return { ...state, phase: 'failed', error: action.message };
     case 'drop':
@@ -171,26 +179,31 @@ export function runReducer(state: RunState, action: RunAction): RunState {
     case 'event': {
       const e = action.event;
       if (state.phase === 'idle') return state;
-      if (e.run_id && state.runId && e.run_id !== state.runId) return state;
-      const next: RunState = { ...state, rows: [...state.rows, eventRow(e)] };
-      if (state.phase === 'starting') next.phase = 'running';
-      if (e.type === 'plan') next.plan = e.data.plan;
-      if (e.type === 'segment') {
-        if (typeof e.data.iou_vs_truth === 'number') next.ious = [...state.ious, e.data.iou_vs_truth];
-        if (e.data.mask_png) next.lastMask = e.data.mask_png;
-      }
-      if (e.type === 'target' && e.data.target) next.lastTarget = { object: e.data.role ?? e.data.object, target: e.data.target };
-      if (e.type === 'result') next.results = [...state.results, e.data];
-      if (e.type === 'verify') next.checks = state.checks + 1;
-      if (e.type === 'retry') next.retries = state.retries + 1;
-      if (e.type === 'done') next.phase = 'done';
-      if (e.type === 'error') {
-        next.phase = 'failed';
-        next.error = e.data.message;
-      }
-      return next;
+      if (!state.runId) return { ...state, pending: [...state.pending, e] };
+      if (e.run_id && e.run_id !== state.runId) return state;
+      return applyEvent(state, e);
     }
   }
+}
+
+function applyEvent(state: RunState, e: RunEvent & { run_id?: string }): RunState {
+  const next: RunState = { ...state, rows: [...state.rows, eventRow(e)] };
+  if (state.phase === 'starting') next.phase = 'running';
+  if (e.type === 'plan') next.plan = e.data.plan;
+  if (e.type === 'segment') {
+    if (typeof e.data.iou_vs_truth === 'number') next.ious = [...state.ious, e.data.iou_vs_truth];
+    if (e.data.mask_png) next.lastMask = e.data.mask_png;
+  }
+  if (e.type === 'target' && e.data.target) next.lastTarget = { object: e.data.role ?? e.data.object, target: e.data.target };
+  if (e.type === 'result') next.results = [...state.results, e.data];
+  if (e.type === 'verify') next.checks = state.checks + 1;
+  if (e.type === 'retry') next.retries = state.retries + 1;
+  if (e.type === 'done') next.phase = 'done';
+  if (e.type === 'error') {
+    next.phase = 'failed';
+    next.error = e.data.message;
+  }
+  return next;
 }
 
 export function summarise(results: RunResult[], ious: number[]) {
