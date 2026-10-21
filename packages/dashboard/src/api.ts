@@ -10,7 +10,8 @@ export interface Status {
   so101: { connected: boolean; port: string | null; setup?: string };
   planner: { ready: boolean; model: string; setup?: string };
   segmenters: { name: string; model?: string; prompt?: string; ready: boolean; setup?: string; note?: string }[];
-  scene: { objects: { name: string; label: string }[]; seed?: number | null };
+  scene: { objects: { name: string; label: string }[]; seed?: number | null; name?: string };
+  sim?: string;
 }
 
 export interface Target {
@@ -222,7 +223,8 @@ export const api = {
     return normalisePlan(r);
   },
   run: (req: RunRequest) => post<RunResponse>('/api/run', req),
-  reset: (seed?: number) => post<unknown>('/api/reset', seed === undefined ? {} : { seed }),
+  reset: (seed?: number, family?: string) =>
+    post<unknown>('/api/reset', { ...(seed === undefined ? {} : { seed }), ...(family ? { family } : {}) }),
   runs: async (): Promise<RecordedRun[]> => {
     const body = await request<RecordedRun[] | { runs: RecordedRun[] }>('/api/runs');
     return Array.isArray(body) ? body : Array.isArray(body?.runs) ? body.runs : [];

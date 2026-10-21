@@ -161,6 +161,7 @@ class Session:
     arm: Arm = field(default_factory=Arm.load)
     seed: int | None = None
     snapshot_on_phase: bool = False  # refresh the cached camera PNGs at every phase (for the server)
+    store_images: bool = False  # keep each attempt's frames and masks next to the run record (replay)
     lock: threading.RLock = field(default_factory=threading.RLock)
     _sam: LocalSam2 | None = None
     _sam_lock: threading.Lock = field(default_factory=threading.Lock)
@@ -176,6 +177,7 @@ class Session:
     max_retries: int = 2  # re-segment and retry a step that fails its checks, up to this many times
     _rng: np.random.Generator = field(default_factory=np.random.default_rng)
     _planned: bool = False  # the running plan came from a planner (labels + hints), not clicks
+    _run_id: str | None = None
 
     def __post_init__(self) -> None:
         if self.disturb is None:
@@ -542,6 +544,7 @@ class Session:
             [s.model_dump() if isinstance(s, PlanStep) else s for s in steps])
         run_id = run_id or new_run_id()
         self._planned = plan.source == "muse"
+        self._run_id = run_id
         rec: dict = {
             "run_id": run_id, "started_at": _now(), "segmenter": segmenter, "seed": self.seed,
             "simulation": SIMULATION, "scene": self.scene.name,
@@ -625,7 +628,7 @@ class Session:
         frame = self.observe()
         t["observe_ms"] = (time.perf_counter() - t0) * 1000
         rec: dict = {"attempt": attempt, "pick_point": _r(pick_hint, 1), "place_point": _r(place_hint, 1)}
-        res: dict = {"frame": frame, "record": rec, "verified": False, "reason": None, "pick": None, "place": None,
+        res: dict = {"step": i, "frame": frame, "record": rec, "verified": False, "reason": None, "pick": None, "place": None,
                      "obj": None, "pp": None, "physics_ok": False}
 
         if self._planned:  # a planner named the object: validate its hint, fall back if it misses
@@ -715,6 +718,8 @@ class Session:
         v["agree"] = v["ok"] == physics_ok
         res["physics_ok"] = physics_ok
         rec["verify"] = v
+        if self.store_images:
+            rec["images"] = self._store_attempt(i, attempt, frame, after, pick, place)
         rec["timings"] = _round_t(t)
         emit("verify", {"step": i, "attempt": attempt, **v, "injected": injected})
         if not physics_ok:
@@ -737,7 +742,37 @@ class Session:
         res["record"]["failure"] = failure
         res["record"]["note"] = reason
         res["reason"] = reason
+        if self.store_images:
+            rec = res["record"]
+            res["record"]["images"] = self._store_attempt(res.get("step", 0), rec["attempt"], res["frame"], None,
+                                                          res.get("pick"), res.get("place"))
         return res
+
+    def _store_attempt(self, i: int, attempt: int, frame: Frame, after: Frame | None,
+                       pick: Segmentation | None, place: Segmentation | None) -> dict:
+        """Write the attempt's overhead frames, SAM masks and ground-truth masks (for the perception-vs-truth
+        view) to runs_dir()/<run_id>/; return the file names for the record."""
+        d = runs_dir() / str(self._run_id)
+        d.mkdir(parents=True, exist_ok=True)
+        stem = f"s{i}a{attempt}"
+        out: dict = {}
+
+        def put(kind: str, img: np.ndarray) -> None:
+            name = f"{stem}-{kind}.png"
+            (d / name).write_bytes(png_bytes(img))
+            out[kind] = name
+
+        put("frame", frame.rgb)
+        if after is not None:
+            put("after", after.rgb)
+        for role, seg in (("pick", pick), ("place", place)):
+            if seg is None:
+                continue
+            put(role, seg.mask.astype(np.uint8) * 255)
+            body = next((n for n, lab in self.objects.items() if lab == seg.truth_label), None)
+            if body is not None:
+                put(f"{role}_truth", self._truth_mask(frame, body).astype(np.uint8) * 255)
+        return out
 
     def _raised(self, frame: Frame, mask: np.ndarray, min_height: float = 0.005) -> np.ndarray:
         """Mask pixels that sit above the table (drops shadow and table pixels a mask leaks onto)."""

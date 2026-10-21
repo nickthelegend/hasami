@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { api, ApiError, pickPoint, setupName, subscribe, type Camera, type ClickStep, type Pixel, type SegmentResponse, type Status } from './api';
 import { CameraTile, type Marker } from './components/CameraTile';
 import { InstructionCard, Readout, Results, RunsTable, StepsCard, Timeline, type PlanView, type RunsView } from './components/Panels';
+import { RunTrace } from './components/RunTrace';
 import { LogoMark, StatusPills } from './components/TopBar';
 import { initialRun, runReducer } from './runState';
 
@@ -25,6 +26,8 @@ export default function App() {
   const [notice, setNotice] = useState<Notice>(null);
   const [runs, setRuns] = useState<RunsView>({ state: 'loading' });
   const [resetting, setResetting] = useState(false);
+  const [scene, setScene] = useState('classic');
+  const [traceId, setTraceId] = useState<string | null>(null);
   const [run, dispatch] = useReducer(runReducer, initialRun);
   const sub = useRef<{ close: () => void } | null>(null);
   const [, setFrameSize] = useState<{ w: number; h: number } | null>(null);
@@ -82,11 +85,12 @@ export default function App() {
     if (run.phase === 'done' || run.phase === 'failed') {
       sub.current?.close();
       sub.current = null;
+      if (run.phase === 'done' && run.runId) setTraceId(run.runId);
       refreshFrame();
       void loadRuns();
       void loadStatus();
     }
-  }, [run.phase, refreshFrame, loadRuns, loadStatus]);
+  }, [run.phase, run.runId, refreshFrame, loadRuns, loadStatus]);
 
   useEffect(() => () => sub.current?.close(), []);
 
@@ -188,7 +192,8 @@ export default function App() {
     setNotice(null);
     setResetting(true);
     try {
-      await api.reset();
+      const r = (await api.reset(undefined, scene === 'classic' ? undefined : scene)) as { instruction?: string };
+      if (r && typeof r.instruction === 'string') setInstruction(r.instruction);
       setSteps([]);
       setPending(null);
       setSeg(null);
@@ -203,7 +208,7 @@ export default function App() {
     } finally {
       setResetting(false);
     }
-  }, [refreshFrame, loadStatus]);
+  }, [refreshFrame, loadStatus, scene]);
 
   // ---- markers: clicked steps, the pending pick, and the Muse plan ---------------------------
   const markers = useMemo<Marker[]>(() => {
@@ -264,6 +269,16 @@ export default function App() {
           </a>
           <StatusPills status={status} reachable={reachable} />
           <div className="top-act">
+            <label className="scene-pick">
+              <span className="sr">Scene</span>
+              <select value={scene} onChange={(e) => setScene(e.target.value)} disabled={!reachable || live || resetting}>
+                <option value="classic">3 cubes + tray</option>
+                <option value="sort-by-colour">sort by colour</option>
+                <option value="stack-two">stack two</option>
+                <option value="clear-except-X">clear except one</option>
+                <option value="tower-of-3">tower of 3</option>
+              </select>
+            </label>
             <button type="button" className="btn btn-ghost" onClick={doReset} disabled={!reachable || live || resetting}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                 <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" />
@@ -375,7 +390,8 @@ export default function App() {
           </aside>
         </div>
 
-        <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} />
+        {traceId && <RunTrace runId={traceId} onClose={() => setTraceId(null)} />}
+        <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={setTraceId} active={traceId} />
       </main>
       <footer className="foot">
         Hasami — 鋏, scissors · MIT · Copyright (c) 2026 Nivesh Gajengi ·{' '}

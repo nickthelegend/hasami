@@ -330,7 +330,7 @@ function videoHref(r: RecordedRun): string | null {
 
 export type RunsView = { state: 'loading' } | { state: 'ok'; runs: RecordedRun[] } | { state: 'error'; message: string };
 
-export function RunsTable({ view }: { view: RunsView }) {
+export function RunsTable({ view, onReplay, active }: { view: RunsView; onReplay?: (id: string) => void; active?: string | null }) {
   return (
     <section className="runs" aria-labelledby="runs-h">
       <div className="sec-head">
@@ -360,6 +360,7 @@ export function RunsTable({ view }: { view: RunsView }) {
             <span role="columnheader">IoU</span>
             <span role="columnheader">When</span>
             <span role="columnheader">Video</span>
+            <span role="columnheader">Trace</span>
           </div>
           {view.runs.map((r, i) => {
             const id = r.run_id ?? r.id ?? `run ${i + 1}`;
@@ -393,6 +394,13 @@ export function RunsTable({ view }: { view: RunsView }) {
                   ) : (
                     <span className="muted">—</span>
                   )}
+                </span>
+                <span role="cell" className="td-r">
+                  {onReplay && r.run_id ? (
+                    <button type="button" className="btn btn-ghost btn-sm" aria-pressed={active === r.run_id} onClick={() => onReplay(r.run_id!)}>
+                      Replay
+                    </button>
+                  ) : null}
                 </span>
               </div>
             );

@@ -55,6 +55,7 @@ class RunReq(BaseModel):
 
 class ResetReq(BaseModel):
     seed: int | None = None
+    family: str | None = None  # a benchmark task family (hasami_core.tasks): load its scene for this seed
 
 
 # ---- events --------------------------------------------------------------------------------
@@ -144,6 +145,27 @@ class Runner:
         return bool(evs) and evs[-1]["event"] in TERMINAL
 
 
+MASK_TINTS = [(56, 242, 196), (167, 139, 250)]  # pick: mint, place: lilac
+
+
+def compose_view(frame_path, mask_paths) -> bytes:
+    """The frame with each mask tinted (pick mint, place lilac) and outlined."""
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    img = np.asarray(Image.open(frame_path).convert("RGB")).astype(np.float32)
+    for tint, mp in zip(MASK_TINTS, mask_paths):
+        m = np.asarray(Image.open(mp).convert("L")) > 127
+        img[m] = 0.45 * img[m] + 0.55 * np.array(tint, np.float32)
+        edge = m & ~(np.roll(m, 1, 0) & np.roll(m, -1, 0) & np.roll(m, 1, 1) & np.roll(m, -1, 1))
+        img[edge] = tint
+    buf = io.BytesIO()
+    Image.fromarray(img.clip(0, 255).astype(np.uint8)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _setup_response(e: SetupRequired) -> JSONResponse:
     return JSONResponse(status_code=503, content={"setup_required": setup_name(e), "message": str(e)})
 
@@ -157,6 +179,7 @@ def create_app(session: Session | None = None) -> FastAPI:
             state["session"] = Session()
         s: Session = state["session"]
         s.snapshot_on_phase = True
+        s.store_images = True
         app.state.session = s
         app.state.bus = EventBus()
         app.state.runner = Runner(s, app.state.bus)
@@ -288,7 +311,20 @@ def create_app(session: Session | None = None) -> FastAPI:
     def post_reset(request: Request, body: ResetReq | None = None):
         if request.app.state.runner.busy:
             return busy_response(request)
-        return sess(request).reset(body.seed if body else None)
+        s = sess(request)
+        if body is None or not body.family:
+            return s.reset(body.seed if body else None)
+        from hasami_core.tasks import FAMILIES, make_task, setup_task
+
+        if body.family not in FAMILIES:
+            return JSONResponse(status_code=422, content={"error": f"unknown family {body.family!r}; known: {FAMILIES}"})
+        seed = body.seed if body.seed is not None else int(time.time()) % 100000
+        task = make_task(body.family, seed)
+        try:
+            out = setup_task(task, s)
+        except ValueError as e:
+            return JSONResponse(status_code=422, content={"error": str(e)})
+        return {**out, "scene": body.family, "instruction": task.instruction}
 
     @app.get("/api/runs")
     def get_runs() -> dict:
@@ -300,6 +336,39 @@ def create_app(session: Session | None = None) -> FastAPI:
         if not re.fullmatch(r"[0-9A-Za-z_-]{1,64}", run_id) or not path.is_file():
             return JSONResponse(status_code=404, content={"error": f"no run {run_id!r}"})
         return json.loads(path.read_text())
+
+    @app.get("/api/runs/{run_id}/steps/{step}.png")
+    def get_step_png(run_id: str, step: int, attempt: int | None = Query(None, ge=1, le=9),
+                     kind: Literal["frame", "after", "pick", "place", "pick_truth", "place_truth", "view",
+                                   "view_truth"] = "view"):
+        """What the agent saw at a step: the overhead frame (before / after), its SAM masks, the simulator's
+        truth masks, or a composite (view: SAM masks over the frame; view_truth: truth masks)."""
+        path = runs_dir() / f"{run_id}.json"
+        if not re.fullmatch(r"[0-9A-Za-z_-]{1,64}", run_id) or not path.is_file():
+            return JSONResponse(status_code=404, content={"error": f"no run {run_id!r}"})
+        rec = json.loads(path.read_text())
+        steps = rec.get("steps") or []
+        if not 0 <= step < len(steps):
+            return JSONResponse(status_code=404, content={"error": f"run {run_id} has no step {step}"})
+        attempts = steps[step].get("attempts") or []
+        if not attempts:
+            return JSONResponse(status_code=404, content={"error": "this run was recorded before per-step images"})
+        a = attempts[(attempt or len(attempts)) - 1] if (attempt or len(attempts)) <= len(attempts) else None
+        if a is None:
+            return JSONResponse(status_code=404, content={"error": f"step {step} has no attempt {attempt}"})
+        imgs = a.get("images") or {}
+        folder = runs_dir() / run_id
+        if kind in ("view", "view_truth"):
+            if "frame" not in imgs:
+                return JSONResponse(status_code=404, content={"error": "no stored frame for this step"})
+            suffix = "_truth" if kind == "view_truth" else ""
+            png = compose_view(folder / imgs["frame"], [folder / imgs[k] for k in (f"pick{suffix}", f"place{suffix}")
+                                                         if k in imgs])
+            return Response(png, media_type="image/png", headers={"Cache-Control": "max-age=3600"})
+        if kind not in imgs:
+            return JSONResponse(status_code=404, content={"error": f"no {kind} image stored for this step"})
+        return Response((folder / imgs[kind]).read_bytes(), media_type="image/png",
+                        headers={"Cache-Control": "max-age=3600"})
 
     if DASHBOARD_DIST.is_dir():
         app.mount("/", StaticFiles(directory=DASHBOARD_DIST, html=True), name="dashboard")

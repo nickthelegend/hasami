@@ -19,6 +19,8 @@ def client(session, runs_tmp, no_model_key, monkeypatch):
     session.reset(1)
     with TestClient(create_app(session)) as c:
         yield c
+    session.store_images = session.snapshot_on_phase = False  # the session fixture outlives this client
+    session.reset(1)
 
 
 def png(resp) -> np.ndarray:
@@ -131,6 +133,30 @@ def test_run_streams_events_to_done(client, session, runs_tmp):
     assert (runs_tmp / f"{run_id}.json").is_file()
     assert client.get("/api/runs/../../etc").status_code == 404
 
+    # what the agent saw, per step: frame, SAM masks, truth masks, and the composites
+    imgs = full["steps"][0]["attempts"][0]["images"]
+    assert set(imgs) == {"frame", "after", "pick", "place", "pick_truth", "place_truth"}
+    view = png(client.get(f"/api/runs/{run_id}/steps/0.png"))
+    frame_png = png(client.get(f"/api/runs/{run_id}/steps/0.png", params={"kind": "frame"}))
+    assert view.shape == frame_png.shape == (480, 640, 3) and not np.array_equal(view, frame_png)
+    pick_mask = png(client.get(f"/api/runs/{run_id}/steps/0.png", params={"kind": "pick"})) > 127
+    truth = png(client.get(f"/api/runs/{run_id}/steps/0.png", params={"kind": "pick_truth"})) > 127
+    iou = (pick_mask & truth).sum() / (pick_mask | truth).sum()
+    assert iou == pytest.approx(full["steps"][0]["attempts"][0]["pick"]["iou_vs_truth"], abs=1e-3)
+    assert client.get(f"/api/runs/{run_id}/steps/0.png", params={"kind": "view_truth"}).status_code == 200
+    assert client.get(f"/api/runs/{run_id}/steps/5.png").status_code == 404
+    assert client.get(f"/api/runs/{run_id}/steps/0.png", params={"attempt": 3}).status_code == 404
+
+
+def test_reset_to_a_task_scene(client):
+    r = client.post("/api/reset", json={"seed": 3, "family": "sort-by-colour"}).json()
+    assert r["scene"] == "sort-by-colour" and "instruction" in r and 4 <= len(r["objects"]) - 2 <= 8
+    st = client.get("/api/status").json()
+    assert st["scene"]["name"] == "sort-by-colour" and {"tray", "bin"} <= {o["name"] for o in st["scene"]["objects"]}
+    assert client.post("/api/reset", json={"seed": 3, "family": "juggling"}).status_code == 422
+    back = client.post("/api/reset", json={"seed": 1}).json()
+    assert back["scene"] == "classic"
+
 
 def test_reset(client):
     a = client.post("/api/reset", json={"seed": 42}).json()
@@ -157,3 +183,4 @@ def test_cors_allows_localhost_dev_ports(client):
     assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
     r = client.get("/api/status", headers={"Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in r.headers
+
