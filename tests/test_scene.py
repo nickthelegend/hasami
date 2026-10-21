@@ -66,3 +66,29 @@ def test_classic_matches_the_original_scene():
     spec = classic()
     assert [o.label for o in spec.objects] == ["red cube", "green cube", "blue cube"]
     assert spec.containers[0] == ContainerSpec("tray", "tray", 0.17, 0.17)
+
+
+def test_measured_objects_cameras_and_visuals():
+    """A twin's scene: an object with its own form, size and colour, an extra camera and a visual-only
+    sheet survive the JSON round trip and compile."""
+    import json
+
+    import mujoco
+
+    from hasami_sim.scene import SIDE_TRAY, ObjectSpec, SceneSpec, build
+
+    o = ObjectSpec("twin0_grey_box", "box", "grey", 0.22, 0.0, 0.3, (0.031, 0.022, 0.027), form="block",
+                   rgba=(0.5, 0.5, 0.48, 1.0))
+    spec = SceneSpec([o], [SIDE_TRAY], name="twin",
+                     cameras=[{"name": "photo", "pos": [0.6, 0.0, 0.4], "quat": [1, 0, 0, 0], "fovy": 50.0}],
+                     visuals=[{"name": "a4_sheet", "size": [0.105, 0.1485, 0.0002], "pos": [0.215, 0, 0.0002],
+                               "rgba": [0.94, 0.94, 0.92, 1]}])
+    again = SceneSpec.from_dict(json.loads(json.dumps(spec.to_dict())))
+    assert again.objects[0].shape == "block" and again.objects[0].dims == (0.031, 0.022, 0.027)
+    m = build(again)
+    g = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "twin0_grey_box")
+    assert list(m.geom_rgba[g]) == pytest.approx([0.5, 0.5, 0.48, 1.0])
+    assert list(m.geom_size[g]) == pytest.approx([0.0155, 0.011, 0.0135])
+    assert mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_CAMERA, "photo") >= 0
+    sheet = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "a4_sheet")
+    assert m.geom_contype[sheet] == 0 and m.geom_conaffinity[sheet] == 0

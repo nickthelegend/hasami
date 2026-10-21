@@ -56,10 +56,14 @@ class ObjectSpec:
     yaw: float = 0.0
     size: tuple[float, float, float] | None = None  # defaults to SHAPES[kind]
     mass: float = 0.02
+    # A digital twin's objects are measured, not drawn from SHAPES: they set their own form ("block" for
+    # any box, or "cylinder") and the mean colour seen in the photo (`colour` is then its nearest name).
+    form: Shape | None = None
+    rgba: tuple[float, float, float, float] | None = None
 
     @property
     def shape(self) -> Shape:
-        return SHAPES[self.kind][0]
+        return self.form or SHAPES[self.kind][0]
 
     @property
     def dims(self) -> tuple[float, float, float]:
@@ -101,6 +105,10 @@ class SceneSpec:
     containers: list[ContainerSpec] = field(default_factory=list)
     seed: int | None = None
     name: str = "custom"
+    # Extra cameras {name, pos, quat, fovy} and visual-only boxes {name, size (half), pos, quat, rgba}
+    # (a digital twin adds the photo's camera and the A4 sheet).
+    cameras: list[dict] = field(default_factory=list)
+    visuals: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -109,7 +117,8 @@ class SceneSpec:
     def from_dict(cls, d: dict) -> "SceneSpec":
         return cls(objects=[ObjectSpec(**o) for o in d["objects"]],
                    containers=[ContainerSpec(**c) for c in d.get("containers", [])],
-                   seed=d.get("seed"), name=d.get("name", "custom"))
+                   seed=d.get("seed"), name=d.get("name", "custom"), cameras=list(d.get("cameras", [])),
+                   visuals=list(d.get("visuals", [])))
 
     def object(self, name: str) -> ObjectSpec:
         for o in self.objects:
@@ -160,19 +169,30 @@ def build(spec: SceneSpec, base: Path = BASE) -> mujoco.MjModel:
                  "wall_w": ([t, h, c.wall_h / 2], [-(h - t), 0, c.wall_h / 2])}
         for part, (size, pos) in parts.items():
             b.add_geom(name=f"{c.name}_{part}", type=mujoco.mjtGeom.mjGEOM_BOX, size=size, pos=pos, rgba=list(c.rgba))
-    for o in spec.objects:
+    for v in spec.visuals:
+        wb.add_geom(name=v["name"], type=mujoco.mjtGeom.mjGEOM_BOX, size=list(v["size"]), pos=list(v["pos"]),
+                    quat=list(v.get("quat", (1, 0, 0, 0))), rgba=list(v["rgba"]), contype=0, conaffinity=0)
+    for c in spec.cameras:
+        wb.add_camera(name=c["name"], pos=list(c["pos"]), quat=list(c["quat"]), fovy=float(c["fovy"]))
+    build_objects(s, spec.objects)
+    return s.compile()
+
+
+def build_objects(s: mujoco.MjSpec, objects: list[ObjectSpec], z0: float = 0.0) -> None:
+    """Add each object as a free body standing on the table (its base at height z0)."""
+    wb = s.worldbody
+    for o in objects:
         dx, dy, dz = o.dims
-        b = wb.add_body(name=o.name, pos=[o.x, o.y, dz / 2], quat=[np.cos(o.yaw / 2), 0, 0, np.sin(o.yaw / 2)])
+        b = wb.add_body(name=o.name, pos=[o.x, o.y, z0 + dz / 2], quat=[np.cos(o.yaw / 2), 0, 0, np.sin(o.yaw / 2)])
         b.add_freejoint(name=o.name)
         if o.shape == "cylinder":
             g = b.add_geom(name=o.name, type=mujoco.mjtGeom.mjGEOM_CYLINDER, size=[dx / 2, dz / 2, 0])
         else:
             g = b.add_geom(name=o.name, type=mujoco.mjtGeom.mjGEOM_BOX, size=[dx / 2, dy / 2, dz / 2])
-        g.rgba = [*COLOURS[o.colour], 1.0]
+        g.rgba = list(o.rgba) if o.rgba is not None else [*COLOURS[o.colour], 1.0]
         g.mass = o.mass
         g.friction = list(OBJECT_FRICTION)
         g.solref = list(OBJECT_SOLREF)
-    return s.compile()
 
 
 # ---- sampling -----------------------------------------------------------------------------------
