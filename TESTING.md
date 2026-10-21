@@ -36,6 +36,16 @@ export HF_HOME="/Volumes/Extreme SSD/.cache/huggingface"   # where SAM 2.1 weigh
 | `tests/test_mcp.py` | `python -m hasami_mcp` over stdio: tools, status, look, find, Setup required by label, call log | 1 | 0 |
 | **Total** | | **138** | **1** |
 
+## Dashboard (not part of pytest)
+
+```bash
+cd packages/dashboard && pnpm test     # vite bundles src/runState.test.ts, node --test runs it
+```
+
+`2 passed` (2026-10-21, Node 26): the run reducer ignores the previous run's events that
+`GET /api/events` replays before `POST /api/run` names the new run, and keeps the new run's own early
+events in order. `pnpm build` (tsc + vite) passes.
+
 ## Benchmark (not part of pytest)
 
 See the README's tables; JSON in `deployments/bench/`. Commands:

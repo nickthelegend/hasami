@@ -127,8 +127,8 @@ can replay any recorded run. `GET /api/runs/{id}/steps/{i}.png?kind=view|view_tr
 | [`packages/robot`](packages/robot) | `hasami_robot` | LeRobot SO-101 follower adapter and `RealMirror` (mirror mode; untested on hardware, BLOCKED without it) |
 | [`packages/server`](packages/server) | `hasami_server` | FastAPI on :8420, REST + SSE, serves the dashboard |
 | [`packages/mcp`](packages/mcp) | `hasami_mcp` | MCP stdio server: `status`, `look`, `find`, `pick_place` |
-| [`packages/dashboard`](packages/dashboard) | — | Vite + React: live camera, click-to-pick, SAM mask overlay, Muse instruction, scene picker, run timeline, agent trace + replay, real camera |
-| [`packages/landing`](packages/landing) | — | One-page landing |
+| [`packages/dashboard`](packages/dashboard) | — | Vite + React, a camera viewfinder beside a lab notebook: live camera with SAM masks drawn as a cut line, click-to-pick, 3D target readout, Muse instruction, scene picker, run log, agent trace + replay, real camera |
+| [`packages/landing`](packages/landing) | — | One page built from real run data: the overhead frame of a recorded run with its SAM mask outlines, the benchmark sheets, and a contact sheet of a disturbed run (`scripts/landing_assets.py` rebuilds the images and outlines) |
 | [`packages/docs`](packages/docs) | — | Method, checks, Meta API confirmed vs unverified, sim-to-real, limits |
 
 ## Run it
