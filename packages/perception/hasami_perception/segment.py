@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import json
 import os
@@ -38,6 +39,8 @@ class LocalSam2:
         self.device = device or "cpu"
         self.processor = Sam2Processor.from_pretrained(checkpoint)
         self.model = Sam2Model.from_pretrained(checkpoint).to(self.device).eval()
+        self._cache_key: str | None = None
+        self._cache_emb = None
 
     def segment(self, rgb: np.ndarray, *, point: tuple[float, float] | None = None,
                 text: str | None = None) -> np.ndarray:
@@ -46,8 +49,13 @@ class LocalSam2:
         img = Image.fromarray(rgb)
         inp = self.processor(images=img, input_points=[[[[float(point[0]), float(point[1])]]]],
                              input_labels=[[[1]]], return_tensors="pt").to(self.device)
+        key = hashlib.blake2b(rgb.tobytes(), digest_size=16).hexdigest()
         with self._torch.no_grad():
-            out = self.model(**inp, multimask_output=True)
+            if self._cache_key != key:  # the image encoder is most of the cost: run it once per frame
+                self._cache_emb = self.model.get_image_embeddings(inp["pixel_values"])
+                self._cache_key = key
+            out = self.model(input_points=inp["input_points"], input_labels=inp["input_labels"],
+                             image_embeddings=self._cache_emb, multimask_output=True)
         masks = self.processor.post_process_masks(out.pred_masks.cpu(), inp["original_sizes"].cpu())[0][0].numpy() > 0
         scores = out.iou_scores[0, 0].cpu().numpy()
         # Of SAM's three hypotheses, keep the best-scored one that contains the clicked pixel.
