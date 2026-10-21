@@ -3,6 +3,7 @@ import { api, ApiError, pickPoint, setupName, subscribe, type Camera, type Click
 import { CameraTile, type Marker } from './components/CameraTile';
 import { InstructionCard, Readout, Results, RunsTable, StepsCard, Timeline, type PlanView, type RunsView } from './components/Panels';
 import { RealCam } from './components/RealCam';
+import { Twin } from './components/Twin';
 import { RunTrace } from './components/RunTrace';
 import { LogoMark, StatusPills } from './components/TopBar';
 import { initialRun, runReducer } from './runState';
@@ -29,7 +30,7 @@ export default function App() {
   const [resetting, setResetting] = useState(false);
   const [scene, setScene] = useState('classic');
   const [traceId, setTraceId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'runs' | 'realcam'>('runs');
+  const [tab, setTab] = useState<'runs' | 'twin' | 'realcam'>('runs');
   const [run, dispatch] = useReducer(runReducer, initialRun);
   const sub = useRef<{ close: () => void } | null>(null);
   const [, setFrameSize] = useState<{ w: number; h: number } | null>(null);
@@ -150,10 +151,9 @@ export default function App() {
   const plannerSetup = status && !plannerReady ? setupName(status.planner.setup ?? 'MODEL_API_KEY') : null;
   const canRun = reachable === true && !live && !resetting && !pending && (useSteps || (plannerReady && instruction.trim().length > 0));
 
-  const doRun = useCallback(async () => {
+  /** Subscribe to the event stream, then start a run with `start`; the run log and camera follow it. */
+  const startRun = useCallback(async (label: string, start: () => Promise<{ run_id: string }>, onSetup?: (name: string) => void) => {
     setNotice(null);
-    const body = useSteps ? { steps } : { instruction: instruction.trim() };
-    const label = useSteps ? `${steps.length} clicked step${steps.length === 1 ? '' : 's'}` : `“${instruction.trim()}”`;
     sub.current?.close();
     dispatch({ type: 'start', label });
     let dropped = false;
@@ -169,9 +169,9 @@ export default function App() {
     sub.current = s;
     await s.ready;
     try {
-      const { run_id } = await api.run(body);
+      const { run_id } = await start();
       dispatch({ type: 'started', runId: run_id });
-      if (useSteps) setSteps([]);
+      return run_id;
     } catch (e) {
       s.close();
       sub.current = null;
@@ -180,21 +180,54 @@ export default function App() {
         setNotice({ tone: 'busy', text: `Busy: ${e.message} Wait for it to finish, then run again.` });
       } else if (e instanceof ApiError && e.kind === 'setup') {
         dispatch({ type: 'fail', message: `Setup required: ${setupName(e.setup)}` });
-        if (!useSteps) setPlan({ state: 'setup', name: setupName(e.setup) });
+        onSetup?.(setupName(e.setup));
       } else if (e instanceof ApiError && e.kind === 'unreachable') {
         dispatch({ type: 'fail', message: 'Server not reachable.' });
         setReachable(false);
       } else {
         dispatch({ type: 'fail', message: errText(e) });
       }
+      return null;
     }
-  }, [useSteps, steps, instruction]);
+  }, []);
+
+  const doRun = useCallback(async () => {
+    const body = useSteps ? { steps } : { instruction: instruction.trim() };
+    const label = useSteps ? `${steps.length} clicked step${steps.length === 1 ? '' : 's'}` : `“${instruction.trim()}”`;
+    const id = await startRun(label, () => api.run(body), useSteps ? undefined : (name) => setPlan({ state: 'setup', name }));
+    if (id && useSteps) setSteps([]);
+  }, [useSteps, steps, instruction, startRun]);
+
+  const doTwinRun = useCallback(
+    async (twinId: string, task: string, label: string) => {
+      setSteps([]);
+      setPending(null);
+      setSeg(null);
+      setScene('twin');
+      const id = await startRun(label, () => api.twinRun(twinId, task));
+      void loadStatus();
+      return id;
+    },
+    [startRun, loadStatus],
+  );
+
+  const onTwinLoaded = useCallback(() => {
+    setSteps([]);
+    setPending(null);
+    setSeg(null);
+    setScene('twin');
+    dispatch({ type: 'clear' });
+    refreshFrame();
+    void loadStatus();
+  }, [refreshFrame, loadStatus]);
 
   const doReset = useCallback(async () => {
     setNotice(null);
     setResetting(true);
     try {
-      const r = (await api.reset(undefined, scene === 'classic' ? undefined : scene)) as { instruction?: string };
+      const fam = scene === 'classic' || scene === 'twin' ? undefined : scene;
+      if (scene === 'twin') setScene('classic');
+      const r = (await api.reset(undefined, fam)) as { instruction?: string };
       if (r && typeof r.instruction === 'string') setInstruction(r.instruction);
       setSteps([]);
       setPending(null);
@@ -309,6 +342,7 @@ export default function App() {
                     <option value="stack-two">stack 2</option>
                     <option value="clear-except-X">clear but 1</option>
                     <option value="tower-of-3">tower of 3</option>
+                    {scene === 'twin' && <option value="twin">twin</option>}
                   </select>
                 </label>
                 <button type="button" className="btn btn-ghost" onClick={doReset} disabled={!reachable || live || resetting}>
@@ -376,16 +410,18 @@ export default function App() {
         </div>
 
         {traceId && <RunTrace runId={traceId} onClose={() => setTraceId(null)} onLoaded={loadRuns} />}
-        <section className="register paper" aria-label="Runs and real camera">
+        <section className="register paper" aria-label="Runs, twin and real camera">
           <div className="tabs" role="tablist" aria-label="Register">
-            {(['runs', 'realcam'] as const).map((t) => (
+            {(['runs', 'twin', 'realcam'] as const).map((t) => (
               <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-                {t === 'runs' ? 'Recorded runs' : 'Real camera'}
+                {t === 'runs' ? 'Recorded runs' : t === 'twin' ? 'Twin' : 'Real camera'}
               </button>
             ))}
           </div>
           {tab === 'realcam' ? (
             <RealCam />
+          ) : tab === 'twin' ? (
+            <Twin onRun={doTwinRun} runPhase={run.phase} runId={run.runId} onLoaded={onTwinLoaded} />
           ) : (
             <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={setTraceId} active={traceId} />
           )}

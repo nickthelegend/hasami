@@ -224,6 +224,7 @@ export const api = {
     return normalisePlan(r);
   },
   run: (req: RunRequest) => post<RunResponse>('/api/run', req),
+  twinRun: (twinId: string, task: string) => post<RunResponse>(`/api/twin/${encodeURIComponent(twinId)}/run`, { task }),
   reset: (seed?: number, family?: string) =>
     post<unknown>('/api/reset', { ...(seed === undefined ? {} : { seed }), ...(family ? { family } : {}) }),
   runs: async (): Promise<RecordedRun[]> => {
