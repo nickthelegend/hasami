@@ -118,7 +118,8 @@ export interface RecordedRun {
   iou_mean?: number | null;
   error?: string | null;
   file?: string;
-  video?: string | null;
+  /** older records store a path; newer ones { file, camera, fps, size, frames, seconds, caption } */
+  video?: string | { file?: string; seconds?: number; caption?: string } | null;
   video_url?: string | null;
   [key: string]: unknown;
 }

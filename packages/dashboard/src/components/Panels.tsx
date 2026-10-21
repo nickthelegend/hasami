@@ -328,6 +328,14 @@ function videoHref(r: RecordedRun): string | null {
   return null;
 }
 
+/** The recorded video's file name (served from deployments/runs, not by the API). */
+function videoFile(r: RecordedRun): { name: string; seconds?: number } | null {
+  const v = r.video;
+  if (typeof v === 'string' && v) return { name: v.split('/').pop() ?? v };
+  if (v && typeof v === 'object' && typeof v.file === 'string') return { name: v.file, seconds: typeof v.seconds === 'number' ? v.seconds : undefined };
+  return null;
+}
+
 export type RunsView = { state: 'loading' } | { state: 'ok'; runs: RecordedRun[] } | { state: 'error'; message: string };
 
 export function RunsTable({ view, onReplay, active }: { view: RunsView; onReplay?: (id: string) => void; active?: string | null }) {
@@ -365,7 +373,7 @@ export function RunsTable({ view, onReplay, active }: { view: RunsView; onReplay
           {view.runs.map((r, i) => {
             const id = r.run_id ?? r.id ?? `run ${i + 1}`;
             const href = videoHref(r);
-            const v = r.video_url ?? r.video;
+            const vf = videoFile(r);
             return (
               <div className="tr" role="row" key={`${id}-${i}`}>
                 <span role="cell" className="mono td-id">
@@ -389,8 +397,10 @@ export function RunsTable({ view, onReplay, active }: { view: RunsView; onReplay
                     <a className="vlink" href={href} target="_blank" rel="noreferrer">
                       Watch <Arrow />
                     </a>
-                  ) : v ? (
-                    <code className="muted">{String(v).split('/').pop()}</code>
+                  ) : vf ? (
+                    <code className="muted" title={`deployments/runs/${vf.name}`}>
+                      {vf.seconds != null ? `${Math.round(vf.seconds)} s mp4` : vf.name}
+                    </code>
                   ) : (
                     <span className="muted">—</span>
                   )}
