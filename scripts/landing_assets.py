@@ -1,6 +1,7 @@
-"""Build the landing page's images and mask outlines from two recorded runs.
+"""Build the landing page's images and mask outlines from two recorded runs (and the twin figure).
 
     python scripts/landing_assets.py
+    python scripts/landing_assets.py --twin 1     # the twin figure from synthetic desk photo seed 1
 
 Everything comes from deployments/runs/: the overhead frame a run stored before each attempt, the
 SAM 2.1 mask it used, and the frame after the attempt. Nothing is drawn by hand: the outlines are the
@@ -149,5 +150,39 @@ def main() -> None:
     print(json.dumps(out, indent=1))
 
 
+TWIN_SEED = 1
+
+
+def twin_figure(seed: int = TWIN_SEED) -> None:
+    """The landing's twin figure: a synthetic desk photo (MuJoCo render, labelled so) with the fits drawn,
+    beside its twin rendered from the same viewpoint. Same code path as POST /api/twin."""
+    import io
+
+    from hasami_core.twin import make_twin, overlay_photo, render_twin, side_by_side
+    from hasami_perception import LocalSam2
+    from hasami_sim.photo import SheetPose, random_desk, render_photo
+
+    objs, cam = random_desk(seed)
+    rgb = render_photo(objs, SheetPose(), cam)
+    twin = make_twin(rgb, LocalSam2(), hfov_deg=cam.hfov_deg, photo_source="synthetic")
+    png = side_by_side(overlay_photo(rgb, twin), render_twin(twin.spec, twin.width, twin.height),
+                       left="synthetic photo (MuJoCo render)")
+    im = Image.open(io.BytesIO(png)).convert("RGB")
+    im = im.resize((1440, round(im.height * 1440 / im.width)), Image.LANCZOS)
+    dst = OUT / "twin-sbs.webp"
+    im.save(dst, "WEBP", quality=86, method=6)
+    print(f"wrote {dst.relative_to(ROOT)} {im.size} {dst.stat().st_size} bytes")
+    print(json.dumps({"seed": seed, "hfov_deg": round(cam.hfov_deg, 1), "stats": twin.stats,
+                      "objects": [{"label": f"{o.colour} {o.kind}", "size_mm": o.size_mm, "x_m": w["x_m"], "y_m": w["y_m"]}
+                                  for o, w in zip(twin.objects, twin.world)],
+                      "truth": [{"label": o.label, "dims_mm": [round(v * 1000, 1) for v in o.dims], "x": round(o.x, 4),
+                                 "y": round(o.y, 4)} for o in objs]}, indent=1))
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+
+    if len(sys.argv) > 2 and sys.argv[1] == "--twin":
+        twin_figure(int(sys.argv[2]))
+    else:
+        main()

@@ -163,6 +163,11 @@
       .res .full { color: var(--mint-deep); }
       .sheet-foot { padding: 16px 24px 20px; font: 400 14px/1.55 var(--mono); color: var(--ink-2); border-top: 2px solid var(--ink); }
       .sheet-foot p { margin: 0 0 6px; max-width: 110ch; }
+      .twin-fig { margin: 0 0 28px; border: 1px solid var(--rule); background: #fbfafc; }
+      .twin-fig img { display: block; width: 100%; height: auto; }
+      .twin-fig figcaption { padding: 12px 16px 14px; font: 400 14px/1.55 var(--mono); color: var(--ink-2); }
+      .twin-fig figcaption .stamp { margin-right: 8px; }
+      .twin-sheet .tally { flex-wrap: wrap; }
 
       /* ---- 04 replay: contact sheet -------------------------------------------------------- */
       .contact { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
@@ -302,7 +307,8 @@
             <li><a href="#cut"><b>02</b>Cut</a></li>
             <li><a href="#sheet"><b>03</b>Results</a></li>
             <li><a href="#replay"><b>04</b>Replay</a></li>
-            <li><a href="#apparatus"><b>05</b>Apparatus</a></li>
+            <li><a href="#twin"><b>05</b>Twin</a></li>
+            <li><a href="#apparatus"><b>06</b>Apparatus</a></li>
           </ul>
         </nav>
         <span class="simlabel" role="note"><i aria-hidden="true"></i>MuJoCo simulation · official SO-101 model</span>
@@ -608,11 +614,47 @@
         </div>
       </section>
 
-      <!-- 05 · apparatus --------------------------------------------------------------------- -->
+      <!-- 05 · twin ------------------------------------------------------------------------- -->
+      <section class="paper sec" id="twin" aria-labelledby="twin-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div class="sec-no">05 · YOUR DESK, TWINNED</div>
+            <div>
+              <h2 class="h" id="twin-h">One photo with an A4 sheet in it becomes a scene the arm can work in</h2>
+              <p>The sheet gives the table plane and the camera's pose; SAM 2.1, prompted at a grid of points, finds every object; each mask is fitted as an upright box or cylinder whose silhouette matches it; MuJoCo builds the twin with the SO-101 beside the sheet and renders it from the photo's own viewpoint. Then the arm runs a task on the twin, checked and retried as everywhere else.</p>
+            </div>
+          </div>
+          <figure class="twin-fig">
+            <img src="assets/twin-sbs.webp" alt="Left: a synthetic desk photo rendered by MuJoCo, with the A4 sheet outlined and each object's fitted box or cylinder drawn. Right: the MuJoCo twin rendered from the same viewpoint, with the simulated SO-101, a tray and a grey bin." width="1440" height="568" loading="lazy" />
+            <figcaption><span class="stamp stamp-pend">digital twin from one photo · simulated arm</span> Left: a <b>synthetic</b> photo (MuJoCo render, seed 1 of <code>random_desk</code>) with the sheet and the fitted shapes drawn. Right: the twin, from the same camera. A real desk photo has not been measured yet.</figcaption>
+          </figure>
+          <div class="sheet twin-sheet">
+            <div class="sheet-top">
+              <dl>
+                <dt>photos</dt><dd>20 MuJoCo renders, random tilted camera, no arm, no depth</dd>
+                <dt>given</dt><dd>the RGB image only (and its field of view)</dd>
+                <dt>file</dt><dd>deployments/twins/accuracy-20261021T164701Z.json</dd>
+                <dt>tasks</dt><dd>clear-desk on each twin, simulated-click planner</dd>
+              </dl>
+              <div class="tally">
+                <div><b>86/86</b><span>objects found</span></div>
+                <div><b>1.2 mm</b><span>mean centre error</span></div>
+                <div><b>1.6 mm</b><span>mean height error</span></div>
+                <div><b>16/20</b><span>twins cleared</span></div>
+              </div>
+            </div>
+            <div class="sheet-foot">
+              <p>With the camera's true field of view: 0 false positives, shape right for 83/86, colour 86/86, centre max 4.9 mm, yaw mean 1.0° (max 22°), height median 0.9 mm (max 13.7). With the 70° field of view a real photo gets by default: 83/86 found, centre mean 3.3 mm (max 14.3). <code>python scripts/twin_accuracy.py --seeds 20 --tasks</code></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 06 · apparatus --------------------------------------------------------------------- -->
       <section class="paper sec" id="apparatus" aria-labelledby="app-h">
         <div class="wrap">
           <div class="sec-head">
-            <div class="sec-no">05 · APPARATUS</div>
+            <div class="sec-no">06 · APPARATUS</div>
             <div>
               <h2 class="h" id="app-h">What runs, what waits for a key</h2>
               <p>Nothing is mocked. A missing key or device shows as Setup required, with its name.</p>
@@ -626,6 +668,7 @@
               <li><b>SAM 3.1</b><span>Text-prompted segmentation on the Meta Model API. Its mask decoding is unverified until a key exists.</span><span class="stamp stamp-setup">Setup required: MODEL_API_KEY</span></li>
               <li><b>Check and retry</b><span>After every attempt: the gripper's reading and the camera (pick spot clear, object at the place spot). On a miss the object is re-found and the step retried, up to twice.</span><span class="stamp stamp-ok">running</span></li>
               <li><b>MCP server</b><span>look, find, pick_place and status for an agent, over stdio.</span><span class="stamp stamp-ok">running</span></li>
+              <li><b>Digital twin</b><span>One desk photo with an A4 sheet becomes a MuJoCo scene; the simulated arm works in it. Measured on rendered photos only.</span><span class="stamp stamp-pend">pending · a real photo</span></li>
               <li><b>Real camera</b><span>Webcam or photo, an A4 sheet for the table plane, SAM 2.1 on a clicked object. Segment and locate only; not yet checked against a ruler.</span><span class="stamp stamp-pend">pending · ruler check</span></li>
               <li><b>Real SO-101 arm</b><span>LeRobot follower in mirror mode: it repeats the simulated arm's joint targets. Never run on hardware.</span><span class="stamp stamp-fail">Setup required: HASAMI_SO101_PORT</span></li>
             </ul>
@@ -658,7 +701,7 @@
         <div class="legal">
           <span>Hasami — 鋏, scissors · Meta Global AI Developer Hackathon · MIT · Copyright (c) 2026 Nivesh Gajengi · not affiliated with Meta</span>
           <nav aria-label="Footer">
-            <a href="#cut">Notebook</a><a href="#sheet">Results</a><a href="#replay">Replay</a><a href="#apparatus">Apparatus</a><a href="https://github.com/nickthelegend/hasami">GitHub</a>
+            <a href="#cut">Notebook</a><a href="#sheet">Results</a><a href="#replay">Replay</a><a href="#twin">Twin</a><a href="#apparatus">Apparatus</a><a href="https://github.com/nickthelegend/hasami">GitHub</a>
           </nav>
         </div>
       </div>
