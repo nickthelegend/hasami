@@ -243,7 +243,7 @@ export function RunTrace({ runId, onClose, onLoaded }: { runId: string; onClose:
       ) : (
         <>
           <p className="muted small trace-meta">
-            {rec.simulation ?? 'MuJoCo simulation'} · plan from {rec.plan?.source === 'muse' ? rec.plan.model ?? 'Muse' : 'clicks'}
+            {rec.simulation ?? 'MuJoCo simulation'} · plan from {rec.plan?.source === 'muse' ? rec.plan.model ?? 'Muse' : rec.plan?.source === 'scripted' ? 'a scripted Muse-format plan (no model)' : 'clicks'}
             {rec.plan?.instruction ? ` · “${rec.plan.instruction}”` : ''}
             {rec.disturb ? ` · injected disturbances: ${[rec.disturb.offset_mm ? `${rec.disturb.offset_mm} mm offset on first attempts` : null, rec.disturb.slip ? `slip p=${rec.disturb.slip}` : null].filter(Boolean).join(', ')}` : ''}
             {typeof rec.placed === 'number' ? ` · ${rec.placed}/${rec.total} placed` : ''}

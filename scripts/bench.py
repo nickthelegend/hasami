@@ -2,12 +2,17 @@
 
     HF_HOME=... .venv/bin/python scripts/bench.py --family all-to-tray --seeds 30
     .venv/bin/python scripts/bench.py --family all --seeds 10 --planner clicks
+    .venv/bin/python scripts/bench.py --family all --seeds 10 --planner scripted --hint-px 20
+    HASAMI_DISTURB=depth_mm:2,cam_mm:3,light:0.3 .venv/bin/python scripts/bench.py --family all --seeds 8
     .venv/bin/python scripts/bench.py --family sort-by-colour --seeds 5 --planner muse   # needs MODEL_API_KEY
 
 Planners:
-  clicks  the simulated-click oracle (hasami_core.tasks.ORACLE_LABEL). It is NOT a language model: it
-          stands in for a planner that understood the instruction, so these numbers measure perception,
-          grasping, placing and recovery, not planning.
+  clicks    the simulated-click oracle (hasami_core.tasks.ORACLE_LABEL). It is NOT a language model: it
+            stands in for a planner that understood the instruction, so these numbers measure perception,
+            grasping, placing and recovery, not planning.
+  scripted  a Muse-format plan written from the task by code (hasami_core.tasks.SCRIPTED_LABEL): labels
+            plus pick hints moved --hint-px off, so the grounding layer has to find each object. Not a
+            language model either.
   muse    Muse on the Meta Model API plans from the instruction and the overhead frame. Without
           MODEL_API_KEY this prints "Setup required" and exits 2; nothing is written.
 
@@ -30,14 +35,20 @@ import numpy as np
 
 from hasami_core import Session, SetupRequired
 from hasami_core.session import ROOT, SIMULATION, Disturb, _json_default
-from hasami_core.tasks import FAMILIES, ORACLE_LABEL, make_task, oracle_steps, setup_task, world_from
+from hasami_core.tasks import (FAMILIES, ORACLE_LABEL, SCRIPTED_LABEL, make_task, oracle_steps, scripted_steps,
+                               setup_task, world_from)
 
 BENCH_DIR = ROOT / "deployments" / "bench"
 
 
-def plan_for(task, session, planner, planner_name: str):
+def plan_for(task, session, planner, planner_name: str, hint_px: float = 20.0):
     if planner_name == "clicks":
         return oracle_steps(task, session)
+    if planner_name == "scripted":
+        from hasami_planner import validate_steps
+
+        return validate_steps(scripted_steps(task, session, hint_px, task.seed), source="scripted",
+                              model=None, instruction=task.instruction)
     png, _ = session.frame_png("overhead")
     plan, _latency = planner.plan(task.instruction, png, [o["label"] for o in session.scene_objects()])
     return plan
@@ -60,7 +71,8 @@ def classify(rec: dict, task, goal_ok: bool) -> str | None:
     return "goal"
 
 
-def run_family(family: str, seeds: list[int], session: Session, planner, planner_name: str, log) -> dict:
+def run_family(family: str, seeds: list[int], session: Session, planner, planner_name: str, log,
+               hint_px: float = 20.0) -> dict:
     tasks, t0 = [], time.perf_counter()
     for seed in seeds:
         task = make_task(family, seed)
@@ -73,7 +85,7 @@ def run_family(family: str, seeds: list[int], session: Session, planner, planner
         w0 = world_from(session)
         t1 = time.perf_counter()
         try:
-            steps = plan_for(task, session, planner, planner_name)
+            steps = plan_for(task, session, planner, planner_name, hint_px)
             rec = session.run(steps)
         except Exception as e:  # noqa: BLE001 - record and continue; a crash is a failure, not a skip
             tasks.append({"seed": seed, "instruction": task.instruction, "ok": False, "failure": "error",
@@ -125,7 +137,8 @@ def main() -> int:
     ap.add_argument("--family", default="all", help=f"one of {FAMILIES} or 'all' (comma-separated list ok)")
     ap.add_argument("--seeds", type=int, default=10, help="seeds 0..N-1 (from --start)")
     ap.add_argument("--start", type=int, default=0)
-    ap.add_argument("--planner", choices=["clicks", "muse"], default="clicks")
+    ap.add_argument("--planner", choices=["clicks", "scripted", "muse"], default="clicks")
+    ap.add_argument("--hint-px", type=float, default=20.0, help="scripted planner: how far each pick hint is off")
     ap.add_argument("--out", type=Path, default=None, help="output JSON (default deployments/bench/<ts>.json)")
     args = ap.parse_args()
 
@@ -152,7 +165,8 @@ def main() -> int:
         "started_at": started.isoformat(timespec="seconds").replace("+00:00", "Z"),
         "simulation": SIMULATION,
         "planner": args.planner,
-        "planner_note": ORACLE_LABEL if args.planner == "clicks" else f"Muse ({planner.model}) on the Meta Model API",
+        "planner_note": {"clicks": ORACLE_LABEL, "scripted": f"{SCRIPTED_LABEL} (hint {args.hint_px:g} px off)"}.get(
+            args.planner) or f"Muse ({planner.model}) on the Meta Model API",
         "segmenter": "sam2.1-hiera-tiny (local, point prompts)",
         "max_retries": session.max_retries,
         "disturb": None if session.disturb is None else session.disturb.to_dict(),
@@ -162,7 +176,7 @@ def main() -> int:
     print(f"bench: {', '.join(families)}  seeds {seeds[0]}..{seeds[-1]}  planner {args.planner}"
           + (f"  disturb {os.environ.get('HASAMI_DISTURB')}" if session.disturb else ""), flush=True)
     for f in families:
-        res = run_family(f, seeds, session, planner, args.planner, lambda m: print(m, flush=True))
+        res = run_family(f, seeds, session, planner, args.planner, lambda m: print(m, flush=True), args.hint_px)
         out["families"][f] = res
         print(f"{f}: {res['success']}/{res['ran']} tasks, {res['steps_ok']}/{res['steps']} steps, "
               f"failures {res['failures'] or '-'}, retries {res['retries']}, "

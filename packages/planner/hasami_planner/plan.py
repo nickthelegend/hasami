@@ -48,7 +48,9 @@ class Plan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     steps: list[PlanStep] = Field(min_length=1, max_length=MAX_STEPS)
-    source: Literal["muse", "clicks"]
+    # muse: a Muse reply; clicks: a person (or the click oracle) clicked; scripted: a Muse-format plan written
+    # from a benchmark task by code (labels + deliberately perturbed hints), no model involved
+    source: Literal["muse", "clicks", "scripted"]
     model: str | None = None
     instruction: str | None = None
 
@@ -84,7 +86,7 @@ def tool_schema() -> dict:
     }
 
 
-def validate_steps(steps: object, *, source: Literal["muse", "clicks"], model: str | None = None,
+def validate_steps(steps: object, *, source: Literal["muse", "clicks", "scripted"], model: str | None = None,
                    instruction: str | None = None, raw: str | None = None) -> Plan:
     try:
         return Plan(steps=steps, source=source, model=model, instruction=instruction)  # type: ignore[arg-type]

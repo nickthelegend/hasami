@@ -546,7 +546,7 @@ class Session:
         plan = steps if isinstance(steps, Plan) else plan_from_clicks(
             [s.model_dump() if isinstance(s, PlanStep) else s for s in steps])
         run_id = run_id or new_run_id()
-        self._planned = plan.source == "muse"
+        self._planned = plan.source in ("muse", "scripted")  # labels + hints: ground the labels
         self._run_id = run_id
         rec: dict = {
             "run_id": run_id, "started_at": _now(), "segmenter": segmenter, "seed": self.seed,

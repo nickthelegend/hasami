@@ -166,3 +166,43 @@ def test_bare_table_label_is_not_searched():
     with pytest.raises(GroundingError, match="bare table"):
         ground("the table", (10.0, 10.0), np.zeros((20, 20, 3), np.uint8), np.ones((20, 20)), lambda p: None)
 
+
+@pytest.mark.parametrize("family", ["all-to-tray", "sort-by-colour", "stack-two", "clear-except-X", "tower-of-3",
+                                    "sort-by-shape", "line-up", "pick-from-bin"])
+def test_scripted_plans_with_hints_20px_off_ground_the_right_objects(session, family):
+    """Every family's plan in the Muse format (label + hint), each pick hint 20 px off in a random
+    direction: grounding finds the named object (scored against the simulator's segmentation)."""
+    from hasami_core.tasks import make_task, scripted_steps, setup_task
+
+    task = make_task(family, 1)
+    try:
+        setup_task(task, session)
+        frame = session.observe()
+        steps = scripted_steps(task, session, hint_px=20.0, seed=1)
+        for (obj, _), st in zip(task.moves, steps):
+            seg = session.ground(frame, st["pick"], tuple(st["pick_point"]))
+            assert seg.target is not None, (st, seg.target_error)
+            assert seg.truth_label == session.objects[obj], (st["pick"], seg.truth_label, seg.grounding)
+            assert seg.iou_vs_truth > 0.6
+    finally:
+        session.reset(1)
+
+
+def test_scripted_line_up_runs_with_table_places(session):
+    """A Muse-format line-up plan ('the table' as the place, hints 20 px off) runs in the simulator and the
+    row goal holds on the physics state."""
+    from hasami_core.tasks import make_task, scripted_steps, setup_task, world_from
+    from hasami_planner import validate_steps
+
+    task = make_task("line-up", 2)
+    try:
+        setup_task(task, session)
+        w0 = world_from(session)
+        plan = validate_steps(scripted_steps(task, session, 20.0, 2), source="scripted", instruction=task.instruction)
+        rec = session.run(plan)
+        ok, detail = task.goal(w0, world_from(session))
+        assert ok, (detail, [s["result"].get("note") for s in rec["steps"]])
+        assert [s["place_how"] for s in rec["steps"]] == ["on table"] * 3
+        assert rec["plan"]["source"] == "scripted"
+    finally:
+        session.reset(1)

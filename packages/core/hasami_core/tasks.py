@@ -341,6 +341,30 @@ def oracle_steps(task: Task, session) -> list[dict]:
     return steps
 
 
+SCRIPTED_LABEL = ("scripted Muse-format plan: written from the task by code (no language model); each step "
+                  "names the object by colour and shape, and its hint pixel is moved a fixed distance in a random "
+                  "direction from the object's colour-blob centre, as a planner's pixel might miss")
+
+
+def scripted_steps(task: Task, session, hint_px: float = 20.0, seed: int = 0) -> list[dict]:
+    """The Muse plan format (label + hint pixel per pick and place) written from the task: the oracle's clicks,
+    each pick hint moved `hint_px` in a random direction. Places keep their spots (a container or a stacking
+    base is named, so grounding can still find it; a table spot is named 'the table')."""
+    rng = np.random.default_rng([seed, int(hint_px * 10), 31])
+    base = oracle_steps(task, session)
+    out = []
+    for (obj, dest), st in zip(task.moves, base):
+        a = rng.uniform(0, 2 * np.pi)
+        u, v = st["pick_point"]
+        o = session.scene.object(obj)
+        place = "the table" if dest.startswith("@") else session.objects[dest]
+        out.append({"pick": f"{o.colour} {o.kind}", "pick_point": [round(u + hint_px * np.cos(a), 1),
+                                                                   round(v + hint_px * np.sin(a), 1)],
+                    "place": place, "place_point": st["place_point"],
+                    "reason": f"scripted from the task; pick hint {hint_px:g} px off"})
+    return out
+
+
 def world_from(session) -> World:
     """The physics state as a World (ground truth: for goal checks only)."""
     bodies = {o.name: Body(session.arm.object_pos(o.name), o.dims, o.label) for o in session.scene.objects}
@@ -355,5 +379,6 @@ def setup_task(task: Task, session) -> dict:
 
 
 __all__ = ["FAMILIES", "LINE_SLOTS", "ORACLE_LABEL", "Body", "Task", "World", "container_spots", "in_any_box", "in_box",
-           "in_row", "make_task", "moved", "on_top", "oracle_click", "oracle_steps", "setup_task", "upright_on_table",
+           "in_row", "make_task", "moved", "on_top", "oracle_click", "oracle_steps", "scripted_steps", "setup_task",
+           "upright_on_table", "SCRIPTED_LABEL",
            "world_from", "TRAY"]
