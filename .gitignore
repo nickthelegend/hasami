@@ -15,3 +15,30 @@ hasami.egg-info/
 MUJOCO_LOG.TXT
 deployments/runs/*.mp4
 .test-out/
+
+# videos, model weights and caches never go in git (videos are shared separately)
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.avi
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.gguf
+*.npz
+huggingface/
+.hf-cache/
+
+# run records and twins the server writes as you use it; the committed ones are evidence named here
+deployments/runs/*
+!deployments/runs/20261020T221547959Z.json
+!deployments/runs/20261020T221658918Z.json
+!deployments/runs/20261021T053112874Z.json
+!deployments/runs/20261021T053112874Z/
+!deployments/runs/20261021T053203432Z.json
+!deployments/runs/20261021T053203432Z/
+deployments/twins/*/
+packages/dashboard/.test-out/
