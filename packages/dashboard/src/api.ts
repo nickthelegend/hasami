@@ -88,8 +88,8 @@ export interface RunResult {
   attempts?: number;
   /** the camera + gripper check passed on the last attempt */
   verified?: boolean;
-  /** ground-truth failure class when ok is false */
-  failure?: 'segment' | 'grasp' | 'place' | null;
+  /** failure class when ok is false ('implausible': skipped, no plausible target, the arm did not move) */
+  failure?: 'segment' | 'grasp' | 'place' | 'implausible' | null;
   /** where the object ended up vs the place target */
   error_mm: number | null;
   /** depth-fused centre vs simulator truth, when the server reports it */
