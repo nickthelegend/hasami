@@ -17,8 +17,10 @@ Planners:
           MODEL_API_KEY this prints "Setup required" and exits 2; nothing is written.
 
 Writes deployments/bench/<UTC timestamp>.json: success rate per family, failure breakdown by the first
-failing step's class (segment / grasp / place; 'goal' when every step passed but the final arrangement
-did not), retries, and how often the image check agreed with the physics.
+failing step's class (segment / implausible / grasp / place; 'goal' when every step passed but the final
+arrangement did not), retries, and how often the image check agreed with the physics. 'implausible' is a
+step skipped before any move because no located target passed the target check (size, height, workspace,
+mask leak; hasami_perception.plausible), even after a boxed re-prompt and a colour / raised-blob search.
 """
 
 from __future__ import annotations
@@ -121,7 +123,9 @@ def run_family(family: str, seeds: list[int], session: Session, planner, planner
         "success": sum(1 for t in ran if t["ok"]),
         "rate": round(sum(1 for t in ran if t["ok"]) / len(ran), 3) if ran else None,
         "steps_ok": placed, "steps": objects,
-        "failures": {k: fails.count(k) for k in ("segment", "grasp", "place", "goal", "error") if fails.count(k)},
+        "steps_implausible": sum(1 for t in ran for s in t.get("steps", []) if s.get("failure") == "implausible"),
+        "failures": {k: fails.count(k) for k in ("segment", "implausible", "grasp", "place", "goal", "error")
+                     if fails.count(k)},
         "retries": sum(t.get("retries", 0) for t in ran),
         "verify": {"checks": checks, "agree": sum(t.get("agree", 0) for t in ran),
                    "image_ok_physics_fail": sum(t.get("image_ok_physics_fail", 0) for t in ran),
