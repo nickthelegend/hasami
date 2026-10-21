@@ -19,31 +19,50 @@ pick/place steps with pixel anchors. SAM (2.1 locally, or 3.1 on the Meta Model 
 into a precise mask. Depth lifts the mask to a 3D centre and yaw, and closed-loop inverse kinematics
 drives a simulated SO-101 (MuJoCo) to pick and place. Success is read from the physics state.
 
-**Meta models used:** Muse Spark 1.3 (planning and visual grounding), SAM 3.1 (text-prompted
-segmentation), SAM 2.1 (open weights, point-prompted segmentation on device).
+**Meta models used:**
+- *Run (every number below comes from it):* **SAM 2.1** hiera-tiny, open weights, on device, point
+  prompts: segmentation for picking and placing, and for checking each step from the camera.
+- *Integrated, pending a key (never called yet):* **Muse Spark 1.3** (`muse-spark-1.3`) as the planner:
+  instruction + overhead frame -> a validated plan of named objects with pixel hints, which Hasami then
+  grounds and checks. **SAM 3.1** (`sam-3.1`, `POST /v1/responses`) for text-prompted segmentation.
+  Both model ids and the endpoint are confirmed in the dev.meta.ai docs (read 2026-10-21); the SAM 3.1
+  mask payload decoding and Muse's image + forced-tool call on Chat Completions are unverified until the
+  key arrives. Without the key the app says "Setup required"; it never fakes a plan.
 
-**How we built it:** Python (MuJoCo, PyTorch + transformers, FastAPI, MCP SDK), a Vite + React
+**How we built it:** Python (MuJoCo + MjSpec, PyTorch + transformers, FastAPI, MCP SDK), a Vite + React
 dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real arm.
 
-**What works today (measured):**
-- 90/90 cubes placed across 30 randomised scenes (simulated clicks → SAM 2.1 → depth → pick/place)
-- SAM 2.1 single-click IoU 0.71–0.92; centre error ≤ 0.6 mm in a 9-pick validation run (tests assert ≤ 3 mm); yaw error max 1.76°
-- 53 automated tests (real physics, real SAM weights, real HTTP and MCP), 1 skipped (live Muse call)
-- Dashboard: click a cube, click the tray, Run; or type an instruction (Muse)
-- MCP server so any agent can `look`, `find` and `pick_place`
+**What works today (measured in simulation, scored against ground truth):**
+- Benchmark of five task families (all-to-tray, sort by colour into two bins, stack two, clear all but
+  one, tower of three) on seeded procedural scenes: **69/70 tasks** with a simulated-click oracle as the
+  planner (labelled; it is not Muse). All-to-tray: **90/90 cubes** over 30 scenes, reproducible with
+  `scripts/bench.py --family all-to-tray --seeds 30`.
+- Every step is checked the way a real robot could (the gripper's own position, then SAM on the new
+  frame) and retried up to twice; with injected disturbances (6 mm grasp offset, 20% slips) 78 retries
+  recover 64/73 steps. The check agreed with the physics in all 333 checks.
+- SAM 2.1 single-click IoU 0.71–0.92; centre error ≤ 0.6 mm in a 9-pick run (tests assert ≤ 3 mm); yaw
+  error max 1.76°, mean 0.18°.
+- Agent trace: replay any run step by step (frame, SAM mask vs truth, 3D target, each arm phase's error,
+  the check, why it retried).
+- Real-camera tab: webcam or photo, A4 sheet for the table plane, SAM 2.1 on a clicked real object, its
+  position and yaw on the table (segment and locate only; the arm stays simulated).
+- 138 automated tests (real physics, real SAM weights, real HTTP and MCP), 1 skipped (live Muse call).
+- MCP server so any agent can `look`, `find` and `pick_place`.
 
 **Honest status:**
-- Muse and SAM 3.1 calls need a Meta Model API key (`MODEL_API_KEY`); the hackathon provides credits on
-  acceptance. Until then the app says "Setup required" and clicked runs work.
-- The arm is simulated (MuJoCo, official SO-101 model, force-limited servos) with perfect depth, no
-  sensor noise and ideal lighting. A LeRobot follower can be attached in mirror mode (it repeats the
-  simulated arm's joint targets); that path is wired and its unit conversion tested, but it has never
-  been run on hardware.
+- The arm is a MuJoCo simulation of the official SO-101 model (force-limited servos) with perfect depth,
+  no sensor noise and ideal lighting. A LeRobot follower can be attached in mirror mode (it repeats the
+  simulated arm's joint targets); wired and unit-tested, never run on hardware.
+- Muse and SAM 3.1 need a Meta Model API key (`MODEL_API_KEY`); the hackathon provides credits on
+  acceptance. The real-camera geometry is tested on synthetic cameras; a ruler check on real objects is
+  pending.
 
 **Links:**
 - Code: https://github.com/nickthelegend/hasami (create before submitting)
-- Demo video: `hasami-demo.mp4` (65 s sim run; record a narrated 2–3 min version with Muse live once the
-  key arrives)
+- Demo videos (captioned "MuJoCo simulation · official SO-101 model"): the clean 3-cube run
+  (`deployments/runs/20261021T053112874Z`, 84 s) and the run with an injected 6 mm offset where every step
+  recovers on its retry (`20261021T053203432Z`, 128 s). Record a narrated 2–3 min version with Muse live
+  once the key arrives.
 - Landing: `packages/landing/index.html` (host before submitting)
 
 **Team:** Nivesh Gajengi (solo)

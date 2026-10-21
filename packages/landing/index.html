@@ -408,12 +408,12 @@ section{padding:110px 0}
         <div class="wrap">
           <div class="sec-head"><div><h2 class="h-sec">Measured, not promised</h2><p class="lead muted">Local runs on the simulated arm, scored against MuJoCo ground truth.</p></div></div>
           <div class="stats">
-            <div class="stat"><b>9/9</b><span>randomised picks placed in the tray: 3 seeds × 3 cubes, yaw within ±40°</span></div>
+            <div class="stat"><b>90/90</b><span>cubes in the tray over 30 randomised scenes (yaw ±40°), reproducible with scripts/bench.py</span></div>
+            <div class="stat"><b>69/70</b><span>tasks across five families: all-to-tray, sort by colour, stack two, clear all but one, tower of three</span></div>
             <div class="stat"><b>0.71–0.92</b><span>SAM 2.1 single-click IoU against the MuJoCo segmentation</span></div>
-            <div class="stat"><b>≤ 0.6<small>mm</small></b><span>centre error after fusing the mask with depth, in a 9-pick run (tests assert ≤ 3 mm)</span></div>
-            <div class="stat"><b>1.76°</b><span>worst yaw error over 60 randomised cubes (mean 0.18°), from the footprint's fourth-order moment</span></div>
+            <div class="stat"><b>333/333</b><span>step checks (gripper position + camera) that agreed with the physics, with and without injected disturbances</span></div>
           </div>
-          <p class="method">All numbers are from MuJoCo with perfect depth and no camera noise; a real camera will do worse. Ground-truth segmentation is used only to score perception, never as input. In-tray is checked from the physics state: the cube's centre inside the tray walls and resting low.</p>
+          <p class="method">The benchmark's planner is a simulated-click oracle, not Muse (no key yet), so these numbers measure seeing, grasping, placing and recovering. Centre error from mask + depth: ≤ 0.6 mm in a 9-pick run; yaw error: max 1.76°, mean 0.18° over 60 cubes. All numbers are from MuJoCo with perfect depth and no camera noise; a real camera will do worse. Ground-truth segmentation is used only to score perception, never as input. In-tray is checked from the physics state: the cube's centre inside the tray walls and resting low.</p>
         </div>
       </section>
 
@@ -424,7 +424,9 @@ section{padding:110px 0}
             <div class="row" role="row"><b>Simulated SO-101</b><span>Official SO-101 MuJoCo model (TheRobotStudio, Apache-2.0) with force-limited STS3215 position servos</span><span class="tag tag-live">running</span></div>
             <div class="row" role="row"><b>SAM 2.1 hiera-tiny</b><span>Local, open weights, point prompt. The numbers above come from it.</span><span class="tag tag-live">running</span></div>
             <div class="row" role="row"><b>Muse planner</b><span>muse-spark-1.3 on the Meta Model API. Without a key the API answers setup_required, never a canned plan.</span><span class="tag tag-key">needs key</span></div>
-            <div class="row" role="row"><b>SAM 3.1</b><span>Text-prompted segmentation on the Meta Model API. Its wire format is unverified until a key exists.</span><span class="tag tag-key">needs key</span></div>
+            <div class="row" role="row"><b>SAM 3.1</b><span>Text-prompted segmentation on the Meta Model API (sam-3.1 via /v1/responses, per the docs). Its mask decoding is unverified until a key exists.</span><span class="tag tag-key">needs key</span></div>
+            <div class="row" role="row"><b>Check and retry</b><span>After every step: the gripper's own position (held or empty) and the camera (pick spot clear, object at the place spot); on failure the object is re-found and the step retried.</span><span class="tag tag-live">running</span></div>
+            <div class="row" role="row"><b>Real camera</b><span>Webcam or photo, an A4 sheet for the table plane, SAM 2.1 on a clicked object, its position and yaw on the table. Segment and locate only; the arm stays simulated. Not yet checked against a ruler.</span><span class="tag tag-key">pending</span></div>
             <div class="row" role="row"><b>Real SO-101 arm</b><span>LeRobot follower wired into the session behind HASAMI_SO101_PORT: the real arm mirrors the simulated arm's joint targets (sim radians to calibrated degrees). Never run on hardware.</span><span class="tag tag-blocked">blocked</span></div>
           </div>
         </div>
