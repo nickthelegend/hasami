@@ -301,3 +301,41 @@ test('task scenes: pick a family, reset, the instruction follows', async ({ page
   await page.getByRole('button', { name: 'Reset scene' }).click();
   await expect(page.locator('.nb-head')).toContainText('classic');
 });
+
+test('the register tabs are an ARIA tab widget: arrow keys, Home / End, a labelled tabpanel', async ({ page, guard }, info) => {
+  await page.goto('/');
+  const list = page.getByRole('tablist', { name: 'Register' });
+  const runs = list.getByRole('tab', { name: 'Recorded runs' });
+  const twin = list.getByRole('tab', { name: 'Twin' });
+  const cam = list.getByRole('tab', { name: 'Real camera' });
+  await expect(runs).toHaveAttribute('aria-selected', 'true');
+  // roving tabindex: only the selected tab is in the Tab order
+  await expect(runs).toHaveAttribute('tabindex', '0');
+  await expect(twin).toHaveAttribute('tabindex', '-1');
+  const panel = page.getByRole('tabpanel');
+  await expect(panel).toHaveCount(1);
+  await expect(panel).toHaveAttribute('aria-labelledby', (await runs.getAttribute('id'))!);
+  await expect(runs).toHaveAttribute('aria-controls', (await panel.getAttribute('id'))!);
+
+  await runs.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(twin).toBeFocused();
+  await expect(twin).toHaveAttribute('aria-selected', 'true');
+  await expect(runs).toHaveAttribute('aria-selected', 'false');
+  await expect(page.getByRole('tabpanel', { name: 'Twin' })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(cam).toBeFocused();
+  await expect(page.getByRole('tabpanel', { name: 'Real camera' })).toBeVisible();
+  await page.keyboard.press('ArrowRight'); // wraps
+  await expect(runs).toBeFocused();
+  await page.keyboard.press('ArrowLeft'); // wraps back
+  await expect(cam).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(runs).toBeFocused();
+  await expect(page.getByRole('tabpanel', { name: 'Recorded runs' })).toBeVisible();
+  await page.keyboard.press('End');
+  await expect(cam).toBeFocused();
+  await expect(cam).toHaveAttribute('aria-selected', 'true');
+  await shot(page, info, 'dash-14-tabs-keyboard');
+  await page.keyboard.press('Home'); // leave the register on its default tab
+});

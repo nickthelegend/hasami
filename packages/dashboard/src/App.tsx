@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type KeyboardEvent } from 'react';
 import { api, ApiError, pickPoint, setupName, subscribe, type Camera, type ClickStep, type Pixel, type SegmentResponse, type Status } from './api';
 import { CameraTile, type Marker } from './components/CameraTile';
 import { InstructionCard, Readout, Results, RunsTable, StepsCard, Timeline, type PlanView, type RunsView } from './components/Panels';
@@ -11,6 +11,10 @@ import { initialRun, lostRunCheck, runReducer } from './runState';
 const SCENES = ['classic', 'sort-by-colour', 'stack-two', 'clear-except-X', 'tower-of-3', 'sort-by-shape', 'line-up', 'pick-from-bin'];
 
 type Notice = { tone: 'busy' | 'setup' | 'error'; text: string } | null;
+
+type Tab = 'runs' | 'twin' | 'realcam';
+const TABS: readonly Tab[] = ['runs', 'twin', 'realcam'];
+const TAB_NAMES: Record<Tab, string> = { runs: 'Recorded runs', twin: 'Twin', realcam: 'Real camera' };
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -34,7 +38,25 @@ export default function App() {
   const [resetting, setResetting] = useState(false);
   const [scene, setScene] = useState('classic');
   const [traceId, setTraceId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'runs' | 'twin' | 'realcam'>('runs');
+  const [tab, setTab] = useState<Tab>('runs');
+  const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
+  // WAI-ARIA tabs: arrows move (and wrap), Home / End jump; the tab that gets focus is selected
+  const onTabKey = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      const i = TABS.indexOf(tab);
+      const next =
+        e.key === 'ArrowRight' ? TABS[(i + 1) % TABS.length]
+        : e.key === 'ArrowLeft' ? TABS[(i - 1 + TABS.length) % TABS.length]
+        : e.key === 'Home' ? TABS[0]
+        : e.key === 'End' ? TABS[TABS.length - 1]
+        : null;
+      if (!next) return;
+      e.preventDefault();
+      setTab(next);
+      tabRefs.current[next]?.focus();
+    },
+    [tab],
+  );
   const [run, dispatch] = useReducer(runReducer, initialRun);
   const sub = useRef<{ close: () => void } | null>(null);
   const [, setFrameSize] = useState<{ w: number; h: number } | null>(null);
@@ -477,20 +499,34 @@ export default function App() {
 
         {traceId && <RunTrace runId={traceId} onClose={() => setTraceId(null)} onLoaded={loadRuns} />}
         <section className="register paper" aria-label="Runs, twin and real camera">
-          <div className="tabs" role="tablist" aria-label="Register">
-            {(['runs', 'twin', 'realcam'] as const).map((t) => (
-              <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-                {t === 'runs' ? 'Recorded runs' : t === 'twin' ? 'Twin' : 'Real camera'}
+          <div className="tabs" role="tablist" aria-label="Register" onKeyDown={onTabKey}>
+            {TABS.map((t) => (
+              <button
+                key={t}
+                ref={(el) => {
+                  tabRefs.current[t] = el;
+                }}
+                type="button"
+                role="tab"
+                id={`tab-${t}`}
+                aria-controls={`panel-${t}`}
+                aria-selected={tab === t}
+                tabIndex={tab === t ? 0 : -1}
+                onClick={() => setTab(t)}
+              >
+                {TAB_NAMES[t]}
               </button>
             ))}
           </div>
-          {tab === 'realcam' ? (
-            <RealCam />
-          ) : tab === 'twin' ? (
-            <Twin onRun={doTwinRun} runPhase={run.phase} runId={run.runId} onLoaded={onTwinLoaded} />
-          ) : (
-            <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={setTraceId} active={traceId} />
-          )}
+          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="tabpanel">
+            {tab === 'realcam' ? (
+              <RealCam />
+            ) : tab === 'twin' ? (
+              <Twin onRun={doTwinRun} runPhase={run.phase} runId={run.runId} onLoaded={onTwinLoaded} />
+            ) : (
+              <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={setTraceId} active={traceId} />
+            )}
+          </div>
         </section>
       </main>
       <footer className="foot">
