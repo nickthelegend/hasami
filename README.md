@@ -241,8 +241,11 @@ can replay any recorded run. `GET /api/runs/{id}/steps/{i}.png?kind=view|view_tr
 
 ## Run it
 
+One command on a fresh clone (needs `uv` and `pnpm`): `scripts/setup.sh` creates `.venv`, installs `'.[dev]'`
+(Hasami plus pytest), builds the dashboard and downloads the SAM 2.1 weights. By hand:
+
 ```bash
-uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e .
+uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e '.[dev]'   # [dev] brings pytest
 export HF_HOME=/path/to/huggingface-cache        # SAM 2.1 weights (~150 MB, downloaded on first use)
 export MODEL_API_KEY=...                          # optional: Muse planner + SAM 3.1 (dev.meta.ai)
 

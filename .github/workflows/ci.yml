@@ -1,0 +1,52 @@
+# Fast checks on every push and pull request. The full suite (TESTING.md: SAM 2.1 perception, the server's
+# runs, the MCP subprocess) and the browser E2E run locally; this job runs the files that need no SAM 2.1
+# weights, on real MuJoCo physics (headless, OSMesa), plus the dashboard's type check, build and unit test.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      MUJOCO_GL: osmesa
+      PYOPENGL_PLATFORM: osmesa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: OSMesa for headless MuJoCo rendering
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libosmesa6 libgl1
+      - name: Install (CPU torch, then '.[dev]' as the README does)
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch
+          uv pip install --python .venv/bin/python -e '.[dev]' PyOpenGL
+      - name: pytest (no SAM 2.1 weights needed)
+        run: >
+          .venv/bin/python -m pytest -q tests/test_docs.py tests/test_colour.py tests/test_scene.py
+          tests/test_sim.py tests/test_tasks.py tests/test_realcam.py tests/test_robot.py tests/test_planner.py
+
+  dashboard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test

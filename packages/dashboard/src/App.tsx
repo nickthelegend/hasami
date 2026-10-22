@@ -329,7 +329,7 @@ export default function App() {
             <div>
               <b>Start the server: python -m hasami_server</b>
               <p>The dashboard talks to the Hasami server on port 8420. Nothing on this page is simulated in the browser; it waits for the real sim.</p>
-              <pre>pip install -e . && python -m hasami_server</pre>
+              <pre>scripts/setup.sh && .venv/bin/python -m hasami_server</pre>
             </div>
             <button type="button" className="btn btn-mint" onClick={loadStatus}>
               Retry
