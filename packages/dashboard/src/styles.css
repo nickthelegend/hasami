@@ -441,7 +441,7 @@ h1, h2 { font-weight: 500; letter-spacing: -0.03em; margin: 0; }
 .twin .rc-arm { white-space: normal; overflow-wrap: anywhere; }
 .twin .sec-head { margin-bottom: 0; flex-wrap: wrap; gap: 8px; }
 .tw-lede { margin: 0; max-width: 72ch; }
-.twin select { height: 32px; border: 1px solid var(--ink); border-radius: 0; background: #fff; color: var(--ink); padding: 0 8px; max-width: 100%; }
+.twin select, .realcam select { height: 32px; border: 1px solid var(--ink); border-radius: 0; background: #fff; color: var(--ink); padding: 0 8px; max-width: 100%; }
 .tw-sbs { margin: 0; display: grid; gap: 6px; min-width: 0; }
 .tw-sbs img { display: block; width: 100%; height: auto; border: 1px solid var(--line-2); background: #111; }
 .tw-table-wrap { overflow-x: auto; border: 1px solid var(--line-2); }

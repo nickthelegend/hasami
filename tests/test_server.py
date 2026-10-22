@@ -248,6 +248,28 @@ def test_realcam_synthetic_photo_segment_and_locate(client):
     assert png(client.get("/api/realcam/frame.png")).shape == (720, 1280, 3)
 
 
+def test_realcam_calibrate_detects_a_landscape_sheet(client):
+    """`sheet: auto` reads the orientation from the clicked corners; an explicit choice is kept and labelled."""
+    from hasami_perception.twin import order_corners
+    from test_realcam import _raster, a4_corners, camera, project
+
+    k, r, t = camera(30, 10)
+    img = np.zeros((720, 1280, 3), np.uint8)
+    img[:] = (120, 104, 88)
+    sheet_px = order_corners(project(k, r, t, np.c_[a4_corners(True), np.zeros(4)]))
+    img[_raster(sheet_px)] = (236, 236, 232)
+    buf = io.BytesIO()
+    Image.fromarray(img).save(buf, format="PNG")
+    assert client.post("/api/realcam/upload", content=buf.getvalue()).status_code == 200
+    auto = client.post("/api/realcam/calibrate", json={"corners": sheet_px.tolist(), "sheet": "auto", "hfov_deg": 70})
+    assert auto.status_code == 200, auto.text
+    a = auto.json()
+    assert a["orientation"] == "landscape" and a["sheet"] == "a4-landscape" and a["size_mm"] == [297.0, 210.0]
+    assert a["orientation_source"] == "detected from the clicked corners"
+    chosen = client.post("/api/realcam/calibrate", json={"corners": sheet_px.tolist(), "sheet": "a4", "hfov_deg": 70}).json()
+    assert chosen["orientation"] == "portrait" and chosen["orientation_source"] == "chosen"
+
+
 def test_twin_from_a_photo_then_run_a_task_on_it(client, tmp_path, monkeypatch):
     """POST a MuJoCo-rendered desk photo -> twin JSON + side-by-side PNG; adjust a height; run clear-desk on the
     twin over SSE and get the goal checked on the twin's physics, recorded with the twin's label."""

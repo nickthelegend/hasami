@@ -153,6 +153,49 @@ test('twin: a non-image is refused, a synthetic photo becomes a twin, refit, sho
   await shot(page, info, 'twin-04-synthetic-button');
 });
 
+test('real camera: the sheet orientation is read from the clicked corners, and can be chosen', async ({ page, guard, request }, info) => {
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Real camera' }).click();
+  // the synthetic desks lie the sheet landscape as the camera sees it
+  const photo = await deskPhoto(request, 3);
+  const up = page.waitForResponse((r) => r.url().endsWith('/api/realcam/upload'));
+  await page.locator('.realcam input[type=file]').setInputFiles({ name: 'desk.png', mimeType: 'image/png', buffer: photo.buffer });
+  expect((await up).status()).toBe(200);
+  const sheet = page.getByLabel('A4 sheet orientation, as you look at it');
+  await expect(sheet).toHaveValue('auto');
+  await expect(page.locator('.rc-step')).toContainText("Click the sheet's top-left corner (1 of 4, as you look at it)");
+
+  const found = await readPhoto(page, '.rc-view img:not(.rc-mask)', 'red');
+  const cal = page.waitForResponse((r) => r.url().endsWith('/api/realcam/calibrate'));
+  for (const [i, p] of found.corners.entries()) {
+    await page.mouse.click(p.x, p.y);
+    if (i < 3) await expect(page.locator('.rc-dot')).toHaveCount(i + 1);
+  }
+  const auto = await (await cal).json();
+  expect(auto.orientation).toBe('landscape');
+  await expect(page.locator('.rc-sheet')).toHaveText('Sheet: A4 landscape (297 × 210 mm across × down), detected from the clicked corners.');
+  await shot(page, info, 'cam-04-sheet-landscape-detected');
+
+  // choosing portrait refits the same four clicks; the object then measures differently
+  await page.getByLabel('Object height in millimetres').fill('25');
+  const locate = async () => {
+    const seg = page.waitForResponse((r) => r.url().endsWith('/api/realcam/segment'));
+    await page.mouse.click(found.object!.x, found.object!.y);
+    return (await (await seg).json()).target as { x_mm: number; y_mm: number };
+  };
+  const asLandscape = await locate();
+  await sheet.selectOption('a4');
+  await expect(page.locator('.rc-sheet')).toHaveText('Sheet: A4 portrait (210 × 297 mm across × down), chosen.');
+  await expect(page.locator('.rc-dot:not(.rc-click)')).toHaveCount(4);
+  await expect(page.locator('.rc-out')).toHaveCount(0);
+  const asPortrait = await locate();
+  expect(Math.hypot(asPortrait.x_mm - asLandscape.x_mm, asPortrait.y_mm - asLandscape.y_mm)).toBeGreaterThan(10);
+  await sheet.selectOption('a4-landscape');
+  await expect(page.locator('.rc-sheet')).toHaveText('Sheet: A4 landscape (297 × 210 mm across × down), chosen.');
+  await expectNoHScroll(page);
+  await shot(page, info, 'cam-05-sheet-chosen');
+});
+
 test('twin: after a reload the Twin tab shows the twin the server still holds', async ({ page, guard, request }, info) => {
   // build a twin straight through the API, as an earlier page load would have
   const photo = await deskPhoto(request, 1);

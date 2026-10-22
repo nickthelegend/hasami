@@ -9,6 +9,8 @@ interface PlaneTarget { x_mm: number; y_mm: number; yaw: number; extent_mm: numb
 interface SegRes { mask_png: string; target: PlaneTarget | null; target_error: string | null; latency_ms: number; segmenter: string }
 
 const CORNERS = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
+type Sheet = 'auto' | 'a4' | 'a4-landscape';
+interface Cal { orientation: 'portrait' | 'landscape'; orientation_source: string; size_mm: number[] }
 
 async function call(path: string, init?: RequestInit) {
   let r: Response;
@@ -28,6 +30,8 @@ export function RealCam() {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [corners, setCorners] = useState<Pt[]>([]);
   const [calibrated, setCalibrated] = useState(false);
+  const [sheet, setSheet] = useState<Sheet>('auto');
+  const [cal, setCal] = useState<Cal | null>(null);
   const [height, setHeight] = useState('30');
   const [res, setRes] = useState<SegRes | null>(null);
   const [click, setClick] = useState<Pt | null>(null);
@@ -40,6 +44,7 @@ export function RealCam() {
     setSize({ w, h });
     setCorners([]);
     setCalibrated(false);
+    setCal(null);
     setRes(null);
     setClick(null);
     setNonce(Date.now());
@@ -71,6 +76,35 @@ export function RealCam() {
     }
   }, []);
 
+  const calibrate = useCallback(async (pts: Pt[], as: Sheet) => {
+    setBusy('Fitting the table plane…');
+    try {
+      const c = await call('/api/realcam/calibrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ corners: pts, sheet: as, hfov_deg: 70 }),
+      });
+      setCal(c);
+      setCalibrated(true);
+      setRes(null);
+      setClick(null);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+      setCorners([]);
+      setCalibrated(false);
+      setCal(null);
+    } finally {
+      setBusy(null);
+    }
+  }, []);
+
+  const changeSheet = (v: Sheet) => {
+    setSheet(v);
+    setErr(null);
+    // already calibrated: refit the same four clicks the new way, so the clicks are not lost
+    if (calibrated && corners.length === 4) void calibrate(corners, v);
+  };
+
   const onClick = useCallback(
     async (ev: React.MouseEvent<HTMLImageElement>) => {
       if (!size || busy) return;
@@ -80,22 +114,7 @@ export function RealCam() {
       if (!calibrated) {
         const next = [...corners, p];
         setCorners(next);
-        if (next.length === 4) {
-          setBusy('Fitting the table plane…');
-          try {
-            await call('/api/realcam/calibrate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ corners: next, sheet: 'a4', hfov_deg: 70 }),
-            });
-            setCalibrated(true);
-          } catch (e) {
-            setErr(e instanceof Error ? e.message : String(e));
-            setCorners([]);
-          } finally {
-            setBusy(null);
-          }
-        }
+        if (next.length === 4) await calibrate(next, sheet);
         return;
       }
       const h = Number(height);
@@ -119,13 +138,13 @@ export function RealCam() {
         setBusy(null);
       }
     },
-    [size, busy, calibrated, corners, height],
+    [size, busy, calibrated, corners, height, sheet, calibrate],
   );
 
   const pct = (p: Pt) => (size ? { left: `${(p[0] / size.w) * 100}%`, top: `${(p[1] / size.h) * 100}%` } : {});
   const t = res?.target;
   const step = !size ? 'Grab a webcam frame or upload a photo of the table with an A4 sheet on it.' : !calibrated
-    ? `Click the sheet's ${CORNERS[corners.length]} corner (${corners.length + 1} of 4; portrait, as you look at it).`
+    ? `Click the sheet's ${CORNERS[corners.length]} corner (${corners.length + 1} of 4, as you look at it).`
     : 'Type the object height, then click the object.';
 
   return (
@@ -147,11 +166,25 @@ export function RealCam() {
           <input inputMode="decimal" value={height} onChange={(e) => setHeight(e.target.value)} aria-label="Object height in millimetres" />
           mm
         </label>
-        {(corners.length > 0 || calibrated) && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setCorners([]); setCalibrated(false); setRes(null); }} disabled={!!busy}>
-            Re-click sheet
-          </button>
-        )}
+        <label className="rc-h">
+          sheet
+          <select value={sheet} onChange={(e) => changeSheet(e.target.value as Sheet)} disabled={!!busy} aria-label="A4 sheet orientation, as you look at it">
+            <option value="auto">auto (from the corners)</option>
+            <option value="a4">portrait</option>
+            <option value="a4-landscape">landscape</option>
+          </select>
+        </label>
+        {/* Kept in the layout (hidden) until there is a click to undo, so the first click on the photo
+            never pushes the photo down under the next one on a narrow screen. */}
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          style={corners.length > 0 || calibrated ? undefined : { visibility: 'hidden' }}
+          onClick={() => { setCorners([]); setCalibrated(false); setCal(null); setRes(null); }}
+          disabled={!!busy || !(corners.length > 0 || calibrated)}
+        >
+          Re-click sheet
+        </button>
       </div>
       <p className="muted small rc-step" aria-live="polite">{busy ?? step}</p>
       {err && <div className="notice notice-error" role="alert">{err}</div>}
@@ -170,6 +203,11 @@ export function RealCam() {
           <span>The webcam is opened only when you press Grab (needs HASAMI_REALCAM on the server). A photo works too.</span>
         </div>
       )}
+      {cal && (
+        <p className="muted small rc-sheet">
+          Sheet: A4 {cal.orientation} ({cal.size_mm.map((v) => v.toFixed(0)).join(' × ')} mm across × down), {cal.orientation_source}.
+        </p>
+      )}
       {res && (
         <dl className="rc-out">
           {t ? (
@@ -186,7 +224,7 @@ export function RealCam() {
           )}
         </dl>
       )}
-      <p className="muted small">x / y are measured from the sheet's first clicked corner, along its short and long edges. Unverified against a ruler yet.</p>
+      <p className="muted small">x / y are measured from the sheet's first clicked corner, along its top and left edges as you clicked them. Unverified against a ruler yet.</p>
     </section>
   );
 }

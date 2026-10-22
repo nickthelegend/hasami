@@ -82,3 +82,33 @@ def test_capture_needs_setup(monkeypatch):
     monkeypatch.delenv("HASAMI_REALCAM", raising=False)
     with pytest.raises(SetupRequired, match="HASAMI_REALCAM"):
         grab_frame()
+
+
+@pytest.mark.parametrize("landscape", [False, True])
+@pytest.mark.parametrize("tilt_deg,yaw_deg,true_hfov", [(20, 0, 70), (35, 12, 70), (50, -30, 70), (45, 25, 60),
+                                                        (30, -10, 80), (55, 40, 66)])
+def test_sheet_orientation_from_the_clicked_corners(landscape, tilt_deg, yaw_deg, true_hfov):
+    """The real-camera tab's `sheet: auto`: four clicked corners (TL, TR, BR, BL as seen) of an A4 sheet lying
+    either way, seen by tilted, turned cameras whose field of view may differ from the 70 deg assumed. The
+    homography is fitted both ways and the one whose pose is a rotation wins; the plane then measures right."""
+    from hasami_perception.twin import order_corners, sheet_frame
+
+    k, r, t = camera(tilt_deg, yaw_deg)
+    k = intrinsics_from_fov(W, H, true_hfov)
+    plane = a4_corners(landscape)
+    seen = order_corners(project(k, r, t, np.c_[plane, np.zeros(4)]))  # what a user clicks, in screen order
+    # ground truth "as you look at it": is the clicked top edge the sheet's long side?
+    back = pixel_to_plane(homography(plane, project(k, r, t, np.c_[plane, np.zeros(4)])), seen)
+    truth = np.linalg.norm(back[1] - back[0]) > 250
+    got = sheet_frame(seen, W, H, 70.0)
+    assert got.landscape == truth
+    # with the detected orientation two marks 150 mm apart on the sheet measure 150 mm; the other way they do not
+    marks = np.array([[30.0, 50.0], [180.0, 50.0]])
+    px = project(k, r, t, np.c_[marks, np.zeros(2)])
+
+    def measured(ls):
+        xy = pixel_to_plane(homography(a4_corners(ls), seen), px)
+        return np.linalg.norm(xy[1] - xy[0])
+
+    assert measured(got.landscape) == pytest.approx(150.0, abs=1e-6)
+    assert abs(measured(not got.landscape) - 150.0) > 10.0

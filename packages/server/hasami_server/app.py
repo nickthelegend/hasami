@@ -56,7 +56,8 @@ class RunReq(BaseModel):
 
 class CalibrateReq(BaseModel):
     corners: list[list[float]] = Field(min_length=4, max_length=4, description="A4 corners clicked TL, TR, BR, BL")
-    sheet: Literal["a4", "a4-landscape"] = "a4"
+    sheet: Literal["a4", "a4-landscape", "auto"] = Field(
+        default="a4", description="auto: portrait or landscape, whichever gives a camera pose that is a rotation")
     hfov_deg: float | None = Field(default=70.0, ge=20, le=150, description="camera field of view; null: no parallax correction")
 
 
@@ -489,13 +490,23 @@ def create_app(session: Session | None = None) -> FastAPI:
 
         if real["rgb"] is None:
             return JSONResponse(status_code=409, content={"error": "grab or upload a frame first"})
+        hh, ww = real["rgb"].shape[:2]
         try:
-            h = homography(a4_corners(body.sheet == "a4-landscape"), np.array(body.corners))
+            if body.sheet == "auto":
+                from hasami_perception.twin import sheet_frame
+
+                # the same test the twin uses: fit both ways the sheet can lie, keep the one whose pose is a rotation
+                landscape = sheet_frame(body.corners, ww, hh, body.hfov_deg or 70.0).landscape
+            else:
+                landscape = body.sheet == "a4-landscape"
+            h = homography(a4_corners(landscape), np.array(body.corners))
         except ValueError as e:
             return JSONResponse(status_code=400, content={"error": str(e)})
-        hh, ww = real["rgb"].shape[:2]
         real.update(h=h, k=None if body.hfov_deg is None else intrinsics_from_fov(ww, hh, body.hfov_deg))
-        return {"ok": True, "sheet": body.sheet, "hfov_deg": body.hfov_deg,
+        return {"ok": True, "sheet": "a4-landscape" if landscape else "a4",
+                "orientation": "landscape" if landscape else "portrait",
+                "orientation_source": "detected from the clicked corners" if body.sheet == "auto" else "chosen",
+                "size_mm": [297.0, 210.0] if landscape else [210.0, 297.0], "hfov_deg": body.hfov_deg,
                 "parallax": "corrected with an assumed field of view" if body.hfov_deg else "not corrected"}
 
     @app.post("/api/realcam/segment")
