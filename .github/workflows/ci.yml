@@ -26,8 +26,8 @@ jobs:
       - name: Install (CPU torch, then '.[dev]' as the README does)
         run: |
           uv venv --python 3.12 .venv
-          uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch
-          uv pip install --python .venv/bin/python -e '.[dev]' PyOpenGL
+          uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch -c constraints.txt
+          uv pip install --python .venv/bin/python -e '.[dev]' PyOpenGL -c constraints.txt
       - name: pytest (no SAM 2.1 weights needed)
         run: >
           .venv/bin/python -m pytest -q tests/test_docs.py tests/test_colour.py tests/test_scene.py

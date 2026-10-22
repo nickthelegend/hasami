@@ -13,7 +13,7 @@ return the whole-table mask the noisy-camera sweep produced, so the target check
 
 ```bash
 scripts/setup.sh                                     # or by hand: uv venv --python 3.12, then the next line
-uv pip install --python .venv/bin/python -e '.[dev]'   # pytest is in the [dev] extra, not in the base install
+uv pip install --python .venv/bin/python -e '.[dev]' -c constraints.txt   # pytest is in [dev]; the tested versions
 export HF_HOME=/path/to/huggingface-cache   # where SAM 2.1 weights are cached (first run downloads ~150 MB)
 .venv/bin/python -m pytest -q
 ```

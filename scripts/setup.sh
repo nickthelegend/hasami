@@ -30,7 +30,7 @@ need() {
 
 need uv "https://docs.astral.sh/uv/"
 [ -x .venv/bin/python ] || uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -e '.[dev]'
+uv pip install --python .venv/bin/python -e '.[dev]' -c constraints.txt  # the tested versions
 
 if [ "$dashboard" = 1 ]; then
   need pnpm "https://pnpm.io/installation, or rerun with --no-dashboard"

@@ -47,3 +47,55 @@ def test_ci_runs_pytest_and_the_dashboard():
     assert "-e '.[dev]'" in ci and "python -m pytest" in ci and "pnpm build" in ci
     for f in re.findall(r"tests/test_\w+\.py", ci):
         assert (ROOT / f).is_file(), f
+
+
+def _pins() -> dict[str, str]:
+    path = ROOT / "constraints.txt"
+    assert path.is_file(), "constraints.txt (the tested versions) is missing"
+    pins = {}
+    for line in path.read_text().splitlines():
+        line = line.split("#")[0].strip()
+        if line:
+            name, _, ver = line.partition("==")
+            assert ver, f"not an exact pin: {line!r}"
+            pins[name.strip().lower().replace("_", "-")] = ver.strip()
+    return pins
+
+
+def test_every_dependency_is_pinned_to_the_tested_version():
+    """pyproject says `>=`; the versions the suite passed on are pinned in constraints.txt. The code relies on
+    version-specific APIs (mcp.server.mcpserver.MCPServer, transformers Sam2Model, Starlette's httpx2 client)."""
+    pins = _pins()
+    meta = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    direct = meta["dependencies"] + meta["optional-dependencies"]["dev"]
+    for dep in direct:
+        name = re.split(r"[<>=!~\[ ]", dep, maxsplit=1)[0].lower().replace("_", "-")
+        assert name in pins, f"{name} is not pinned in constraints.txt"
+    for name in ("starlette", "huggingface-hub", "tokenizers", "safetensors", "httpx2"):
+        assert name in pins, f"{name} (an API the code or tests rely on) is not pinned"
+
+
+def test_the_installed_versions_are_the_pinned_ones():
+    """The environment this suite runs in was installed from constraints.txt (setup.sh and CI do so)."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    pins = _pins()
+    for name in ("mcp", "transformers", "torch", "mujoco", "fastapi", "starlette", "openai", "pydantic", "numpy"):
+        try:
+            got = version(name)
+        except PackageNotFoundError:
+            continue
+        assert got.split("+")[0] == pins[name], f"{name} {got} installed, constraints.txt pins {pins[name]}"
+
+
+def test_setup_ci_and_docs_install_with_the_constraints():
+    for f in ("scripts/setup.sh", ".github/workflows/ci.yml"):
+        text = (ROOT / f).read_text()
+        assert "-c constraints.txt" in text, f"{f} does not install with -c constraints.txt"
+    for f in ("README.md", "TESTING.md", "packages/landing/index.html"):
+        fenced = False
+        for line in (ROOT / f).read_text().splitlines():
+            fenced ^= line.strip().startswith("```")
+            command = fenced or "<pre>" in line  # a command block, not prose about an earlier install
+            if command and re.search(r"pip install (--python \S+ )?-e ('|&#39;)\.\[dev\]", line):
+                assert "-c constraints.txt" in line, (f, line.strip())

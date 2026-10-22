@@ -64,7 +64,7 @@ test('section nav 01-06 and the hero links scroll to their sections', async ({ p
   await expect(page).toHaveURL(/#run$/);
   await expect(page.locator('#run')).toBeInViewport();
   await expect(page.locator('#run pre')).toHaveText(
-    '$ uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e \'.[dev]\'\n' +
+    '$ uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e \'.[dev]\' -c constraints.txt\n' +
       '$ (cd packages/dashboard && pnpm install && pnpm build)\n' +
       '$ python -m hasami_server',
   );

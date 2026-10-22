@@ -273,7 +273,7 @@ One command on a fresh clone (needs `uv` and `pnpm`): `scripts/setup.sh` creates
 (Hasami plus pytest), builds the dashboard and downloads the SAM 2.1 weights. By hand:
 
 ```bash
-uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e '.[dev]'   # [dev] brings pytest
+uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e '.[dev]' -c constraints.txt   # [dev] brings pytest; constraints.txt pins the tested versions
 export HF_HOME=/path/to/huggingface-cache        # SAM 2.1 weights (~150 MB, downloaded on first use)
 export MODEL_API_KEY=...                          # optional: Muse planner + SAM 3.1 (dev.meta.ai)
 

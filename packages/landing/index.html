@@ -731,7 +731,7 @@
         <div class="run">
           <div>
             <h2>Put the red cube in the tray</h2>
-            <pre><span class="p">$ </span>uv venv --python 3.12 &amp;&amp; source .venv/bin/activate &amp;&amp; uv pip install -e '.[dev]'
+            <pre><span class="p">$ </span>uv venv --python 3.12 &amp;&amp; source .venv/bin/activate &amp;&amp; uv pip install -e '.[dev]' -c constraints.txt
 <span class="p">$ </span>(cd packages/dashboard &amp;&amp; pnpm install &amp;&amp; pnpm build)
 <span class="p">$ </span>python -m hasami_server</pre>
             <p class="run-note">Then open http://127.0.0.1:8420/. The first use downloads about 150 MB of SAM 2.1 weights.</p>
