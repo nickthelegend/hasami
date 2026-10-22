@@ -366,12 +366,36 @@ def allowed_origins_from_env() -> list[str]:
     return [*own, *extra]
 
 
+TWIN_ID = re.compile(r"[0-9A-Za-z_-]{1,64}")
+
+
+def prune_twin_folders(folder) -> list[str]:
+    """Delete the twin folders (<id>/ holding a twin.json) in `folder`: at startup no twin is in memory, so any
+    there were left by an earlier process, and a desk photo must not outlive the twin. Other files stay."""
+    import shutil
+    from pathlib import Path
+
+    gone = []
+    folder = Path(folder)
+    if folder.is_dir():
+        for d in folder.iterdir():
+            if d.is_dir() and not d.is_symlink() and TWIN_ID.fullmatch(d.name) and (d / "twin.json").is_file():
+                shutil.rmtree(d, ignore_errors=True)
+                gone.append(d.name)
+    return gone
+
+
 def create_app(session: Session | None = None, allowed_hosts: list[str] | None = None,
                allowed_origins: list[str] | None = None) -> FastAPI:
     state: dict = {"session": session}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        import os
+        import shutil
+        import tempfile
+        from pathlib import Path
+
         if state["session"] is None:
             state["session"] = Session()
         s: Session = state["session"]
@@ -380,10 +404,18 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         app.state.session = s
         app.state.bus = EventBus()
         app.state.runner = Runner(s, app.state.bus)
-        yield
-        runner: Runner = app.state.runner
-        if runner.thread is not None:
-            runner.thread.join(timeout=120)
+        # Twins (with the desk photo) are written to HASAMI_TWINS_DIR, whose old twin folders are pruned now, or
+        # else to a temporary folder that is removed at shutdown: never kept past the server's own memory of them.
+        if os.environ.get("HASAMI_TWINS_DIR"):
+            prune_twin_folders(os.environ["HASAMI_TWINS_DIR"])
+        app.state.twins_tmp = Path(tempfile.mkdtemp(prefix="hasami-twins-"))
+        try:
+            yield
+        finally:
+            runner: Runner = app.state.runner
+            if runner.thread is not None:
+                runner.thread.join(timeout=120)
+            shutil.rmtree(app.state.twins_tmp, ignore_errors=True)
 
     app = FastAPI(title="Hasami", version="0.1.0", lifespan=lifespan,
                   description="SAM 2.1 sees, a simulated SO-101 picks; Muse plans once MODEL_API_KEY is set "
@@ -707,6 +739,13 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
     twins_lock = threading.Lock()  # builds run in worker threads
     twin_run: dict = {"id": None}  # the twin the current (or last) twin run works in
 
+    def _twins_dir():
+        """HASAMI_TWINS_DIR, else this process's temporary twins folder (removed at shutdown)."""
+        import os
+        from pathlib import Path
+
+        return Path(os.environ["HASAMI_TWINS_DIR"]) if os.environ.get("HASAMI_TWINS_DIR") else app.state.twins_tmp
+
     def _max_twins() -> int:
         import os
 
@@ -727,8 +766,6 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         never the one a running twin task works in."""
         import shutil
 
-        from hasami_core.twin import twins_dir
-
         busy_id = twin_run["id"] if runner_busy() else None
         with twins_lock:
             gone = []
@@ -739,15 +776,16 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                     del twins[tid]
                     gone.append(tid)
         for tid in gone:
-            folder = twins_dir() / tid
-            if re.fullmatch(r"[0-9A-Za-z_-]{1,64}", tid) and folder.is_dir():
+            folder = _twins_dir() / tid
+            if TWIN_ID.fullmatch(tid) and folder.is_dir():
                 shutil.rmtree(folder, ignore_errors=True)
 
     def _twin_or_404(twin_id: str):
         t = twins.get(twin_id)
         if t is None:
-            return None, JSONResponse(status_code=404, content={"error": f"no twin {twin_id!r} (twins live until the "
-                                                                          "server restarts; upload the photo again)"})
+            return None, JSONResponse(status_code=404, content={"error": f"no twin {twin_id!r} (a twin lives in server "
+                                                                          "memory until it is evicted or the server "
+                                                                          "stops; upload the photo again)"})
         return t, None
 
     def _build_twin(request: Request, rgb, opts: dict, twin_id: str | None = None):
@@ -765,7 +803,7 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
             return JSONResponse(status_code=422, content={"error": str(e)})
         except IndexError as e:
             return JSONResponse(status_code=400, content={"error": f"IndexError: {e}"})
-        save_twin(twin, rgb)
+        save_twin(twin, rgb, out_dir=_twins_dir())
         with twins_lock:
             twins.pop(twin.id, None)
             twins[twin.id] = {"twin": twin, "rgb": rgb, "opts": opts}
@@ -838,9 +876,10 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
     @app.get("/api/twin")
     def get_latest_twin():
         """The twin built, adjusted, loaded or run last (the dashboard restores it after a reload), or null.
-        Twins live in server memory until it restarts."""
+        A twin lives in server memory, its photo in the twins folder, until it is evicted (HASAMI_MAX_TWINS) or the
+        server stops; then both are gone."""
         if not twins:
-            return {"twin": None, "note": "no twin yet (twins live until the server restarts)"}
+            return {"twin": None, "note": "no twin yet (a twin and its photo are kept until evicted or the server stops)"}
         return {"twin": _twin_view(next(reversed(twins.values()))["twin"])}
 
     @app.get("/api/twin/{twin_id}")
@@ -850,12 +889,10 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
 
     @app.get("/api/twin/{twin_id}/{name}.png")
     def get_twin_png(twin_id: str, name: Literal["photo", "side_by_side"]):
-        from hasami_core.twin import twins_dir
-
         t, err = _twin_or_404(twin_id)
         if err:
             return err
-        return Response((twins_dir() / twin_id / f"{name}.png").read_bytes(), media_type="image/png",
+        return Response((_twins_dir() / twin_id / f"{name}.png").read_bytes(), media_type="image/png",
                         headers={"Cache-Control": "no-store"})
 
     @app.post("/api/twin/{twin_id}/load")
@@ -943,4 +980,5 @@ def serve(host: str | None = None, port: int | None = None) -> None:
                 port=port or int(os.environ.get("HASAMI_PORT", "8420")), log_level="info")
 
 
-__all__ = ["EventBus", "LocalOnly", "Runner", "allowed_origins_from_env", "app", "create_app", "serve"]
+__all__ = ["EventBus", "LocalOnly", "Runner", "allowed_origins_from_env", "app", "create_app", "prune_twin_folders",
+           "serve"]

@@ -579,6 +579,48 @@ def test_twins_are_capped_and_the_least_recently_used_is_dropped(session, runs_t
         session.reset(1)
 
 
+def test_twin_photos_do_not_outlive_the_server(session, runs_tmp, no_model_key, tmp_path, monkeypatch):
+    """A desk photo is personal: it must not stay on disk after the server forgets the twin. With
+    HASAMI_TWINS_DIR set, twin folders left there by an earlier process (not in this one's memory) are deleted at
+    startup, other files are kept. Without it, twins go to a temporary folder that is removed at shutdown,
+    never to deployments/twins."""
+    from hasami_core.session import ROOT
+    from hasami_sim.photo import PhotoCamera, SheetPose, render_photo
+    from hasami_sim.scene import ObjectSpec
+
+    stale = tmp_path / "twins"
+    for tid in ("20261020T101010abcd", "20261021T111111beef"):
+        (stale / tid).mkdir(parents=True)
+        (stale / tid / "twin.json").write_text("{}")
+        (stale / tid / "photo.png").write_bytes(b"\x89PNG")
+    (stale / "accuracy-20261021T164701Z.json").write_text("{}")  # evidence files are not twins
+    (stale / "notes").mkdir()
+    monkeypatch.setenv("HASAMI_TWINS_DIR", str(stale))
+    try:
+        with TestClient(create_app(session), base_url="http://127.0.0.1:8420", headers={"X-Hasami": "1"}):
+            assert sorted(p.name for p in stale.iterdir()) == ["accuracy-20261021T164701Z.json", "notes"]
+
+        monkeypatch.delenv("HASAMI_TWINS_DIR")
+        repo_twins = ROOT / "deployments" / "twins"
+        before = sorted(p.name for p in repo_twins.iterdir()) if repo_twins.is_dir() else []
+        cam = PhotoCamera(pos=(0.52, 0.07, 0.34), fovy_deg=50)
+        buf = io.BytesIO()
+        Image.fromarray(render_photo([ObjectSpec("a", "cube", "red", 0.20, 0.06, 0.3)], SheetPose(), cam)).save(buf, format="PNG")
+        with TestClient(create_app(session), base_url="http://127.0.0.1:8420", headers={"X-Hasami": "1"}) as c:
+            r = c.post("/api/twin", content=buf.getvalue(), params={"hfov_deg": cam.hfov_deg},
+                       headers={"Content-Type": "image/png"})
+            assert r.status_code == 200, r.text
+            folder = c.app.state.twins_tmp / r.json()["twin_id"]
+            assert (folder / "photo.png").is_file()
+            assert c.get(r.json()["images"]["photo"]).status_code == 200
+        assert not folder.exists() and not c.app.state.twins_tmp.exists()
+        after = sorted(p.name for p in repo_twins.iterdir()) if repo_twins.is_dir() else []
+        assert after == before  # nothing was written to deployments/twins
+    finally:
+        session.store_images = session.snapshot_on_phase = False
+        session.reset(1)
+
+
 # ---- malformed but schema-shaped inputs: a readable 4xx (or 502 for a failing remote model), never a bare 500 ----
 def test_off_frame_clicks_and_non_finite_points_are_refused(client):
     for pt in ([700, 10], [-40, -40], [10, 480], [640, 0], [-0.6, 5]):
