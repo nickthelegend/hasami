@@ -4,7 +4,7 @@
 // "running" forever, with Run enabled again. Real processes, real MuJoCo + SAM 2.1; nothing is routed or stubbed.
 // Chrome logs the refused connections while the server is down, so the console guard is not used here.
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
@@ -25,11 +25,24 @@ function portFree(port: number): Promise<boolean> {
 
 let server: ChildProcess | null = null;
 
-async function startServer(): Promise<ChildProcess> {
-  const env: NodeJS.ProcessEnv = { ...process.env, HASAMI_HOST: '127.0.0.1', HASAMI_PORT: String(PORT),
+const AUTHOR_CACHE = '/Volumes/Extreme SSD/.cache/huggingface';
+
+/** The spawned server's environment. HF_HOME as serve.sh sets it: the caller's when set, else the author's
+ * external cache only when that folder exists on this machine, else unset (the default ~/.cache/huggingface,
+ * which scripts/setup.sh fills). An empty HF_HOME is dropped, never passed on as a relative path. */
+export function serverEnv(base: NodeJS.ProcessEnv, authorCache = AUTHOR_CACHE): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...base, HASAMI_HOST: '127.0.0.1', HASAMI_PORT: String(PORT),
     HASAMI_RUNS_DIR: `${E2E}.runs-restart`, HASAMI_TWINS_DIR: `${E2E}.twins-restart` };
   for (const k of ['MODEL_API_KEY', 'HASAMI_REALCAM', 'HASAMI_SO101_PORT', 'HASAMI_DISTURB']) delete env[k];
-  if (!env.HF_HOME) env.HF_HOME = '/Volumes/Extreme SSD/.cache/huggingface';
+  if (!env.HF_HOME) {
+    delete env.HF_HOME;
+    if (existsSync(authorCache)) env.HF_HOME = authorCache;
+  }
+  return env;
+}
+
+async function startServer(): Promise<ChildProcess> {
+  const env = serverEnv(process.env);
   const child = spawn(`${ROOT}.venv/bin/python`, ['-m', 'hasami_server'], { env, stdio: 'ignore' });
   for (let i = 0; i < 240; i++) {
     try {
@@ -58,6 +71,17 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(() => killServer('SIGTERM'));
+
+test('the spawned server finds SAM 2.1 weights on a fresh clone: HF_HOME is not forced to the author\'s disk', () => {
+  // It used to set HF_HOME to /Volumes/Extreme SSD/... whenever unset, so on any other machine the server could
+  // not create that cache, SAM 2.1 did not load and the click segment (and this test) failed.
+  const missing = `${E2E}.no-such-cache-${process.pid}`;
+  expect(serverEnv({}, missing).HF_HOME).toBeUndefined();
+  expect('HF_HOME' in serverEnv({ HF_HOME: '' }, missing)).toBe(false);
+  expect(serverEnv({}, E2E).HF_HOME).toBe(E2E); // the author's cache, only when it exists
+  expect(serverEnv({ HF_HOME: '/data/hf' }, E2E).HF_HOME).toBe('/data/hf'); // the caller's choice wins
+  expect(serverEnv({ MODEL_API_KEY: 'x' }, missing).MODEL_API_KEY).toBeUndefined();
+});
 
 test('a server restart mid-run ends the run in the dashboard and enables Run again', async ({ page }, info) => {
   test.skip(info.project.name === 'mobile', 'server lifecycle, not layout: the desktop project covers it');
