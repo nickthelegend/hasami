@@ -191,6 +191,20 @@ export default function App() {
     }
   }, []);
 
+  // A run already going when this page loads (a reload mid-run, a second tab): follow it in the run log.
+  // GET /api/events replays the latest run from its first event, so the log starts at the plan.
+  const serverRun = status?.run?.busy ? status.run.run_id : null;
+  useEffect(() => {
+    if (!serverRun || sub.current || run.runId === serverRun || run.phase === 'starting' || run.phase === 'running') return;
+    dispatch({ type: 'start', label: `run ${serverRun} (already running)` });
+    const s = subscribe(
+      (event) => dispatch({ type: 'event', event }),
+      () => dispatch({ type: 'drop' }),
+    );
+    sub.current = s;
+    dispatch({ type: 'started', runId: serverRun });
+  }, [serverRun, run.runId, run.phase]);
+
   const doRun = useCallback(async () => {
     const body = useSteps ? { steps } : { instruction: instruction.trim() };
     const label = useSteps ? `${steps.length} clicked step${steps.length === 1 ? '' : 's'}` : `“${instruction.trim()}”`;

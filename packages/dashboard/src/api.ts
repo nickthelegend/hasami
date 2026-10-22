@@ -12,6 +12,8 @@ export interface Status {
   segmenters: { name: string; model?: string; prompt?: string; ready: boolean; setup?: string; note?: string }[];
   scene: { objects: { name: string; label: string }[]; seed?: number | null; name?: string };
   sim?: string;
+  /** the server's single run slot: busy while a run (from any tab, or before a reload) is going */
+  run?: { busy: boolean; run_id: string | null };
 }
 
 export interface Target {
