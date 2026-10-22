@@ -99,3 +99,24 @@ def test_setup_ci_and_docs_install_with_the_constraints():
             command = fenced or "<pre>" in line  # a command block, not prose about an earlier install
             if command and re.search(r"pip install (--python \S+ )?-e ('|&#39;)\.\[dev\]", line):
                 assert "-c constraints.txt" in line, (f, line.strip())
+
+
+def test_sam_iou_claims_are_the_recorded_demo_runs_numbers():
+    """The README, form and landing quote SAM 2.1's IoU on run 20261021T053112874Z. They used to say 'IoU 0.71-0.92
+    per cube; mean 0.86' while the record's red cube is 0.9531 (the landing shows 0.953) and its mean of 0.86 also
+    averages the three place masks. Every quoted range is now computed here from the record."""
+    import json
+
+    rec = json.loads((ROOT / "deployments/runs/20261021T053112874Z.json").read_text())
+    pick = [s["pick"]["iou_vs_truth"] for s in rec["steps"]]
+    place = [s["place"]["iou_vs_truth"] for s in rec["steps"]]
+    assert sorted(pick + place) == sorted(rec["iou"]["values"])
+    claim = (f"pick masks {min(pick):.2f}–{max(pick):.2f} (cubes), place masks {min(place):.2f}–{max(place):.2f}; "
+             f"mean of all six {rec['iou']['mean']:.2f}")
+    assert claim == "pick masks 0.71–0.95 (cubes), place masks 0.85–1.00; mean of all six 0.86"
+    for f in ("README.md", "HACKATHON_SUBMISSION_FORM.md"):
+        text = " ".join((ROOT / f).read_text().split())  # prose may wrap
+        assert claim in text and "20261021T053112874Z" in text, f
+        assert "0.71–0.92" not in text, f
+    landing = (ROOT / "packages/landing/index.html").read_text()
+    assert f"IoU {rec['steps'][0]['pick']['iou_vs_truth']:.3f}" in landing  # the red cube, step 1

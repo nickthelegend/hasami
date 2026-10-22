@@ -78,8 +78,9 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
   in that sweep no step ends with the arm aimed at something that is not an object.
 - Every step is checked the way a real robot could (the gripper's own position, then SAM on the new
   frame) and retried up to twice; the check agreed with the physics in 1106 of 1111 checks.
-- SAM 2.1 single-click IoU 0.71–0.92; centre error ≤ 0.6 mm in a 9-pick run (tests assert ≤ 3 mm); yaw
-  error max 1.76°, mean 0.18°.
+- SAM 2.1 single-click IoU on recorded run 20261021T053112874Z: pick masks 0.71–0.95 (cubes), place masks
+  0.85–1.00; mean of all six 0.86. Centre error ≤ 0.6 mm in a 9-pick run (tests assert ≤ 3 mm); yaw error
+  max 1.76°, mean 0.18°.
 - Agent trace: replay any run step by step (frame, SAM mask vs truth, 3D target, each arm phase's error,
   the check, why it retried).
 - **Your desk, twinned:** one desk photo with an A4 sheet becomes a MuJoCo scene ("digital twin from one

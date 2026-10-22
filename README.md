@@ -238,7 +238,7 @@ score (not used by the robot): physics state, goal predicate
 
 | Check | Result |
 |---|---|
-| SAM 2.1 single-click IoU vs MuJoCo segmentation (classic scene) | 0.71–0.92 per cube; mean 0.86, min 0.71 on the recorded demo run |
+| SAM 2.1 single-click IoU vs MuJoCo segmentation (classic scene) | pick masks 0.71–0.95 (cubes), place masks 0.85–1.00; mean of all six 0.86, on recorded demo run 20261021T053112874Z (`iou` in its record) |
 | Localisation from mask + depth | ≤ 0.6 mm centre error in a 9-pick run; tests assert ≤ 3 mm |
 | Yaw (fourth-order moment / minimum-area rectangle) | max 1.76°, mean 0.18° over 60 cubes |
 | Real-camera geometry (synthetic tilted camera, 50 × 30 × 40 mm box) | centre within 1 mm, yaw within 1.5° with parallax correction; > 10 mm off without it |
