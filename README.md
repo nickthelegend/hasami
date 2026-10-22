@@ -245,7 +245,8 @@ python -m hasami_mcp                              # MCP over stdio (HASAMI_MCP_L
 ```
 
 Optional: `HASAMI_DISTURB=offset_mm:6,slip:0.2` or `depth_mm:2,cam_mm:3,light:0.3` (labelled disturbances), `HASAMI_SO101_PORT` (real arm,
-mirror mode), `HASAMI_REALCAM=0` (webcam for the Real camera tab; opened only when you press Grab).
+mirror mode), `HASAMI_REALCAM=0` (webcam for the Real camera tab; opened only when you press Grab),
+`HASAMI_MAX_TWINS` (twins kept in memory and in `deployments/twins`, default 8; the least recently used is dropped).
 
 MCP client config:
 

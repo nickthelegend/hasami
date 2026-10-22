@@ -485,3 +485,40 @@ def test_a_twin_build_does_not_block_the_server(session, runs_tmp, no_model_key,
         thread.join(timeout=30)
         session.store_images = session.snapshot_on_phase = False
         session.reset(1)
+
+
+def test_twins_are_capped_and_the_least_recently_used_is_dropped(session, runs_tmp, no_model_key, tmp_path, monkeypatch):
+    """Twins live in server memory with their photo and masks, and on disk: HASAMI_MAX_TWINS (8 by default) caps
+    them. Building one more drops the twin used least recently (built, adjusted, loaded or run), from memory
+    and from the twins folder; its id then gives 404."""
+    from hasami_sim.photo import PhotoCamera, SheetPose, render_photo
+    from hasami_sim.scene import ObjectSpec
+
+    monkeypatch.setenv("HASAMI_TWINS_DIR", str(tmp_path / "twins"))
+    monkeypatch.setenv("HASAMI_MAX_TWINS", "2")
+    cam = PhotoCamera(pos=(0.52, 0.07, 0.34), fovy_deg=50)
+    buf = io.BytesIO()
+    Image.fromarray(render_photo([ObjectSpec("a", "cube", "red", 0.20, 0.06, 0.3)], SheetPose(), cam)).save(buf, format="PNG")
+    on_disk = lambda: sorted(p.name for p in (tmp_path / "twins").iterdir())  # noqa: E731
+    try:
+        with TestClient(create_app(session), base_url="http://127.0.0.1:8420", headers={"X-Hasami": "1"}) as c:
+            def build() -> str:
+                r = c.post("/api/twin", content=buf.getvalue(), params={"hfov_deg": cam.hfov_deg},
+                           headers={"Content-Type": "image/png"})
+                assert r.status_code == 200, r.text
+                return r.json()["twin_id"]
+
+            ids = [build() for _ in range(3)]
+            assert on_disk() == sorted(ids[1:])
+            assert c.get(f"/api/twin/{ids[0]}").status_code == 404
+            assert c.get(f"/api/twin/{ids[0]}/photo.png").status_code == 404
+            assert all(c.get(f"/api/twin/{i}").status_code == 200 for i in ids[1:])
+            # loading the older one makes it the most recently used: the next build drops the other
+            assert c.post(f"/api/twin/{ids[1]}/load").status_code == 200
+            ids.append(build())
+            assert on_disk() == sorted([ids[1], ids[3]])
+            assert c.get(f"/api/twin/{ids[2]}").status_code == 404
+            assert c.get("/api/twin").json()["twin"]["twin_id"] == ids[3]
+    finally:
+        session.store_images = session.snapshot_on_phase = False
+        session.reset(1)

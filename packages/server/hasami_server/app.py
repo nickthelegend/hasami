@@ -354,6 +354,10 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
     def sess(request: Request) -> Session:
         return request.app.state.session
 
+    def runner_busy() -> bool:
+        runner = getattr(app.state, "runner", None)
+        return bool(runner and runner.busy)
+
     def busy_response(request: Request) -> JSONResponse:
         return JSONResponse(status_code=409, content={"error": "a run is in progress",
                                                       "run_id": request.app.state.runner.run_id})
@@ -645,13 +649,44 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
 
     # ---- digital twin from one photo (the arm is simulated) -----------------------------------------
     twins: dict = {}  # id -> {"twin": Twin, "rgb": photo}; insertion order = last built, adjusted or loaded last
+    twins_lock = threading.Lock()  # builds run in worker threads
+    twin_run: dict = {"id": None}  # the twin the current (or last) twin run works in
+
+    def _max_twins() -> int:
+        import os
+
+        v = os.environ.get("HASAMI_MAX_TWINS", "8")
+        return max(1, int(v)) if v.isdigit() else 8
 
     def _twin_view(twin) -> dict:
         return twin.to_dict() | {"images": {"side_by_side": f"/api/twin/{twin.id}/side_by_side.png",
                                             "photo": f"/api/twin/{twin.id}/photo.png"}}
 
     def _touch(twin_id: str) -> None:
-        twins[twin_id] = twins.pop(twin_id)
+        with twins_lock:
+            if twin_id in twins:
+                twins[twin_id] = twins.pop(twin_id)
+
+    def _evict() -> None:
+        """Keep at most HASAMI_MAX_TWINS twins (8): drop the least recently used, from memory and its folder,
+        never the one a running twin task works in."""
+        import shutil
+
+        from hasami_core.twin import twins_dir
+
+        busy_id = twin_run["id"] if runner_busy() else None
+        with twins_lock:
+            gone = []
+            for tid in list(twins):
+                if len(twins) <= _max_twins():
+                    break
+                if tid != busy_id:
+                    del twins[tid]
+                    gone.append(tid)
+        for tid in gone:
+            folder = twins_dir() / tid
+            if re.fullmatch(r"[0-9A-Za-z_-]{1,64}", tid) and folder.is_dir():
+                shutil.rmtree(folder, ignore_errors=True)
 
     def _twin_or_404(twin_id: str):
         t = twins.get(twin_id)
@@ -674,8 +709,10 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         except ValueError as e:
             return JSONResponse(status_code=422, content={"error": str(e)})
         save_twin(twin, rgb)
-        twins.pop(twin.id, None)
-        twins[twin.id] = {"twin": twin, "rgb": rgb, "opts": opts}
+        with twins_lock:
+            twins.pop(twin.id, None)
+            twins[twin.id] = {"twin": twin, "rgb": rgb, "opts": opts}
+        _evict()
         return _twin_view(twin)
 
     @app.get("/api/twin/sample.png")
@@ -821,6 +858,7 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                                   prepare=prepare, finish=finish)
         except RuntimeError:
             return busy_response(request)
+        twin_run["id"] = twin_id
         _touch(twin_id)
         return {"run_id": run_id, "task": body.task, "instruction": task.instruction, "label": TWIN_LABEL,
                 "planner": ORACLE_LABEL}
