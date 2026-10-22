@@ -61,6 +61,8 @@ def test_offset_fails_the_first_attempt_and_the_retry_succeeds(session):
     assert len(retries) == 1 and "descend" in retries[0]["reason"] and retries[0]["attempt"] == 2
     step = rec["steps"][0]
     assert len(step["attempts"]) == 2 and step["result"]["ok"] and step["result"]["attempts"] == 2
+    # the record keeps why the first attempt was retried (the agent trace shows it), the last has none
+    assert step["attempts"][0]["note"] == retries[0]["reason"] and "note" not in step["attempts"][1]
     assert step["result"]["in_tray"] and step["result"]["object"] == "red cube"
     assert rec["disturb"]["label"] == "injected disturbance (test)"
     assert rec["verify"] == {"checks": 2, "agree": 2, "retries": 1}

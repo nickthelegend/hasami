@@ -833,6 +833,7 @@ class Session:
                 res["reason"] = "the object is still at the pick spot in the image"
             else:
                 res["reason"] = "no raised object of the right colour at the place spot in the image"
+            rec["note"] = res["reason"]  # the run record keeps why this attempt is retried (the agent trace shows it)
         return res
 
     def _recover_pick(self, frame: Frame, label: str, hint: list[float], good_mask: np.ndarray | None,

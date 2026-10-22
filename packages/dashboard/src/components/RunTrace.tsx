@@ -101,6 +101,16 @@ function Check({ v }: { v: Verify }) {
   );
 }
 
+/** Records written before the retry reason was stored (the run record's `note`) still say which checks failed. */
+function failedChecks(v: Verify): string {
+  const why = [
+    v.grasp_held == null ? 'the jaws never closed' : v.grasp_held ? null : 'the gripper closed on nothing',
+    v.pick_clear ? null : 'the object is still at the pick spot',
+    v.place_raised ? null : 'nothing seen at the place spot',
+  ].filter(Boolean);
+  return `the check failed (${why.join('; ') || 'see above'})`;
+}
+
 function AttemptView({ runId, step, a, view, last }: { runId: string; step: number; a: Attempt; view: View; last: boolean }) {
   const has = a.images ?? {};
   const kind = view === 'truth' ? 'view_truth' : 'view';
@@ -163,7 +173,7 @@ function AttemptView({ runId, step, a, view, last }: { runId: string; step: numb
           </dl>
           {a.phases && a.phases.length > 0 && <Phases phases={a.phases} />}
           {a.verify && <Check v={a.verify} />}
-          {!last && a.note && <p className="tr-why">Retry because: {a.note}</p>}
+          {!last && (a.note || a.verify) && <p className="tr-why">Retry because: {a.note ?? failedChecks(a.verify!)}</p>}
           {has.after && (
             <a className="tr-after" href={img(runId, step, a.attempt, 'after')} target="_blank" rel="noreferrer">
               Frame after this attempt
