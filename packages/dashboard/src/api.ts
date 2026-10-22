@@ -240,6 +240,8 @@ export const api = {
   twinRun: (twinId: string, task: string) => post<RunResponse>(`/api/twin/${encodeURIComponent(twinId)}/run`, { task }),
   reset: (seed?: number, family?: string) =>
     post<unknown>('/api/reset', { ...(seed === undefined ? {} : { seed }), ...(family ? { family } : {}) }),
+  /** A run's full record (GET /api/runs/{id}); a 404 is an ApiError with status 404. */
+  runRecord: (runId: string) => request<RecordedRun & { steps?: { result?: RunResult | null }[] }>(`/api/runs/${encodeURIComponent(runId)}`),
   runs: async (): Promise<RecordedRun[]> => {
     const body = await request<RecordedRun[] | { runs: RecordedRun[] }>('/api/runs');
     return Array.isArray(body) ? body : Array.isArray(body?.runs) ? body.runs : [];

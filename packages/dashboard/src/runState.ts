@@ -57,7 +57,28 @@ export type RunAction =
   | { type: 'event'; event: RunEvent & { run_id?: string } }
   | { type: 'fail'; message: string }
   | { type: 'drop' }
+  /** the server no longer runs this run (it restarted, or the stream died): its record, if it was written */
+  | { type: 'lost'; record: LostRecord | null; message: string }
   | { type: 'clear' };
+
+/** The parts of a run record (GET /api/runs/{id}) the run log needs. */
+export interface LostRecord {
+  run_id?: string;
+  ok?: boolean | null;
+  placed?: number | null;
+  total?: number | null;
+  error?: string | null;
+  steps?: { result?: RunResult | null }[];
+}
+
+/** While this page follows a run, does /api/status's run slot say it is over without the stream saying so?
+ *  'ended': the slot is free and still names our run (read its record). 'restarted': the slot names another
+ *  run or none (a new server process). null: nothing to do. */
+export function lostRunCheck(state: RunState, slot: { busy: boolean; run_id: string | null } | undefined): 'ended' | 'restarted' | null {
+  if (!slot || !state.runId || (state.phase !== 'starting' && state.phase !== 'running')) return null;
+  if (slot.run_id !== state.runId) return 'restarted';
+  return slot.busy ? null : 'ended';
+}
 
 let nextId = 1;
 
@@ -174,6 +195,38 @@ export function runReducer(state: RunState, action: RunAction): RunState {
         phase: 'failed',
         error: 'Lost the event stream before the run finished. Check the server log.',
       };
+    case 'lost': {
+      if (state.phase !== 'running' && state.phase !== 'starting') return state;
+      const rec = action.record;
+      if (!rec) {
+        return {
+          ...state,
+          phase: 'failed',
+          error: action.message,
+          rows: [...state.rows, row({ kind: 'error', title: 'Run lost', detail: action.message, ok: false, pill: 'lost' })],
+        };
+      }
+      const results = (rec.steps ?? []).map((st) => st?.result).filter((r): r is RunResult => Boolean(r));
+      const counts = typeof rec.placed === 'number' && typeof rec.total === 'number' ? `${rec.placed}/${rec.total} placed` : undefined;
+      const failed = Boolean(rec.error);
+      return {
+        ...state,
+        phase: failed ? 'failed' : 'done',
+        error: failed ? String(rec.error) : null,
+        results,
+        rows: [
+          ...state.rows,
+          row({
+            kind: failed ? 'error' : 'done',
+            title: 'Finished · read from the run record',
+            detail: failed ? String(rec.error) : 'The event stream ended early; the result comes from the saved record.',
+            mono: counts,
+            ok: typeof rec.ok === 'boolean' ? rec.ok : !failed,
+            pill: rec.ok ? 'all placed' : failed ? 'failed' : 'not all placed',
+          }),
+        ],
+      };
+    }
     case 'clear':
       return initialRun;
     case 'event': {

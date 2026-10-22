@@ -6,7 +6,7 @@ import { RealCam } from './components/RealCam';
 import { Twin } from './components/Twin';
 import { RunTrace } from './components/RunTrace';
 import { LogoMark, StatusPills } from './components/TopBar';
-import { initialRun, runReducer } from './runState';
+import { initialRun, lostRunCheck, runReducer } from './runState';
 
 const SCENES = ['classic', 'sort-by-colour', 'stack-two', 'clear-except-X', 'tower-of-3', 'sort-by-shape', 'line-up', 'pick-from-bin'];
 
@@ -18,6 +18,8 @@ function errText(e: unknown): string {
 
 export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
+  const [statusAt, setStatusAt] = useState(0); // when `status` was fetched (ms)
+  const runStartedAt = useRef(0); // when this page learned its current run's id
   const [reachable, setReachable] = useState<boolean | null>(null);
   const [camera, setCamera] = useState<Camera>('overhead');
   const [nonce, setNonce] = useState(() => Date.now());
@@ -43,8 +45,10 @@ export default function App() {
   // ---- status: poll, faster while the server is down --------------------------------------
   const loadStatus = useCallback(async () => {
     try {
+      const asked = Date.now();
       const s = await api.status();
       setStatus(s);
+      setStatusAt(asked);
       setReachable((was) => {
         if (was === false) setNonce(Date.now());
         return true;
@@ -70,11 +74,13 @@ export default function App() {
     if (SCENES.includes(name) || name === 'twin') setScene(name);
   }, [status]);
 
+  // while a run streams, poll every 3 s: the status's run slot is how a server restart is noticed (see below)
+  const live = run.phase === 'starting' || run.phase === 'running';
   useEffect(() => {
     void loadStatus();
-    const t = setInterval(loadStatus, reachable === false ? 4000 : 15000);
+    const t = setInterval(loadStatus, reachable === false ? 4000 : live ? 3000 : 15000);
     return () => clearInterval(t);
-  }, [loadStatus, reachable]);
+  }, [loadStatus, reachable, live]);
 
   const loadRuns = useCallback(async () => {
     try {
@@ -89,7 +95,6 @@ export default function App() {
   }, [reachable, loadRuns]);
 
   // ---- live frame while a run streams ---------------------------------------------------------
-  const live = run.phase === 'starting' || run.phase === 'running';
   useEffect(() => {
     if (!live) return;
     const t = setInterval(refreshFrame, 650);
@@ -108,6 +113,35 @@ export default function App() {
   }, [run.phase, run.runId, refreshFrame, loadRuns, loadStatus]);
 
   useEffect(() => () => sub.current?.close(), []);
+
+  // A run this page follows that the server no longer runs (it restarted mid-run, or the stream died without
+  // `done`): read its record if it was written, else say it was lost, so Run is enabled again.
+  // Only a status asked for after the run started counts: an older one predates the run (and names no run or the last).
+  const lostCheck = statusAt > runStartedAt.current ? lostRunCheck(run, status?.run) : null;
+  const checking = useRef<string | null>(null);
+  useEffect(() => {
+    const runId = run.runId;
+    if (!lostCheck || !runId || checking.current === runId) return;
+    checking.current = runId;
+    void (async () => {
+      let record = null;
+      try {
+        record = await api.runRecord(runId);
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 404)) {
+          checking.current = null; // unreachable or another error: try again on the next poll
+          return;
+        }
+      }
+      sub.current?.close();
+      sub.current = null;
+      dispatch({
+        type: 'lost',
+        record,
+        message: lostCheck === 'restarted' ? 'The server restarted; this run was lost.' : 'The run ended without a record; check the server log.',
+      });
+    })();
+  }, [lostCheck, run.runId]);
 
   // ---- clicks: object, then target ---------------------------------------------------------
   const onPick = useCallback(
@@ -182,6 +216,7 @@ export default function App() {
     await s.ready;
     try {
       const { run_id } = await start();
+      runStartedAt.current = Date.now();
       dispatch({ type: 'started', runId: run_id });
       return run_id;
     } catch (e) {
@@ -214,6 +249,7 @@ export default function App() {
       () => dispatch({ type: 'drop' }),
     );
     sub.current = s;
+    runStartedAt.current = Date.now(); // the next status poll decides whether it is still going
     dispatch({ type: 'started', runId: serverRun });
   }, [serverRun, run.runId, run.phase]);
 
