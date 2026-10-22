@@ -42,3 +42,8 @@ deployments/runs/*
 !deployments/runs/20261021T053203432Z/
 deployments/twins/*/
 packages/dashboard/.test-out/
+
+# browser E2E output and local demo scratch, wherever they are run from (e2e/.gitignore covers e2e/ itself)
+test-results/
+playwright-report/
+.demo/
