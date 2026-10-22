@@ -355,7 +355,9 @@ def test_realcam_grab_needs_setup_and_order_is_enforced(client, monkeypatch):
     monkeypatch.delenv("HASAMI_REALCAM", raising=False)
     r = client.post("/api/realcam/grab")
     assert r.status_code == 503 and r.json()["setup_required"] == "HASAMI_REALCAM"
-    assert client.post("/api/realcam/segment", json={"point": [10, 10], "height_mm": 30}).status_code == 409
+    client.post("/api/realcam/clear")
+    r = client.post("/api/realcam/segment", json={"frame_id": "none-yet", "point": [10, 10], "height_mm": 30})
+    assert r.status_code == 409 and "grab or upload" in r.json()["error"]
     assert client.post("/api/realcam/upload", content=b"not an image").status_code == 400
 
 
@@ -380,10 +382,12 @@ def test_realcam_synthetic_photo_segment_and_locate(client):
     Image.fromarray(img).save(buf, format="PNG")
     up = client.post("/api/realcam/upload", content=buf.getvalue())
     assert up.status_code == 200 and up.json()["source"] == "upload"
-    cal = client.post("/api/realcam/calibrate", json={"corners": sheet_px.tolist(), "sheet": "a4", "hfov_deg": 70})
+    fid = up.json()["frame_id"]
+    cal = client.post("/api/realcam/calibrate", json={"frame_id": fid, "corners": sheet_px.tolist(), "sheet": "a4",
+                                                      "hfov_deg": 70})
     assert cal.status_code == 200, cal.text
     centre_px = project(k, r, t, np.array([[cx, cy, hgt]]))[0]
-    res = client.post("/api/realcam/segment", json={"point": centre_px.tolist(), "height_mm": hgt}).json()
+    res = client.post("/api/realcam/segment", json={"frame_id": fid, "point": centre_px.tolist(), "height_mm": hgt}).json()
     assert res["arm"] == "sim" and "not connected" in res["note"]
     tgt = res["target"]
     assert tgt and tgt["parallax_corrected"]
@@ -404,13 +408,17 @@ def test_realcam_calibrate_detects_a_landscape_sheet(client):
     img[_raster(sheet_px)] = (236, 236, 232)
     buf = io.BytesIO()
     Image.fromarray(img).save(buf, format="PNG")
-    assert client.post("/api/realcam/upload", content=buf.getvalue()).status_code == 200
-    auto = client.post("/api/realcam/calibrate", json={"corners": sheet_px.tolist(), "sheet": "auto", "hfov_deg": 70})
+    up = client.post("/api/realcam/upload", content=buf.getvalue())
+    assert up.status_code == 200
+    fid = up.json()["frame_id"]
+    auto = client.post("/api/realcam/calibrate", json={"frame_id": fid, "corners": sheet_px.tolist(), "sheet": "auto",
+                                                       "hfov_deg": 70})
     assert auto.status_code == 200, auto.text
     a = auto.json()
     assert a["orientation"] == "landscape" and a["sheet"] == "a4-landscape" and a["size_mm"] == [297.0, 210.0]
     assert a["orientation_source"] == "detected from the clicked corners"
-    chosen = client.post("/api/realcam/calibrate", json={"corners": sheet_px.tolist(), "sheet": "a4", "hfov_deg": 70}).json()
+    chosen = client.post("/api/realcam/calibrate", json={"frame_id": fid, "corners": sheet_px.tolist(), "sheet": "a4",
+                                                         "hfov_deg": 70}).json()
     assert chosen["orientation"] == "portrait" and chosen["orientation_source"] == "chosen"
 
 
@@ -425,7 +433,9 @@ def test_realcam_calibrate_auto_follows_the_click_order(client):
     k, r, t = camera(30, 10)
     buf = io.BytesIO()
     Image.fromarray(np.full((720, 1280, 3), 120, np.uint8)).save(buf, format="PNG")
-    assert client.post("/api/realcam/upload", content=buf.getvalue()).status_code == 200
+    up = client.post("/api/realcam/upload", content=buf.getvalue())
+    assert up.status_code == 200
+    fid = up.json()["frame_id"]
     wrong = []
     for landscape in (False, True):
         sheet = a4_corners(landscape) - a4_corners(landscape).mean(axis=0)
@@ -437,8 +447,8 @@ def test_realcam_calibrate_auto_follows_the_click_order(client):
                 for turn in (1, -1):
                     idx = [(start + turn * i) % 4 for i in range(4)]
                     clicks = px[idx]
-                    res = client.post("/api/realcam/calibrate", json={"corners": clicks.tolist(), "sheet": "auto",
-                                                                       "hfov_deg": 70})
+                    res = client.post("/api/realcam/calibrate", json={"frame_id": fid, "corners": clicks.tolist(),
+                                                                       "sheet": "auto", "hfov_deg": 70})
                     assert res.status_code == 200, res.text
                     got = res.json()
                     true_01 = float(np.linalg.norm(plane[idx[1]] - plane[idx[0]]))
@@ -681,9 +691,12 @@ def test_realcam_segment_is_refused_while_a_run_holds_the_arm(client, session):
     cam = PhotoCamera(pos=(0.52, 0.07, 0.34), fovy_deg=50)
     buf = io.BytesIO()
     Image.fromarray(render_photo([ObjectSpec("a", "cube", "red", 0.20, 0.06, 0.3)], SheetPose(), cam)).save(buf, format="PNG")
-    assert client.post("/api/realcam/upload", content=buf.getvalue(), headers={"Content-Type": "image/png"}).status_code == 200
+    up = client.post("/api/realcam/upload", content=buf.getvalue(), headers={"Content-Type": "image/png"})
+    assert up.status_code == 200
+    fid = up.json()["frame_id"]
     corners = [[100, 100], [500, 100], [500, 400], [100, 400]]
-    assert client.post("/api/realcam/calibrate", json={"corners": corners, "sheet": "a4", "hfov_deg": None}).status_code == 200
+    assert client.post("/api/realcam/calibrate", json={"frame_id": fid, "corners": corners, "sheet": "a4",
+                                                       "hfov_deg": None}).status_code == 200
 
     frame = session.observe()
     steps = [{"pick_point": list(simulated_click(frame.rgb, c)), "place_point": list(p)}
@@ -691,14 +704,14 @@ def test_realcam_segment_is_refused_while_a_run_holds_the_arm(client, session):
     r = client.post("/api/run", json={"steps": steps})
     assert r.status_code == 200, r.text
     t0 = time.perf_counter()
-    seg = client.post("/api/realcam/segment", json={"point": [300, 250], "height_mm": 0})
+    seg = client.post("/api/realcam/segment", json={"frame_id": fid, "point": [300, 250], "height_mm": 0})
     took = time.perf_counter() - t0
     busy = client.app.state.runner.busy
     client.app.state.runner.thread.join(timeout=120)
     assert seg.status_code == 409, f"{seg.status_code} after {took:.1f} s (it waited for the run to end)"
     assert seg.json()["run_id"] == r.json()["run_id"] and took < 2.0, took
     assert busy, "the run was still going when the 409 came back"
-    assert client.post("/api/realcam/segment", json={"point": [300, 250], "height_mm": 0}).status_code == 200
+    assert client.post("/api/realcam/segment", json={"frame_id": fid, "point": [300, 250], "height_mm": 0}).status_code == 200
 
 
 def test_a_run_cannot_start_while_a_reset_replaces_the_scene(client, session, monkeypatch):
@@ -765,15 +778,70 @@ def test_realcam_segment_on_the_last_pixel_column_or_row(client):
     img = np.full((240, 320, 3), 200, np.uint8)
     img[100:140, 280:320] = (210, 40, 40)
     Image.fromarray(img).save(buf, format="PNG")
-    assert client.post("/api/realcam/upload", content=buf.getvalue()).status_code == 200
+    up = client.post("/api/realcam/upload", content=buf.getvalue())
+    assert up.status_code == 200
+    fid = up.json()["frame_id"]
     corners = [[20, 20], [300, 20], [300, 220], [20, 220]]
-    assert client.post("/api/realcam/calibrate", json={"corners": corners, "sheet": "a4"}).status_code == 200
+    assert client.post("/api/realcam/calibrate", json={"frame_id": fid, "corners": corners, "sheet": "a4"}).status_code == 200
     for pt in ([319.7, 120], [100, 239.6], [-0.6, 120]):
-        r = client.post("/api/realcam/segment", json={"point": pt, "height_mm": 10})
+        r = client.post("/api/realcam/segment", json={"frame_id": fid, "point": pt, "height_mm": 10})
         assert r.status_code == 400 and "outside" in r.json()["error"], (pt, r.status_code, r.text)
-    r = client.post("/api/realcam/segment", json={"point": [319.4, 120], "height_mm": 10})
+    r = client.post("/api/realcam/segment", json={"frame_id": fid, "point": [319.4, 120], "height_mm": 10})
     assert r.status_code == 200, r.text
     assert r.json()["mask_png"]
+
+
+def test_realcam_frame_is_named_per_upload_and_a_replaced_frame_is_a_409(client):
+    """Two tabs share the server's one real-camera frame. Tab A uploads and calibrates; tab B uploads another photo.
+    Tab A's next click used to run SAM on tab B's photo with no calibration (409 'click the sheet's corners first')
+    while A still showed its own photo; a reload showed 'No real frame yet' although frame.png was still served.
+    Now every grab / upload has a frame_id, calibrate and segment must name it (409 'replaced' otherwise), GET
+    /api/realcam restores the frame and its calibration after a reload, and /api/realcam/clear forgets it."""
+    def upload(colour):
+        buf = io.BytesIO()
+        img = np.full((240, 320, 3), 200, np.uint8)
+        img[100:140, 140:180] = colour
+        Image.fromarray(img).save(buf, format="PNG")
+        r = client.post("/api/realcam/upload", content=buf.getvalue(), headers={"Content-Type": "image/png"})
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    corners = [[20, 20], [300, 20], [300, 220], [20, 220]]
+    a = upload((210, 40, 40))
+    assert a["frame_id"] and a["calibration"] is None and (a["width"], a["height"]) == (320, 240)
+    # naming no frame is refused by the schema
+    assert client.post("/api/realcam/calibrate", json={"corners": corners, "sheet": "a4"}).status_code == 422
+    assert client.post("/api/realcam/segment", json={"point": [160, 120], "height_mm": 10}).status_code == 422
+    cal = client.post("/api/realcam/calibrate", json={"frame_id": a["frame_id"], "corners": corners, "sheet": "auto"})
+    assert cal.status_code == 200, cal.text
+    state = client.get("/api/realcam").json()  # what a reload of tab A restores
+    assert state["frame_id"] == a["frame_id"] and state["source"] == "upload"
+    assert state["calibration"]["corners"] == corners and state["calibration"]["requested"] == "auto"
+    assert state["calibration"]["orientation"] == cal.json()["orientation"]
+
+    b = upload((40, 40, 210))  # tab B
+    assert b["frame_id"] != a["frame_id"]
+    for path, body in (("/api/realcam/segment", {"point": [160, 120], "height_mm": 10}),
+                       ("/api/realcam/calibrate", {"corners": corners, "sheet": "a4"})):
+        r = client.post(path, json={"frame_id": a["frame_id"], **body})
+        assert r.status_code == 409 and r.json()["replaced"] and "replaced in another tab" in r.json()["error"], (path, r.text)
+    assert client.get("/api/realcam/frame.png", params={"frame_id": a["frame_id"]}).status_code == 409
+    assert client.get("/api/realcam/frame.png", params={"frame_id": b["frame_id"]}).status_code == 200
+    state = client.get("/api/realcam").json()
+    assert state["frame_id"] == b["frame_id"] and state["calibration"] is None  # B's photo is not calibrated
+    # B's own click needs B's corners first, then works on B's photo
+    r = client.post("/api/realcam/segment", json={"frame_id": b["frame_id"], "point": [160, 120], "height_mm": 10})
+    assert r.status_code == 409 and "corners first" in r.json()["error"]
+    assert client.post("/api/realcam/calibrate", json={"frame_id": b["frame_id"], "corners": corners,
+                                                       "sheet": "a4"}).status_code == 200
+    r = client.post("/api/realcam/segment", json={"frame_id": b["frame_id"], "point": [160, 120], "height_mm": 10})
+    assert r.status_code == 200 and r.json()["frame_id"] == b["frame_id"], r.text
+
+    # clear: the photo is gone from the server, not only from the page
+    assert client.post("/api/realcam/clear").json() == {"cleared": True}
+    assert client.get("/api/realcam").json()["frame_id"] is None
+    assert client.get("/api/realcam/frame.png").status_code == 404
+    assert client.post("/api/realcam/clear").json() == {"cleared": False}
 
 
 def test_a_failing_reset_or_twin_load_is_a_500_with_its_message_not_busy(client, session, tmp_path, monkeypatch):
@@ -823,12 +891,14 @@ def test_corners_must_be_four_finite_pairs(client, tmp_path, monkeypatch):
 
     buf = io.BytesIO()
     Image.fromarray(np.full((480, 640, 3), 120, np.uint8)).save(buf, format="PNG")
-    assert client.post("/api/realcam/upload", content=buf.getvalue()).status_code == 200
+    up = client.post("/api/realcam/upload", content=buf.getvalue())
+    assert up.status_code == 200
+    fid = up.json()["frame_id"]
     bad = ([[1], [2], [3], [4]], [[10, 10, 5], [600, 10, 5], [600, 400, 5], [10, 400, 5]], [[1, 2]] * 3)
     for corners in bad:
-        r = client.post("/api/realcam/calibrate", json={"corners": corners, "sheet": "auto"})
+        r = client.post("/api/realcam/calibrate", json={"frame_id": fid, "corners": corners, "sheet": "auto"})
         assert r.status_code == 422, (corners, r.status_code)
-    r = client.post("/api/realcam/calibrate", content=b'{"corners": [[NaN, 1], [5, 1], [5, 5], [1, 5]]}',
+    r = client.post("/api/realcam/calibrate", content=b'{"frame_id": "%s", "corners": [[NaN, 1], [5, 1], [5, 5], [1, 5]]}' % fid.encode(),
                     headers={"Content-Type": "application/json"})
     assert r.status_code == 422
     # a twin's adjust takes the same corners

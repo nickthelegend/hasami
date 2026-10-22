@@ -118,9 +118,11 @@ class CalibrateReq(BaseModel):
     sheet: Literal["a4", "a4-landscape", "auto"] = Field(
         default="a4", description="auto: portrait or landscape, whichever gives a camera pose that is a rotation")
     hfov_deg: float | None = Field(default=70.0, ge=20, le=150, description="camera field of view; null: no parallax correction")
+    frame_id: str = Field(min_length=1, max_length=64, description="the frame_id that grab / upload returned")
 
 
 class RealSegmentReq(BaseModel):
+    frame_id: str = Field(min_length=1, max_length=64, description="the frame_id that grab / upload returned")
     point: Pair
     height_mm: float = Field(ge=0, le=300)
 
@@ -690,8 +692,49 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                         headers={"Cache-Control": "max-age=3600"})
 
     # ---- real camera (segment + locate only; the arm stays simulated) --------------------------
-    real: dict = {"rgb": None, "h": None, "k": None, "source": None}
+    # One frame for the server, shared by every tab. Each grab / upload gets a new frame_id; calibrate and
+    # segment name the frame they were clicked on and get 409 when another tab has replaced it. real_lock
+    # keeps the photo, its id and its calibration consistent while one request reads them and another writes.
+    real: dict = {"rgb": None, "h": None, "k": None, "source": None, "id": None, "cal": None}
+    real_lock = threading.Lock()
     REAL_NOTE = "real camera: segment and locate only; the arm is simulated and not connected to this camera"
+    REPLACED = "the frame was replaced in another tab (or by another client): this tab now shows the current one"
+
+    def _real_info() -> dict:
+        """The frame the server holds, for GET /api/realcam (call with real_lock held)."""
+        if real["rgb"] is None:
+            return {"frame_id": None, "note": REAL_NOTE}
+        return {"frame_id": real["id"], "width": real["rgb"].shape[1], "height": real["rgb"].shape[0],
+                "source": real["source"], "calibration": real["cal"], "note": REAL_NOTE}
+
+    def _new_real_frame(rgb, source: str) -> dict:
+        import uuid
+
+        with real_lock:
+            real.update(rgb=rgb, h=None, k=None, source=source, id=uuid.uuid4().hex[:16], cal=None)
+            return _real_info()
+
+    def _replaced(frame_id: str) -> JSONResponse | None:
+        """409 unless frame_id names the frame the server holds (call with real_lock held)."""
+        if real["rgb"] is None:
+            return JSONResponse(status_code=409, content={"error": "grab or upload a frame first", "replaced": True})
+        if frame_id != real["id"]:
+            return JSONResponse(status_code=409, content={"error": REPLACED, "replaced": True})
+        return None
+
+    @app.get("/api/realcam")
+    def realcam_state():
+        """The frame the server holds (size, source, frame_id) and its calibration, so a reload can restore them."""
+        with real_lock:
+            return _real_info()
+
+    @app.post("/api/realcam/clear")
+    def realcam_clear():
+        """Forget the frame and its calibration (a desk photo or webcam frame is not kept for the server's lifetime)."""
+        with real_lock:
+            had = real["rgb"] is not None
+            real.update(rgb=None, h=None, k=None, source=None, id=None, cal=None)
+        return {"cleared": had}
 
     @app.post("/api/realcam/grab")
     def realcam_grab():
@@ -703,8 +746,7 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
             return _setup_response(e)
         except Exception as e:  # noqa: BLE001
             return JSONResponse(status_code=502, content={"error": f"{type(e).__name__}: {e}"})
-        real.update(rgb=rgb, h=None, k=None, source="webcam")
-        return {"width": rgb.shape[1], "height": rgb.shape[0], "source": "webcam", "note": REAL_NOTE}
+        return _new_real_frame(rgb, "webcam")
 
     @app.post("/api/realcam/upload")
     async def realcam_upload(request: Request):
@@ -715,16 +757,19 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
             rgb = await run_in_threadpool(decode_photo, data)  # PIL off the event loop
         except PhotoError as e:
             return JSONResponse(status_code=400, content={"error": str(e)})
-        real.update(rgb=rgb, h=None, k=None, source="upload")
-        return {"width": rgb.shape[1], "height": rgb.shape[0], "source": "upload", "note": REAL_NOTE}
+        return _new_real_frame(rgb, "upload")
 
     @app.get("/api/realcam/frame.png")
-    def realcam_frame():
+    def realcam_frame(frame_id: str | None = None):
         from hasami_core import png_bytes
 
-        if real["rgb"] is None:
+        with real_lock:
+            rgb, fid = real["rgb"], real["id"]
+        if rgb is None:
             return JSONResponse(status_code=404, content={"error": "no real-camera frame yet: grab or upload one"})
-        return Response(png_bytes(real["rgb"]), media_type="image/png", headers={"Cache-Control": "no-store"})
+        if frame_id is not None and frame_id != fid:
+            return JSONResponse(status_code=409, content={"error": REPLACED, "replaced": True})
+        return Response(png_bytes(rgb), media_type="image/png", headers={"Cache-Control": "no-store"})
 
     @app.post("/api/realcam/calibrate")
     def realcam_calibrate(body: CalibrateReq):
@@ -732,28 +777,31 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
 
         from hasami_perception.realcam import a4_corners, homography, intrinsics_from_fov
 
-        if real["rgb"] is None:
-            return JSONResponse(status_code=409, content={"error": "grab or upload a frame first"})
-        hh, ww = real["rgb"].shape[:2]
-        try:
-            if body.sheet == "auto":
-                from hasami_perception.twin import pick_orientation
+        with real_lock:
+            if (stale := _replaced(body.frame_id)) is not None:
+                return stale
+            hh, ww = real["rgb"].shape[:2]
+            try:
+                if body.sheet == "auto":
+                    from hasami_perception.twin import pick_orientation
 
-                # the same test the twin uses (fit both ways the sheet can lie, keep the one whose pose is a
-                # rotation), on the corners in the order they were clicked: that is the order H is fitted on,
-                # so "landscape" means edge 1 -> 2 is the long side whichever corner the user started at
-                landscape, h, _ = pick_orientation(body.corners, ww, hh, body.hfov_deg or 70.0)
-            else:
-                landscape = body.sheet == "a4-landscape"
-                h = homography(a4_corners(landscape), np.array(body.corners))
-        except ValueError as e:
-            return JSONResponse(status_code=400, content={"error": str(e)})
-        real.update(h=h, k=None if body.hfov_deg is None else intrinsics_from_fov(ww, hh, body.hfov_deg))
-        return {"ok": True, "sheet": "a4-landscape" if landscape else "a4",
-                "orientation": "landscape" if landscape else "portrait",
-                "orientation_source": "detected from the clicked corners" if body.sheet == "auto" else "chosen",
-                "size_mm": [297.0, 210.0] if landscape else [210.0, 297.0], "hfov_deg": body.hfov_deg,
-                "parallax": "corrected with an assumed field of view" if body.hfov_deg else "not corrected"}
+                    # the same test the twin uses (fit both ways the sheet can lie, keep the one whose pose is a
+                    # rotation), on the corners in the order they were clicked: that is the order H is fitted on,
+                    # so "landscape" means edge 1 -> 2 is the long side whichever corner the user started at
+                    landscape, h, _ = pick_orientation(body.corners, ww, hh, body.hfov_deg or 70.0)
+                else:
+                    landscape = body.sheet == "a4-landscape"
+                    h = homography(a4_corners(landscape), np.array(body.corners))
+            except ValueError as e:
+                return JSONResponse(status_code=400, content={"error": str(e)})
+            out = {"ok": True, "frame_id": real["id"], "sheet": "a4-landscape" if landscape else "a4",
+                   "requested": body.sheet, "corners": [list(c) for c in body.corners],
+                   "orientation": "landscape" if landscape else "portrait",
+                   "orientation_source": "detected from the clicked corners" if body.sheet == "auto" else "chosen",
+                   "size_mm": [297.0, 210.0] if landscape else [210.0, 297.0], "hfov_deg": body.hfov_deg,
+                   "parallax": "corrected with an assumed field of view" if body.hfov_deg else "not corrected"}
+            real.update(h=h, k=None if body.hfov_deg is None else intrinsics_from_fov(ww, hh, body.hfov_deg), cal=out)
+        return out
 
     @app.post("/api/realcam/segment")
     def realcam_segment(body: RealSegmentReq, request: Request):
@@ -762,9 +810,13 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
 
         if request.app.state.runner.busy:  # SAM 2.1 is the run's: answer now rather than wait for the run to end
             return busy_response(request)
-        if real["rgb"] is None or real["h"] is None:
+        with real_lock:  # one consistent snapshot: the photo, its calibration and its id
+            if (stale := _replaced(body.frame_id)) is not None:
+                return stale
+            rgb, h, k, source = real["rgb"], real["h"], real["k"], real["source"]
+        if h is None:
             return JSONResponse(status_code=409, content={"error": "grab or upload a frame and click the sheet's corners first"})
-        hh, ww = real["rgb"].shape[:2]
+        hh, ww = rgb.shape[:2]
         u, v = int(round(body.point[0])), int(round(body.point[1]))  # SAM reads its mask at the rounded pixel
         if not (0 <= u < ww and 0 <= v < hh):
             return JSONResponse(status_code=400, content={"error": f"point ({body.point[0]:.1f}, {body.point[1]:.1f}) "
@@ -772,15 +824,15 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         s = sess(request)
         t0 = time.perf_counter()
         with s.lock:
-            mask = s.sam.segment(real["rgb"], point=(body.point[0], body.point[1]))
+            mask = s.sam.segment(rgb, point=(body.point[0], body.point[1]))
         ms = (time.perf_counter() - t0) * 1000
         try:
-            target = locate_on_plane(mask, real["h"], real["k"], body.height_mm).to_dict()
+            target = locate_on_plane(mask, h, k, body.height_mm).to_dict()
             err = None
         except ValueError as e:
             target, err = None, str(e)
         return {"mask_png": mask_png_b64(mask), "target": target, "target_error": err, "latency_ms": round(ms, 1),
-                "segmenter": s.sam.name, "source": real["source"], "arm": "sim", "note": REAL_NOTE}
+                "segmenter": s.sam.name, "source": source, "frame_id": body.frame_id, "arm": "sim", "note": REAL_NOTE}
 
     # ---- digital twin from one photo (the arm is simulated) -----------------------------------------
     twins: dict = {}  # id -> {"twin": Twin, "rgb": photo}; insertion order = last built, adjusted or loaded last

@@ -10,6 +10,12 @@ async function deskPhoto(request: APIRequestContext, seed: number) {
   return { buffer: await r.body(), hfov: Number(r.headers()['x-hasami-hfov']) };
 }
 
+/** The server keeps one real-camera frame (and its sheet choice) across page loads, for every tab: start a test
+ * from none, as a first visit would, whatever an earlier test left. */
+async function noRealFrame(request: APIRequestContext) {
+  expect((await request.post('/api/realcam/clear', { headers: { 'X-Hasami': '1' } })).status()).toBe(200);
+}
+
 /** Sheet corners (TL, TR, BR, BL) and the centre of a coloured object, read from the shown photo's pixels. */
 async function readPhoto(page: Page, sel: string, colour: 'red' | 'orange') {
   const img = page.locator(sel);
@@ -50,6 +56,7 @@ async function readPhoto(page: Page, sel: string, colour: 'red' | 'orange') {
 
 test('real camera: webcam is Setup required; an uploaded photo is calibrated on the sheet and an object located', async ({ page, guard, request }, info) => {
   guard.allow(503, /^\/api\/realcam\/grab$/);
+  await noRealFrame(request);
   await page.goto('/');
   await page.getByRole('tab', { name: 'Real camera' }).click();
   await expect(page.getByRole('tab', { name: 'Real camera' })).toHaveAttribute('aria-selected', 'true');
@@ -96,6 +103,7 @@ test('real camera: webcam is Setup required; an uploaded photo is calibrated on 
 test('real camera: a click on the photo\'s last pixel column is sent as that pixel and segments', async ({ page, guard, request }) => {
   // On a w-wide photo a click at the right edge maps to x ~ w - 0.1. It used to be sent as is; the server rounded
   // it to column w and crashed (500 IndexError), later refused it (400). The dashboard now sends pixel w - 1.
+  await noRealFrame(request);
   await page.goto('/');
   await page.getByRole('tab', { name: 'Real camera' }).click();
   const photo = await deskPhoto(request, 3);
@@ -190,6 +198,7 @@ test('twin: a non-image is refused, a synthetic photo becomes a twin, refit, sho
 });
 
 test('real camera: the sheet orientation is read from the clicked corners, and can be chosen', async ({ page, guard, request }, info) => {
+  await noRealFrame(request);
   await page.goto('/');
   await page.getByRole('tab', { name: 'Real camera' }).click();
   // the synthetic desks lie the sheet landscape as the camera sees it
@@ -233,6 +242,7 @@ test('real camera: the sheet orientation is read from the clicked corners, and c
 });
 
 test('real camera: auto orientation follows the click order (first click on the top-right corner)', async ({ page, guard, request }, info) => {
+  await noRealFrame(request);
   await page.goto('/');
   await page.getByRole('tab', { name: 'Real camera' }).click();
   const photo = await deskPhoto(request, 3); // its sheet lies landscape as the camera sees it
@@ -289,6 +299,7 @@ test('real camera: auto orientation follows the click order (first click on the 
 });
 
 test('real camera: corners and the object can be marked with the keyboard (Tab, arrows, Enter)', async ({ page, guard, request }, info) => {
+  await noRealFrame(request);
   await page.goto('/');
   await page.getByRole('tab', { name: 'Real camera' }).click();
   const photo = await deskPhoto(request, 3);
@@ -375,4 +386,71 @@ test('twin: after a reload the Twin tab shows the twin the server still holds', 
   await page.getByRole('tab', { name: 'Twin' }).click();
   await restoredOk();
   await expectNoHScroll(page);
+});
+
+/** Upload a desk photo in the Real camera tab and click the sheet's four corners; returns the photo's frame_id. */
+async function uploadAndCalibrate(page: Page, request: APIRequestContext, seed: number) {
+  const photo = await deskPhoto(request, seed);
+  const up = page.waitForResponse((r) => r.url().endsWith('/api/realcam/upload'));
+  await page.locator('.realcam input[type=file]').setInputFiles({ name: 'desk.png', mimeType: 'image/png', buffer: photo.buffer });
+  const res = await up;
+  expect(res.status()).toBe(200);
+  const found = await readPhoto(page, '.rc-view img:not(.rc-mask)', 'red');
+  for (const [i, p] of found.corners.entries()) {
+    await page.mouse.click(p.x, p.y);
+    if (i < 3) await expect(page.locator('.rc-dot')).toHaveCount(i + 1);
+  }
+  await expect(page.locator('.rc-step')).toHaveText('Type the object height, then click the object.', { timeout: 30_000 });
+  return { frameId: (await res.json()).frame_id as string, found };
+}
+
+test('real camera: a photo replaced in another tab is said so and shown; a reload restores the photo and its corners; Forget photo removes it from the server', async ({ page, guard, request, context }, info) => {
+  // Two tabs share the server's one frame. Tab A's click used to segment tab B's (uncalibrated) photo and fail with
+  // "click the sheet's corners first" while A still showed its own; a reload showed "No real frame yet" although the
+  // server still served the photo.
+  guard.allow(409, /^\/api\/realcam\/segment$/);
+  await noRealFrame(request);
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Real camera' }).click();
+  const a = await uploadAndCalibrate(page, request, 3);
+
+  const tabB = await context.newPage();
+  await tabB.setViewportSize(page.viewportSize()!);
+  await tabB.goto('/');
+  await tabB.getByRole('tab', { name: 'Real camera' }).click();
+  // tab B opens on the frame the server holds, calibrated, with the four corners shown
+  await expect(tabB.locator('.rc-step')).toHaveText('Type the object height, then click the object.');
+  await expect(tabB.locator('.rc-dot')).toHaveCount(4);
+  const b = await uploadAndCalibrate(tabB, request, 5);
+  expect(b.frameId).not.toBe(a.frameId);
+
+  // tab A clicks its object: refused as replaced, and A now shows B's photo and calibration
+  const seg = page.waitForResponse((r) => r.url().endsWith('/api/realcam/segment'));
+  await page.mouse.click(a.found.object!.x, a.found.object!.y);
+  expect((await seg).status()).toBe(409);
+  await expect(page.locator('.realcam .notice-error')).toContainText('The frame was replaced in another tab');
+  await expect(page.locator('.rc-view img:not(.rc-mask)')).toHaveAttribute('src', `/api/realcam/frame.png?frame_id=${b.frameId}`);
+  await expect(page.locator('.rc-step')).toHaveText('Type the object height, then click the object.');
+  await expect(page.locator('.rc-out')).toHaveCount(0);
+  await shot(page, info, 'cam-08-replaced-in-another-tab');
+
+  // a reload keeps the photo and its corners; a click then locates the object on it
+  await page.reload();
+  await page.getByRole('tab', { name: 'Real camera' }).click();
+  await expect(page.locator('.realcam')).not.toContainText('No real frame yet');
+  await expect(page.locator('.rc-dot')).toHaveCount(4);
+  await expect(page.locator('.rc-step')).toHaveText('Type the object height, then click the object.');
+  const found = await readPhoto(page, '.rc-view img:not(.rc-mask)', 'red');
+  const ok = page.waitForResponse((r) => r.url().endsWith('/api/realcam/segment'));
+  await page.mouse.click(found.object!.x, found.object!.y);
+  expect((await ok).status()).toBe(200);
+  await expect(page.locator('.rc-out')).toContainText(/x\s*-?\d+\.\d mm/);
+
+  // Forget photo: gone from the server, not only from the page
+  await page.getByRole('button', { name: 'Forget photo' }).click();
+  await expect(page.locator('.realcam')).toContainText('No real frame yet');
+  expect((await request.get('/api/realcam/frame.png')).status()).toBe(404);
+  expect((await (await request.get('/api/realcam')).json()).frame_id).toBeNull();
+  await expectNoHScroll(page);
+  await tabB.close();
 });

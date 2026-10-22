@@ -304,8 +304,13 @@ MCP client config:
 `GET /api/status` · `GET /api/frame.png?camera=overhead|demo` · `POST /api/segment` · `POST /api/plan` ·
 `POST /api/run` (409 while busy) · `GET /api/events` (SSE: `plan`, `segment`, `target`, `phase`, `verify`,
 `retry`, `result`, `done`, `error`) · `POST /api/reset` (`{seed?, family?}`) · `GET /api/runs` ·
-`GET /api/runs/{id}` · `GET /api/runs/{id}/steps/{i}.png` · `GET /api/runs/{id}/video` (when the MP4 is in the runs folder) · `POST /api/realcam/grab|upload|calibrate|segment` ·
-`GET /api/realcam/frame.png`.
+`GET /api/runs/{id}` · `GET /api/runs/{id}/steps/{i}.png` · `GET /api/runs/{id}/video` (when the MP4 is in the runs folder) · `POST /api/realcam/grab|upload|calibrate|segment|clear` ·
+`GET /api/realcam` · `GET /api/realcam/frame.png`.
+
+The real camera holds one frame for the server, shared by every tab. Each grab or upload returns a `frame_id`;
+`calibrate` and `segment` must name it and get 409 ("replaced in another tab") when another tab has replaced
+the frame since. `GET /api/realcam` returns the frame and its calibration, so a reload restores both, and
+`POST /api/realcam/clear` (the Forget photo button) removes the photo from the server.
 
 Local only: a request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]` gets 400 (DNS rebinding;
 `HASAMI_ALLOWED_HOSTS=name1,name2` adds names). Browsers may call the API only from an exact list of origins:

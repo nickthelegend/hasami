@@ -1,7 +1,7 @@
 // Real camera: a webcam frame (or an uploaded photo) of a real table, an A4 sheet for scale, and SAM 2.1
 // on a clicked object -> its x / y / yaw on the table plane. Segment and locate only: the arm is simulated
 // and is not connected to this camera.
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { withWriteHeader } from '../api';
 import { deg } from '../format';
 
@@ -11,7 +11,12 @@ interface SegRes { mask_png: string; target: PlaneTarget | null; target_error: s
 
 const CORNERS = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 type Sheet = 'auto' | 'a4' | 'a4-landscape';
-interface Cal { orientation: 'portrait' | 'landscape'; orientation_source: string; size_mm: number[] }
+interface Cal { orientation: 'portrait' | 'landscape'; orientation_source: string; size_mm: number[]; corners?: Pt[]; requested?: Sheet }
+/** GET /api/realcam: the one frame the server holds (shared by every tab) and its calibration */
+interface Frame { frame_id: string | null; width?: number; height?: number; source?: string; calibration?: Cal | null }
+
+/** A 409 because another tab (or client) replaced the server's frame since this tab loaded it. */
+class Replaced extends Error {}
 
 async function call(path: string, init?: RequestInit) {
   let r: Response;
@@ -22,12 +27,13 @@ async function call(path: string, init?: RequestInit) {
   }
   const body = await r.json().catch(() => null);
   if (r.status === 503 && body?.setup_required) throw new Error(`Setup required: ${body.setup_required}. ${body.message ?? ''}`);
+  if (r.status === 409 && body?.replaced) throw new Replaced(body.error);
   if (!r.ok) throw new Error(body?.error ?? `HTTP ${r.status}`);
   return body;
 }
 
 export function RealCam() {
-  const [nonce, setNonce] = useState(0);
+  const [frameId, setFrameId] = useState<string | null>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [corners, setCorners] = useState<Pt[]>([]);
   const [calibrated, setCalibrated] = useState(false);
@@ -42,42 +48,75 @@ export function RealCam() {
   const imgRef = useRef<HTMLImageElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const loaded = (w: number, h: number) => {
-    setSize({ w, h });
+  // Show the frame the server holds (after a grab / upload, on load, or when another tab replaced it),
+  // with its calibration when it has one, so a reload does not lose the clicked corners.
+  const show = useCallback((f: Frame) => {
+    const c = f.frame_id ? f.calibration ?? null : null;
+    setFrameId(f.frame_id);
+    setSize(f.frame_id && f.width && f.height ? { w: f.width, h: f.height } : null);
     setCursor(null);
-    setCorners([]);
-    setCalibrated(false);
-    setCal(null);
+    setCorners(c?.corners ?? []);
+    setCalibrated(!!c);
+    setCal(c);
+    if (c?.requested) setSheet(c.requested);
     setRes(null);
     setClick(null);
-    setNonce(Date.now());
-  };
+  }, []);
+
+  // The server's copy is the truth: re-read it, say why the view changed.
+  const resync = useCallback(async (why: string) => {
+    try {
+      show(await call('/api/realcam'));
+    } catch {
+      show({ frame_id: null });
+    }
+    setErr(`${why.charAt(0).toUpperCase()}${why.slice(1)}.`);
+  }, [show]);
+
+  useEffect(() => {
+    let live = true;
+    call('/api/realcam')
+      .then((f: Frame) => live && show(f))
+      .catch((e) => live && setErr(e instanceof Error ? e.message : String(e)));
+    return () => { live = false; };
+  }, [show]);
 
   const grab = useCallback(async () => {
     setErr(null);
     setBusy('Grabbing a frame…');
     try {
-      const b = await call('/api/realcam/grab', { method: 'POST' });
-      loaded(b.width, b.height);
+      show(await call('/api/realcam/grab', { method: 'POST' }));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [show]);
 
   const upload = useCallback(async (f: File) => {
     setErr(null);
     setBusy('Uploading…');
     try {
-      const b = await call('/api/realcam/upload', { method: 'POST', body: f });
-      loaded(b.width, b.height);
+      show(await call('/api/realcam/upload', { method: 'POST', body: f }));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [show]);
+
+  const forget = useCallback(async () => {
+    setErr(null);
+    setBusy('Forgetting the photo…');
+    try {
+      await call('/api/realcam/clear', { method: 'POST' });
+      show({ frame_id: null });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }, [show]);
 
   const calibrate = useCallback(async (pts: Pt[], as: Sheet) => {
     setBusy('Fitting the table plane…');
@@ -85,13 +124,14 @@ export function RealCam() {
       const c = await call('/api/realcam/calibrate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ corners: pts, sheet: as, hfov_deg: 70 }),
+        body: JSON.stringify({ frame_id: frameId, corners: pts, sheet: as, hfov_deg: 70 }),
       });
       setCal(c);
       setCalibrated(true);
       setRes(null);
       setClick(null);
     } catch (e) {
+      if (e instanceof Replaced) return void (await resync(e.message));
       setErr(e instanceof Error ? e.message : String(e));
       setCorners([]);
       setCalibrated(false);
@@ -99,7 +139,7 @@ export function RealCam() {
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [frameId, resync]);
 
   const changeSheet = (v: Sheet) => {
     setSheet(v);
@@ -133,16 +173,17 @@ export function RealCam() {
           await call('/api/realcam/segment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ point: px, height_mm: h }),
+            body: JSON.stringify({ frame_id: frameId, point: px, height_mm: h }),
           }),
         );
       } catch (e) {
+        if (e instanceof Replaced) return void (await resync(e.message));
         setErr(e instanceof Error ? e.message : String(e));
       } finally {
         setBusy(null);
       }
     },
-    [size, busy, calibrated, corners, height, sheet, calibrate],
+    [size, busy, calibrated, corners, height, sheet, calibrate, frameId, resync],
   );
 
   const onClick = (ev: React.MouseEvent<HTMLDivElement>) => {
@@ -194,6 +235,12 @@ export function RealCam() {
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()} disabled={!!busy}>
           Upload photo
         </button>
+        {frameId && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={forget} disabled={!!busy}
+            title="Remove this photo from the server, not only from this page">
+            Forget photo
+          </button>
+        )}
         <input ref={fileRef} type="file" accept="image/png,image/jpeg" hidden onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
         <label className="rc-h">
           height
@@ -222,10 +269,10 @@ export function RealCam() {
       </div>
       <p className="muted small rc-step" aria-live="polite">{busy ?? step}</p>
       {err && <div className="notice notice-error" role="alert">{err}</div>}
-      {size ? (
+      {size && frameId ? (
         <div className="rc-view" role="button" tabIndex={0} aria-label={photoLabel} aria-disabled={!!busy || undefined}
           onClick={onClick} onKeyDown={onKey}>
-          <img ref={imgRef} src={`/api/realcam/frame.png?t=${nonce}`} alt="Real camera frame" width={size.w} height={size.h} draggable={false} />
+          <img ref={imgRef} src={`/api/realcam/frame.png?frame_id=${frameId}`} alt="Real camera frame" width={size.w} height={size.h} draggable={false} />
           {res?.mask_png && <img className="rc-mask" src={`data:image/png;base64,${res.mask_png}`} alt="" aria-hidden="true" />}
           {corners.map((c, i) => (
             <span key={i} className="rc-dot" style={pct(c)} aria-hidden="true">{i + 1}</span>
@@ -236,7 +283,7 @@ export function RealCam() {
       ) : (
         <div className="empty-box">
           <b>No real frame yet</b>
-          <span>The webcam is opened only when you press Grab (needs HASAMI_REALCAM on the server). A photo works too.</span>
+          <span>The webcam is opened only when you press Grab (needs HASAMI_REALCAM on the server). A photo works too. The server keeps one frame, shared by every tab, until you press Forget photo or it stops.</span>
         </div>
       )}
       {cal && (
