@@ -6,9 +6,11 @@
 ## Built before the event, built during it
 
 Hasami was started before the event. Its first commit is `5390ae3` (2026-10-20 21:14 UTC), and every commit
-up to the tag **`pre-event-2026-10-22`** (this repository's head on Oct 22) predates the Oct 26 – Nov 4
-window. If more commits land before the event opens, the last of them is tagged `pre-event-2026-10-25` and
-that tag is used instead.
+up to the tag **`pre-event-2026-10-22`** predates the Oct 26 – Nov 4 window. The tag sits on the last commit
+made before the event (it was moved forward to the head after each pre-event round, so
+`git log pre-event-2026-10-22..main` is empty today). If more commits land after Oct 22 and before the
+event opens, the last of them is tagged `pre-event-2026-10-25` and that tag is used instead. Either way,
+`git log --format='%h %cI' <tag>..main` must show only commits dated Oct 26 or later.
 
 **Official rules:** the event page says "Official Rules will be published before the Hackathon begins on
 October 26, 2026" (read 2026-10-22). They are not out yet, and the page does not say whether work started
@@ -22,7 +24,7 @@ quotes it here. If there is one, only the in-window work below is claimed.
 - **To build during the event (Oct 26 – Nov 4):** the live Muse plan and SAM 3.1 text grounding (both need
   `MODEL_API_KEY`; credits come on acceptance), a Muse row in the benchmark beside the oracle and scripted
   rows, a twin from a real desk photo with a ruler check, and the narrated demo video.
-- **In-window commits:** none yet (Oct 22). Once the event is under way,
+- **In-window commits:** none yet (Oct 23). Once the event is under way,
   `git log --oneline pre-event-2026-10-22..main` lists them; they are listed here before submitting.
 
 **Project name:** Hasami (鋏)
@@ -51,7 +53,9 @@ kinematics drives a simulated SO-101 (MuJoCo) to pick and place. Success is read
   grounds and checks. **SAM 3.1** (`sam-3.1`, `POST /v1/responses`) for text-prompted segmentation.
   Both model ids and the endpoint are confirmed in the dev.meta.ai docs (read 2026-10-21); the SAM 3.1
   mask payload decoding and Muse's image + forced-tool call on Chat Completions are unverified until the
-  key arrives. Without the key the app says "Setup required"; it never fakes a plan.
+  key arrives. SAM 3.1's masks decode only through Meta's `meta-sam-parser`, which is not installed or a
+  dependency yet, so a run would use SAM 3.1's box and let SAM 2.1 draw the mask from the box centre.
+  Without the key the app says "Setup required"; it never fakes a plan.
 
 **How we built it:** Python (MuJoCo + MjSpec, PyTorch + transformers, FastAPI, MCP SDK), a Vite + React
 dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real arm.
@@ -89,8 +93,13 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
   corners in the order they were clicked, or chosen), SAM 2.1 on a clicked real object, its position and
   yaw on the table (segment and locate only; the arm stays simulated). Corners and the object can be
   marked with the keyboard as well as the mouse.
-- The server answers only on 127.0.0.1 / localhost / [::1] and refuses cross-site writes; photo uploads are
-  capped (15 MB, 40 MP) and decoded off the event loop, so a twin build never stalls the run log.
+- The server answers only on 127.0.0.1 / localhost / [::1]. Browsers may call it only from its own origin
+  and the dashboard's dev server (an exact list, not every localhost port); other pages get no CORS header
+  and their writes get 403. Photo uploads are capped (15 MB, 40 MP) and decoded off the event loop, so a
+  twin build never stalls the run log. A twin's desk photo lives in a temporary folder removed when the
+  server stops. Run records are written atomically; a damaged one is a readable 503.
+- After a server restart mid-run, the dashboard ends the run (from its record if one was written, else
+  "the server restarted; this run was lost") instead of showing "running" forever.
 - 214 automated tests: 213 pass (real physics, real SAM weights, real HTTP and MCP, MuJoCo-rendered photos
   for the twin), 1 skipped (live Muse call); browser E2E in Google Chrome: 38 passed (19 tests x desktop and mobile).
 - MCP server so any agent can `look`, `find` and `pick_place`.
@@ -106,10 +115,13 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
 
 **Links:**
 - Code: https://github.com/nickthelegend/hasami (create before submitting)
-- Demo videos (captioned "MuJoCo simulation · official SO-101 model"): the clean 3-cube run
-  (`deployments/runs/20261021T053112874Z`, 84 s) and the run with an injected 6 mm offset where every step
-  recovers on its retry (`20261021T053203432Z`, 128 s). Record a narrated 2–3 min version with Muse live
-  once the key arrives.
-- Landing: `packages/landing/index.html` (host before submitting)
+- Narrated video: **not recorded yet.** To do (Nick): a 2–3 min narrated run of the dashboard, the agent
+  trace replay with a retry, the benchmark sheet, the twin and the honest "Setup required" state, captioned
+  "simulation", uploaded and linked here and at the top of the README; the opening is re-recorded with Muse
+  live once the key arrives. Existing captioned clips ("MuJoCo simulation · official SO-101 model"), not
+  public yet (videos are not kept in git): the clean 3-cube run (`deployments/runs/20261021T053112874Z`, 84 s)
+  and the run with an injected 6 mm offset where every step recovers on its retry (`20261021T053203432Z`, 128 s).
+- Landing: `packages/landing/index.html` (host before submitting: GitHub Pages from `packages/landing`, then
+  put its URL here and at the top of the README)
 
 **Team:** Nivesh Gajengi (solo)
