@@ -39,7 +39,12 @@ async function readPhoto(page: Page, sel: string, colour: 'red' | 'orange') {
     }
     const r = el.getBoundingClientRect();
     const page = ([u, v]: number[]) => ({ x: r.left + ((u + 0.5) / w) * r.width, y: r.top + ((v + 0.5) / h) * r.height });
-    return { corners: [tl, tr, br, bl].map(page), object: n > 20 ? page([su / n, sv / n]) : null };
+    const obj = n > 20 ? [su / n, sv / n] : null;
+    return {
+      corners: [tl, tr, br, bl].map(page),
+      object: obj ? page(obj) : null,
+      px: { w, h, corners: [tl, tr, br, bl], object: obj }, // image pixels, for the keyboard path
+    };
   }, colour);
 }
 
@@ -250,6 +255,63 @@ test('real camera: auto orientation follows the click order (first click on the 
   expect(Math.abs(fromTr.y_mm - (297 - fromTl.x_mm))).toBeLessThan(2);
   await expectNoHScroll(page);
   await shot(page, info, 'cam-06-sheet-clicked-from-top-right');
+});
+
+test('real camera: corners and the object can be marked with the keyboard (Tab, arrows, Enter)', async ({ page, guard, request }, info) => {
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Real camera' }).click();
+  const photo = await deskPhoto(request, 3);
+  const up = page.waitForResponse((r) => r.url().endsWith('/api/realcam/upload'));
+  await page.locator('.realcam input[type=file]').setInputFiles({ name: 'desk.png', mimeType: 'image/png', buffer: photo.buffer });
+  expect((await up).status()).toBe(200);
+  const found = await readPhoto(page, '.rc-view img:not(.rc-mask)', 'red');
+  expect(found.px.object).not.toBeNull();
+
+  // Tab from the sheet picker lands on the photo, a button that says what to mark
+  await page.getByLabel('A4 sheet orientation, as you look at it').focus();
+  await page.keyboard.press('Tab');
+  const photoBtn = page.getByRole('button', { name: /^Photo\./ });
+  await expect(photoBtn).toBeFocused();
+  await expect(photoBtn).toHaveAttribute('aria-label', /the sheet's top-left corner, 1 of 4/);
+
+  // the crosshair starts in the middle; Shift+arrow moves 32 px, an arrow 8 px
+  const { w, h } = found.px;
+  let at = [Math.round(w / 2), Math.round(h / 2)];
+  const moveTo = async (target: number[]) => {
+    for (const axis of [0, 1]) {
+      const [neg, pos] = axis === 0 ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
+      let d = target[axis] - at[axis];
+      const key = d < 0 ? neg : pos;
+      for (; Math.abs(d) >= 32; d -= Math.sign(d) * 32) await page.keyboard.press(`Shift+${key}`);
+      for (; Math.abs(d) >= 4; d -= Math.sign(d) * 8) await page.keyboard.press(key);
+      at[axis] = target[axis] - d;
+    }
+    await expect(page.locator('.rc-view .xhair')).toBeVisible();
+  };
+  const cal = page.waitForResponse((r) => r.url().endsWith('/api/realcam/calibrate'));
+  for (const [i, c] of found.px.corners.entries()) {
+    await moveTo(c);
+    await page.keyboard.press('Enter');
+    if (i < 3) {
+      await expect(page.locator('.rc-dot:not(.rc-click)')).toHaveCount(i + 1);
+      await expect(photoBtn).toHaveAttribute('aria-label', new RegExp(`, ${i + 2} of 4`));
+    }
+  }
+  expect((await cal).status()).toBe(200);
+  await expect(page.locator('.rc-sheet')).toHaveText('Sheet: A4 landscape (297 × 210 mm across × down), detected from the clicked corners.');
+  await expect(photoBtn).toHaveAttribute('aria-label', /the object to locate/);
+  await expect(photoBtn).toBeFocused();
+
+  // and the object, with Space this time
+  await moveTo(found.px.object!.map(Math.round));
+  const seg = page.waitForResponse((r) => r.url().endsWith('/api/realcam/segment'));
+  await page.keyboard.press(' ');
+  expect((await seg).status()).toBe(200);
+  await expect(page.locator('.rc-out')).toContainText(/x\s*-?\d+\.\d mm/);
+  await expect(page.locator('.rc-out')).toContainText(/y\s*-?\d+\.\d mm/);
+  await expect(page.locator('.rc-mask')).toBeVisible();
+  await expectNoHScroll(page);
+  await shot(page, info, 'cam-07-keyboard-located');
 });
 
 test('twin: after a reload the Twin tab shows the twin the server still holds', async ({ page, guard, request }, info) => {

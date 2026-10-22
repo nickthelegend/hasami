@@ -38,11 +38,13 @@ export function RealCam() {
   const [click, setClick] = useState<Pt | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<Pt | null>(null); // the keyboard crosshair, in photo pixels
   const imgRef = useRef<HTMLImageElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const loaded = (w: number, h: number) => {
     setSize({ w, h });
+    setCursor(null);
     setCorners([]);
     setCalibrated(false);
     setCal(null);
@@ -106,11 +108,10 @@ export function RealCam() {
     if (calibrated && corners.length === 4) void calibrate(corners, v);
   };
 
-  const onClick = useCallback(
-    async (ev: React.MouseEvent<HTMLImageElement>) => {
+  // A click or Enter / Space at the crosshair: the next sheet corner, or (once calibrated) the object.
+  const mark = useCallback(
+    async (p: Pt) => {
       if (!size || busy) return;
-      const rect = ev.currentTarget.getBoundingClientRect();
-      const p: Pt = [((ev.clientX - rect.left) / rect.width) * size.w, ((ev.clientY - rect.top) / rect.height) * size.h];
       setErr(null);
       if (!calibrated) {
         const next = [...corners, p];
@@ -142,11 +143,41 @@ export function RealCam() {
     [size, busy, calibrated, corners, height, sheet, calibrate],
   );
 
+  const onClick = (ev: React.MouseEvent<HTMLDivElement>) => {
+    const img = imgRef.current;
+    if (!size || !img) return;
+    const rect = img.getBoundingClientRect();
+    const p: Pt = [((ev.clientX - rect.left) / rect.width) * size.w, ((ev.clientY - rect.top) / rect.height) * size.h];
+    if (p[0] < 0 || p[1] < 0 || p[0] >= size.w || p[1] >= size.h) return;
+    setCursor([Math.round(p[0]), Math.round(p[1])]);
+    void mark(p);
+  };
+
+  // The same with the keyboard, as on the overhead camera: arrows move a crosshair (8 px, Shift 32 px).
+  const onKey = (ev: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!size) return;
+    const step = ev.shiftKey ? 32 : 8;
+    const c: Pt = cursor ?? [Math.round(size.w / 2), Math.round(size.h / 2)];
+    const move: Record<string, Pt> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if (move[ev.key]) {
+      ev.preventDefault();
+      setCursor([Math.min(size.w - 1, Math.max(0, c[0] + move[ev.key][0])), Math.min(size.h - 1, Math.max(0, c[1] + move[ev.key][1]))]);
+    } else if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      setCursor(c);
+      void mark(c);
+    }
+  };
+
   const pct = (p: Pt) => (size ? { left: `${(p[0] / size.w) * 100}%`, top: `${(p[1] / size.h) * 100}%` } : {});
   const t = res?.target;
   const step = !size ? 'Grab a webcam frame or upload a photo of the table with an A4 sheet on it.' : !calibrated
     ? `Click the sheet's ${CORNERS[corners.length]} corner (${corners.length + 1} of 4, as you look at it).`
     : 'Type the object height, then click the object.';
+  const keysHelp = 'Arrow keys move the crosshair (Shift: 32 px), Enter or Space marks it.';
+  const photoLabel = !calibrated
+    ? `Photo. Mark the sheet's ${CORNERS[Math.min(corners.length, 3)]} corner, ${Math.min(corners.length + 1, 4)} of 4. ${keysHelp}`
+    : `Photo. Mark the object to locate (height ${height || '?'} mm). ${keysHelp}`;
 
   return (
     <section className="realcam" aria-labelledby="rc-h">
@@ -190,13 +221,15 @@ export function RealCam() {
       <p className="muted small rc-step" aria-live="polite">{busy ?? step}</p>
       {err && <div className="notice notice-error" role="alert">{err}</div>}
       {size ? (
-        <div className="rc-view">
-          <img ref={imgRef} src={`/api/realcam/frame.png?t=${nonce}`} alt="Real camera frame" onClick={onClick} width={size.w} height={size.h} />
+        <div className="rc-view" role="button" tabIndex={0} aria-label={photoLabel} aria-disabled={!!busy || undefined}
+          onClick={onClick} onKeyDown={onKey}>
+          <img ref={imgRef} src={`/api/realcam/frame.png?t=${nonce}`} alt="Real camera frame" width={size.w} height={size.h} draggable={false} />
           {res?.mask_png && <img className="rc-mask" src={`data:image/png;base64,${res.mask_png}`} alt="" aria-hidden="true" />}
           {corners.map((c, i) => (
-            <span key={i} className="rc-dot" style={pct(c)}>{i + 1}</span>
+            <span key={i} className="rc-dot" style={pct(c)} aria-hidden="true">{i + 1}</span>
           ))}
-          {click && <span className="rc-dot rc-click" style={pct(click)} />}
+          {click && <span className="rc-dot rc-click" style={pct(click)} aria-hidden="true" />}
+          {cursor && <span className="xhair" style={pct(cursor)} aria-hidden="true" />}
         </div>
       ) : (
         <div className="empty-box">
