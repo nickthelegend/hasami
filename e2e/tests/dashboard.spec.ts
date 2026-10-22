@@ -339,3 +339,25 @@ test('the register tabs are an ARIA tab widget: arrow keys, Home / End, a labell
   await shot(page, info, 'dash-15-tabs-keyboard');
   await page.keyboard.press('Home'); // leave the register on its default tab
 });
+
+test('a click on the last half-pixel of the overhead frame segments pixel 639, not 640', async ({ page, guard }, info) => {
+  // The click maps to u ~ 639.9; it used to be rounded to 640 and the server answered "Segment failed: point
+  // (640.0, ...) is outside the 640 x 480 frame". The dashboard now sends the pixel the click is in.
+  await page.goto('/');
+  await freshScene(page);
+  const stage = page.locator('.cam-stage');
+  await stage.scrollIntoViewIfNeeded();
+  const box = (await page.locator('.cam-stage img').boundingBox())!;
+  const seg = page.waitForResponse((r) => r.url().endsWith('/api/segment'));
+  await page.mouse.click(box.x + box.width - 0.02, box.y + box.height - 0.02);
+  const r = await seg;
+  const sent = JSON.parse(r.request().postData() ?? '{}');
+  // the mouse lands on whole device pixels: at 1280 px that is u, v ~ 639.97, 479.97; at 375 px (DPR 2) the
+  // nearest landing spot is a pixel or two inside, so there the pixel is checked to be a whole, in-frame one
+  if (info.project.name === 'desktop') expect(sent.point).toEqual([639, 479]);
+  expect(sent.point.every((x: number) => Number.isInteger(x))).toBe(true);
+  expect(sent.point[0]).toBeLessThanOrEqual(639);
+  expect(sent.point[1]).toBeLessThanOrEqual(479);
+  expect(r.status()).toBe(200);
+  await expect(page.getByText(/Segment failed|outside the 640/)).toHaveCount(0);
+});

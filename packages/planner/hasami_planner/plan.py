@@ -22,7 +22,8 @@ def _check_point(v: list[float]) -> list[float]:
     if len(v) != 2:
         raise ValueError(f"a point is [u, v], got {len(v)} numbers")
     u, w = float(v[0]), float(v[1])
-    if not (0 <= u < FRAME_W and 0 <= w < FRAME_H):
+    # the segmenter reads the mask at the rounded pixel, so 639.6 is pixel 640: off the frame
+    if not (0 <= u and 0 <= w and int(round(u)) < FRAME_W and int(round(w)) < FRAME_H):
         raise ValueError(f"point ({u:.1f}, {w:.1f}) is outside the {FRAME_W}x{FRAME_H} frame")
     return [u, w]
 

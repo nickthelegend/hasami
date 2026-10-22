@@ -29,6 +29,20 @@ def test_schema_rejects_points_outside_the_frame(bad_point):
     assert e.value.raw == '{"steps": "..."}'
 
 
+@pytest.mark.parametrize("edge", [[639.6, 10], [10, 479.6], [639.5, 479.5]])
+def test_schema_rejects_points_that_round_onto_the_frame_edge(edge):
+    """The segmenter indexes the mask at the rounded pixel, so 639.6 is pixel 640: off the 640-wide frame. The
+    plan must refuse it up front (it used to validate, then the run failed inside with no steps)."""
+    with pytest.raises(PlanError) as e:
+        validate_steps([dict(GOOD[0], pick_point=edge)], source="clicks")
+    assert "pick_point" in str(e.value) and "outside" in str(e.value)
+
+
+def test_schema_accepts_the_last_pixel():
+    plan = validate_steps([dict(GOOD[0], pick_point=[639.4, 479.4], place_point=[0, 0])], source="clicks")
+    assert plan.steps[0].pick_point == [639.4, 479.4]
+
+
 def test_schema_rejects_too_many_steps_unknown_fields_and_empty():
     with pytest.raises(PlanError):
         validate_steps([GOOD[0]] * (MAX_STEPS + 1), source="muse")

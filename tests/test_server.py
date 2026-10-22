@@ -749,6 +749,15 @@ def test_off_frame_clicks_and_non_finite_points_are_refused(client):
     assert client.post("/api/segment", json={"point": [639.4, 479.4]}).status_code == 200  # the last pixel is fine
 
 
+def test_a_run_whose_clicks_round_off_the_frame_is_refused_up_front(client, runs_tmp):
+    """[639.6, 479.6] rounds to pixel (640, 480). It used to start a run (200 + run_id) that then failed inside with
+    'outside the 640 x 480 frame' and no steps; now the request is a 422 and no run starts."""
+    r = client.post("/api/run", json={"steps": [{"pick_point": [639.6, 479.6], "place_point": [10, 10]}]})
+    assert r.status_code == 422 and "outside" in r.json()["error"], (r.status_code, r.text)
+    assert "run_id" not in r.json()
+    assert client.get("/api/status").json()["run"]["busy"] is False
+
+
 def test_realcam_segment_on_the_last_pixel_column_or_row(client):
     """A click at x = 319.7 on a 320-wide photo rounds to column 320. It used to pass the bounds check and crash
     SAM's mask lookup (500 IndexError); now it is a 400, and a click that rounds inside the frame segments."""

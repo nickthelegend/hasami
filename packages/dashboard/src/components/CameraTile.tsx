@@ -111,7 +111,8 @@ export function CameraTile(p: Props) {
     const u = ((e.clientX - r.left) / r.width) * dims.w;
     const v = ((e.clientY - r.top) / r.height) * dims.h;
     if (u < 0 || v < 0 || u >= dims.w || v >= dims.h) return null;
-    return [Math.round(u), Math.round(v)];
+    // the pixel the click is in (639.6 is pixel 639: rounding would send 640, off the 640-wide frame)
+    return [Math.min(dims.w - 1, Math.floor(u)), Math.min(dims.h - 1, Math.floor(v))];
   };
 
   const canClick = p.clickable && p.camera === 'overhead' && !!dims && !p.busy;
