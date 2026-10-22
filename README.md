@@ -14,6 +14,14 @@ adds depth noise, a calibration error and lighting jitter to measure that. Every
 Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon)
 (Indie track). Hasami is Japanese for scissors, the shape of the SO-101's gripper.
 
+**Built before the event, and what is left for it.** The event runs Oct 26 – Nov 4, 2026. Hasami was
+started on Oct 20 (first commit `5390ae3`), and everything up to the tag `pre-event-2026-10-22` predates the
+event: the simulation, SAM 2.1 perception, the benchmark, the digital twin on rendered photos, the real
+camera tab, the agent trace, MCP, the dashboard, the landing and both test suites. Left for the event: the
+live Muse plan and SAM 3.1 (they need `MODEL_API_KEY`), a Muse benchmark row, a twin from a real photo,
+and the narrated video. `git log pre-event-2026-10-22..main` lists what was built during it. The official
+rules were not published yet on Oct 22; see [HACKATHON_SUBMISSION_FORM.md](HACKATHON_SUBMISSION_FORM.md).
+
 ## Benchmark
 
 `scripts/bench.py` runs seeded task families and checks each goal against the physics state. Planner:
@@ -196,7 +204,7 @@ score (not used by the robot): physics state, goal predicate
 | SAM 3.1 | `sam-3.1` via `POST /v1/responses` (both confirmed in the docs); the special-token output is parsed per the docs, the mask payload only through Meta's `meta-sam-parser`. **Setup required: `MODEL_API_KEY`; unverified until then.** |
 | Real SO-101 | Wired into `Session` behind `HASAMI_SO101_PORT`: a connected LeRobot follower mirrors every joint target the simulated arm is commanded (≤ 6° per joint per command, ~30 Hz). `/api/status` says `"arm": "so101"` only while one is connected. Unit conversion tested; **never run on hardware. BLOCKED: no arm attached** (`HASAMI_SO101_PORT` + `pip install lerobot[feetech]`). |
 | Digital twin | One desk photo with an A4 sheet → a MuJoCo scene with the simulated arm (`POST /api/twin`, Twin tab). 86/86 objects found, 1.2 mm mean centre error on 20 rendered photos; **a real photo is pending.** |
-| Real camera | Dashboard tab: webcam frame (`HASAMI_REALCAM`) or a photo, A4 sheet / ArUco for the table plane, SAM 2.1 on a clicked object, x / y / yaw / size on the plane (typed height, parallax-corrected). Segment and locate only; the arm stays simulated. Geometry tested on synthetic cameras; **ruler check on real objects pending.** |
+| Real camera | Dashboard tab: webcam frame (`HASAMI_REALCAM`) or a photo, A4 sheet / ArUco for the table plane (portrait or landscape, read from the corners in the order clicked, from any first corner), SAM 2.1 on a clicked object (mouse or keyboard), x / y / yaw / size on the plane (typed height, parallax-corrected). Segment and locate only; the arm stays simulated. Geometry tested on synthetic cameras; **ruler check on real objects pending.** |
 
 ## Perception, measured
 
@@ -207,7 +215,7 @@ score (not used by the robot): physics state, goal predicate
 | Yaw (fourth-order moment / minimum-area rectangle) | max 1.76°, mean 0.18° over 60 cubes |
 | Real-camera geometry (synthetic tilted camera, 50 × 30 × 40 mm box) | centre within 1 mm, yaw within 1.5° with parallax correction; > 10 mm off without it |
 | Recorded demo runs (replay them in the dashboard's Agent trace) | [`20261021T053112874Z`](deployments/runs/20261021T053112874Z.json): 3/3 in the tray, no retries. [`20261021T053203432Z`](deployments/runs/20261021T053203432Z.json): 6 mm offset injected on every first attempt, each first attempt fails at the descent, each retry places the cube: 3/3. Videos (captioned "MuJoCo simulation · official SO-101 model") are shared separately until hosted. |
-| Test suite | `204 passed, 1 skipped` (the skip is the live Muse call); browser E2E in Google Chrome `34 passed` (see [TESTING.md](TESTING.md)) |
+| Test suite | `213 passed, 1 skipped` (the skip is the live Muse call); browser E2E in Google Chrome `38 passed` (see [TESTING.md](TESTING.md)) |
 
 ## Watch the agent think
 
@@ -234,7 +242,7 @@ can replay any recorded run. `GET /api/runs/{id}/steps/{i}.png?kind=view|view_tr
 ## Run it
 
 ```bash
-uv venv --python 3.12 && uv pip install -e .
+uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e .
 export HF_HOME=/path/to/huggingface-cache        # SAM 2.1 weights (~150 MB, downloaded on first use)
 export MODEL_API_KEY=...                          # optional: Muse planner + SAM 3.1 (dev.meta.ai)
 

@@ -133,8 +133,13 @@ Checked against dev.meta.ai on 2026-10-21 (no key, so no call has been made):
 - **Real camera** (`hasami_perception.realcam`, dashboard tab): a webcam frame or a photo, the table plane
   from four clicked corners of an A4 sheet (or an ArUco marker), SAM 2.1 on a clicked object, and its x, y,
   yaw and footprint on the plane. The object's height is typed (a webcam has no depth); with an assumed
-  field of view the top face is corrected for parallax. The geometry is tested on synthetic cameras; it has
-  not been measured against a ruler yet.
+  field of view the top face is corrected for parallax. With `sheet: auto` the orientation is decided on the
+  corners in the order clicked (`pick_orientation`: the homography both ways, the one whose pose is a
+  rotation wins), so the first click can be any corner: x runs along edge 1 -> 2, y along edge 1 -> 4. With
+  a typed height the pose's scale comes from the first plane axis, so under an assumed field of view the
+  parallax-corrected position can shift by a few mm with the first corner (4 mm in the browser test's
+  render); on the table plane itself the two frames agree. The geometry is tested on synthetic cameras; it
+  has not been measured against a ruler yet.
 - **Digital twin** (above): the same A4 geometry, but the whole photo becomes a scene and the arm works in
   the twin. Tested only on MuJoCo-rendered photos; white objects on the sheet and objects the colour of the
   table are not prompted, an object covering a sheet corner needs the corners clicked, and the field of

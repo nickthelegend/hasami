@@ -1,8 +1,29 @@
 # Hasami — Meta Global AI Developer Hackathon submission draft
 
-> Draft. Event Oct 26 – Nov 4, 2026; submissions due **Nov 4, 9:00 PM ET** (Nov 5 02:00 UTC).
-> Applications close **Oct 25, 11:59 PM ET**. Check the official rules (published before Oct 26) for any
-> build-window clause: this repo's first commit is Oct 20, 2026 (UTC).
+> Draft. Event Oct 26 (12:00 PM, per the event page) – Nov 4, 2026; submissions due **Nov 4, 9:00 PM ET** (Nov 5 02:00 UTC).
+> Applications close **Oct 25, 11:59 PM ET**.
+
+## Built before the event, built during it
+
+Hasami was started before the event. Its first commit is `5390ae3` (2026-10-20 21:14 UTC), and every commit
+up to the tag **`pre-event-2026-10-22`** (this repository's head on Oct 22) predates the Oct 26 – Nov 4
+window. If more commits land before the event opens, the last of them is tagged `pre-event-2026-10-25` and
+that tag is used instead.
+
+**Official rules:** the event page says "Official Rules will be published before the Hackathon begins on
+October 26, 2026" (read 2026-10-22). They are not out yet, and the page does not say whether work started
+before the event may be entered. When they appear, Nick reads them for a build-during-the-event clause and
+quotes it here. If there is one, only the in-window work below is claimed.
+
+- **Built before the event (up to `pre-event-2026-10-22`):** the MuJoCo SO-101 simulation and pick/place
+  skill, SAM 2.1 perception and grounding, the target check, verify + retry, eight benchmark task families
+  and their result sheets, the digital twin from one photo (measured on MuJoCo-rendered photos), the real
+  camera tab, the agent trace, the MCP server, the dashboard, the landing, the unit and browser E2E suites.
+- **To build during the event (Oct 26 – Nov 4):** the live Muse plan and SAM 3.1 text grounding (both need
+  `MODEL_API_KEY`; credits come on acceptance), a Muse row in the benchmark beside the oracle and scripted
+  rows, a twin from a real desk photo with a ruler check, and the narrated demo video.
+- **In-window commits:** none yet (Oct 22). Once the event is under way,
+  `git log --oneline pre-event-2026-10-22..main` lists them; they are listed here before submitting.
 
 **Project name:** Hasami (鋏)
 
@@ -10,14 +31,17 @@
 
 **Theme:** Push the Frontier (to confirm against the official rules when they are published)
 
-**One line:** Say what you want moved: Muse plans from the camera frame, SAM segments each object, depth
-turns the mask into a grasp, and an SO-101 arm picks and places it.
+**One line:** Say what you want moved: Muse plans from the camera frame (wired; it runs once a Meta Model
+API key is set, never called yet), SAM segments each object, depth turns the mask into a grasp, and a
+simulated SO-101 arm picks and places it. Every number below is SAM 2.1 with a clicked or scripted plan.
 
-**What it does:** Hasami closes the loop from language to a physical grasp. Muse (`muse-spark-1.3` on the
-Meta Model API) reads the overhead camera frame and the instruction and returns a validated plan of
-pick/place steps with pixel anchors. SAM (2.1 locally, or 3.1 on the Meta Model API) turns each anchor
-into a precise mask. Depth lifts the mask to a 3D centre and yaw, and closed-loop inverse kinematics
-drives a simulated SO-101 (MuJoCo) to pick and place. Success is read from the physics state.
+**What it does:** Hasami closes the loop from language to a grasp, in simulation. Muse (`muse-spark-1.3` on
+the Meta Model API) is to read the overhead camera frame and the instruction and return a validated plan of
+pick/place steps with pixel anchors: the client is written and its validation tested, but it waits for
+`MODEL_API_KEY` (Setup required) and has never been called, so today a labelled simulated-click oracle or
+a scripted plan in Muse's format stands in. SAM (2.1 locally; 3.1 on the Meta Model API once keyed) turns
+each anchor into a precise mask. Depth lifts the mask to a 3D centre and yaw, and closed-loop inverse
+kinematics drives a simulated SO-101 (MuJoCo) to pick and place. Success is read from the physics state.
 
 **Meta models used:**
 - *Run (every number below comes from it):* **SAM 2.1** hiera-tiny, open weights, on device, point
@@ -59,9 +83,16 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
   objects, each is fitted as an upright box or cylinder, and the simulated arm runs a task on the twin. On
   20 MuJoCo-rendered photos: 86/86 objects found, 0 false positives, centre error mean 1.2 mm, height mean
   1.6 mm; clear-desk met its goal on 16/20 twins. Not yet measured on a real photo.
-- Real-camera tab: webcam or photo, A4 sheet for the table plane, SAM 2.1 on a clicked real object, its
-  position and yaw on the table (segment and locate only; the arm stays simulated).
-- 181 automated tests: 180 pass (real physics, real SAM weights, real HTTP and MCP, MuJoCo-rendered photos for the twin), 1 skipped (live Muse call).
+- The Twin tab restores the twin the server still holds after a reload or a tab switch; at most 8 twins
+  are kept (the least recently used is dropped).
+- Real-camera tab: webcam or photo, A4 sheet for the table plane (portrait or landscape, read from the
+  corners in the order they were clicked, or chosen), SAM 2.1 on a clicked real object, its position and
+  yaw on the table (segment and locate only; the arm stays simulated). Corners and the object can be
+  marked with the keyboard as well as the mouse.
+- The server answers only on 127.0.0.1 / localhost / [::1] and refuses cross-site writes; photo uploads are
+  capped (15 MB, 40 MP) and decoded off the event loop, so a twin build never stalls the run log.
+- 214 automated tests: 213 pass (real physics, real SAM weights, real HTTP and MCP, MuJoCo-rendered photos
+  for the twin), 1 skipped (live Muse call); browser E2E in Google Chrome: 38 passed (19 tests x desktop and mobile).
 - MCP server so any agent can `look`, `find` and `pick_place`.
 
 **Honest status:**
