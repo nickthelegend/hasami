@@ -128,7 +128,8 @@ Checked against dev.meta.ai on 2026-10-21 (no key, so no call has been made):
   file for the specific arm.
 - With `HASAMI_SO101_PORT` set, `Session` connects the follower and runs it in **mirror mode**: every joint
   target the simulated arm is commanded (~30 Hz of sim time) is sent to the real arm, at most 6° per joint
-  per command. The sim remains the source of truth for perception and success. This has never been run on
+  (gripper included) per command. The first command is capped too: the arm's present position is read when
+  mirroring starts, and if it cannot be read the session stays sim-only and says why. The sim remains the source of truth for perception and success. This has never been run on
   hardware.
 - **Real camera** (`hasami_perception.realcam`, dashboard tab): a webcam frame or a photo, the table plane
   from four clicked corners of an A4 sheet (or an ArUco marker), SAM 2.1 on a clicked object, and its x, y,

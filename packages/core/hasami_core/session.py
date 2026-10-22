@@ -224,8 +224,14 @@ class Session:
         except Exception as e:  # noqa: BLE001 - the arm is there but would not connect; say why
             self.real_setup = f"SO-101 did not connect: {type(e).__name__}: {e}"
             return
+        try:
+            mirror = RealMirror(robot)  # reads the present position first, so the first command is capped too
+        except RuntimeError as e:
+            self.real_setup = str(e)
+            robot.close()
+            return
         self.real = robot
-        self.arm.command_hook = RealMirror(robot)
+        self.arm.command_hook = mirror
 
     @property
     def arm_kind(self) -> str:

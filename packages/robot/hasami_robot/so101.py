@@ -152,18 +152,27 @@ class RealMirror:
 
     Plug an instance into `hasami_sim.arm.Arm.command_hook`. The sim stays the source of truth for
     planning, perception and success checks; the real arm repeats the commanded joint motion, at most
-    `max_step_deg` per joint per command (~30 Hz). Written against LeRobot's follower API and the unit
+    `max_step_deg` per joint, gripper included, per command (~30 Hz). The very first command is capped too:
+    the arm's present position is read when mirroring starts, and if it cannot be read the mirror refuses to
+    start (RuntimeError) rather than send a target blind. Written against LeRobot's follower API and the unit
     conversion tested in tests/test_robot.py, but never run on hardware.
     """
 
     def __init__(self, robot: SO101, max_step_deg: float = 6.0):
         self.robot = robot
         self.max_step = math.radians(max_step_deg)
-        self._last: list[float] | None = None
+        try:
+            q, g = robot.read_joints()
+            self._last: list[float] = [float(x) for x in q]
+            self._last_gripper = float(g)
+        except Exception as e:  # noqa: BLE001 - no present position: do not move at all
+            raise RuntimeError(f"SO-101: could not read the present position ({type(e).__name__}: {e}); "
+                               "not mirroring, so the first command cannot jump") from e
         self.sent = 0
 
     def __call__(self, q_rad: Sequence[float], gripper_rad: float) -> None:
         q = limit_step(self._last, list(q_rad), self.max_step)
-        self.robot.send_joint_targets(q, gripper_rad)
-        self._last = q
+        g = limit_step([self._last_gripper], [float(gripper_rad)], self.max_step)[0]
+        self.robot.send_joint_targets(q, g)
+        self._last, self._last_gripper = q, g
         self.sent += 1

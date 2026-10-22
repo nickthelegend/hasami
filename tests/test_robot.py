@@ -120,13 +120,56 @@ def test_mirror_converts_and_limits_what_it_sends():
         def send_joint_targets(self, q, g):
             self.actions.append(sim_to_lerobot(q, g))
 
+        def read_joints(self):  # the follower's present position: at rest, jaws at 0 rad
+            return [0.0] * 5, 0.0
+
     rec = Recorder()
     mirror = RealMirror(rec, max_step_deg=6.0)  # type: ignore[arg-type]
     mirror([0, 0, 0, 0, 0], 0.0)
     mirror([1.0, 0, 0, 0, 0], GRIPPER_OPEN)  # a 57 deg jump arrives as 6 deg
     assert rec.actions[1]["shoulder_pan.pos"] == pytest.approx(6.0)
-    assert 70 < rec.actions[1]["gripper.pos"] < 73
-    assert mirror.sent == 2
+    while abs(mirror._last_gripper - GRIPPER_OPEN) > 1e-9:  # the jaws open 6 deg per command too
+        mirror([1.0, 0, 0, 0, 0], GRIPPER_OPEN)
+    assert 70 < rec.actions[-1]["gripper.pos"] < 73
+    assert mirror.sent == len(rec.actions) > 2
+
+
+def test_mirror_limits_the_very_first_command_and_the_gripper():
+    """The first target after connecting is capped too: the step is measured from the arm's present position
+    (read once when mirroring starts), not sent whole. 1.5 rad on shoulder_pan would be an 85.9 deg jump."""
+    from hasami_robot import RealMirror
+
+    class Follower:
+        def __init__(self):
+            self.sent = []
+
+        def read_joints(self):
+            return [0.0] * 5, 0.0
+
+        def send_joint_targets(self, q, g):
+            self.sent.append((list(q), g))
+
+    f = Follower()
+    mirror = RealMirror(f, max_step_deg=6.0)  # type: ignore[arg-type]
+    mirror([1.5, 0, 0, 0, 0], GRIPPER_OPEN)
+    q, g = f.sent[0]
+    assert math.degrees(abs(q[0])) <= 6.0 + 1e-9
+    assert math.degrees(abs(g)) <= 6.0 + 1e-9
+    assert sim_to_lerobot(q, g)["shoulder_pan.pos"] == pytest.approx(6.0)
+
+
+def test_mirror_refuses_to_start_without_the_present_position():
+    from hasami_robot import RealMirror
+
+    class Mute:
+        def read_joints(self):
+            raise OSError("no reply from servo 1")
+
+        def send_joint_targets(self, q, g):
+            raise AssertionError("must not move")
+
+    with pytest.raises(RuntimeError, match="present position"):
+        RealMirror(Mute())  # type: ignore[arg-type]
 
 
 def test_session_stays_sim_when_the_port_is_missing(monkeypatch, tmp_path):
