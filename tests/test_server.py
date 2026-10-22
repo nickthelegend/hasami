@@ -270,6 +270,41 @@ def test_realcam_calibrate_detects_a_landscape_sheet(client):
     assert chosen["orientation"] == "portrait" and chosen["orientation_source"] == "chosen"
 
 
+def test_realcam_calibrate_auto_follows_the_click_order(client):
+    """`sheet: auto` decides the orientation for the corners in the order they were clicked, the order the
+    homography is fitted on. A yawed sheet has no obvious top-left, so the first click can be any corner,
+    either way round: edge 1 -> 2 must still measure its true length. Portrait and landscape x sheet yaw
+    0 / 30 / 50 deg x first click on each corner x clockwise and anticlockwise, seen by a tilted camera."""
+    from hasami_perception.realcam import homography, pixel_to_plane
+    from test_realcam import a4_corners, camera, project
+
+    k, r, t = camera(30, 10)
+    buf = io.BytesIO()
+    Image.fromarray(np.full((720, 1280, 3), 120, np.uint8)).save(buf, format="PNG")
+    assert client.post("/api/realcam/upload", content=buf.getvalue()).status_code == 200
+    wrong = []
+    for landscape in (False, True):
+        sheet = a4_corners(landscape) - a4_corners(landscape).mean(axis=0)
+        for yaw_deg in (0, 30, 50):
+            a = np.radians(yaw_deg)
+            plane = sheet @ np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]]).T + [150.0, 150.0]
+            px = project(k, r, t, np.c_[plane, np.zeros(4)])
+            for start in range(4):
+                for turn in (1, -1):
+                    idx = [(start + turn * i) % 4 for i in range(4)]
+                    clicks = px[idx]
+                    res = client.post("/api/realcam/calibrate", json={"corners": clicks.tolist(), "sheet": "auto",
+                                                                       "hfov_deg": 70})
+                    assert res.status_code == 200, res.text
+                    got = res.json()
+                    true_01 = float(np.linalg.norm(plane[idx[1]] - plane[idx[0]]))
+                    h = homography(a4_corners(got["orientation"] == "landscape"), clicks)
+                    measured_01 = float(np.linalg.norm(np.diff(pixel_to_plane(h, clicks[:2]), axis=0)))
+                    if abs(measured_01 - true_01) > 2.0 or abs(got["size_mm"][0] - true_01) > 2.0:
+                        wrong.append((landscape, yaw_deg, start, turn, got["orientation"], round(measured_01), round(true_01)))
+    assert not wrong, f"(landscape, yaw, first corner, turn, auto said, edge 1->2 measured, true): {wrong}"
+
+
 def test_twin_from_a_photo_then_run_a_task_on_it(client, tmp_path, monkeypatch):
     """POST a MuJoCo-rendered desk photo -> twin JSON + side-by-side PNG; adjust a height; run clear-desk on the
     twin over SSE and get the goal checked on the twin's physics, recorded with the twin's label."""

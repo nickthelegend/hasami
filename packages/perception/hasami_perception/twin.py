@@ -199,9 +199,13 @@ class SheetFrame:
                 "camera_mm": np.round(self.camera_centre_mm(), 1).tolist()}
 
 
-def sheet_frame(corners_px, width: int, height: int, hfov_deg: float = 70.0) -> SheetFrame:
-    """The plane homography and camera pose from the sheet's four corners (TL, TR, BR, BL on screen)."""
-    img = order_corners(np.asarray(corners_px, float))
+def pick_orientation(corners_px, width: int, height: int, hfov_deg: float = 70.0) -> tuple[bool, np.ndarray, float]:
+    """Which way an A4 sheet lies, for its four corners in the order given (any first corner, either way
+    round; nothing is re-ordered): landscape if edge 1 -> 2 is the long (297 mm) side. The homography is fitted
+    both ways to the corners as given, and the one whose camera pose is a rotation wins (with the assumed field
+    of view, the two columns of K^-1 H must be orthogonal and of equal length). Returns (landscape, H, |cos|
+    between the pose's plane axes); H maps a4_corners(landscape) onto the corners in the order given."""
+    img = np.asarray(corners_px, float)
     k = intrinsics_from_fov(width, height, hfov_deg)
     best = None
     for landscape in (False, True):
@@ -214,6 +218,14 @@ def sheet_frame(corners_px, width: int, height: int, hfov_deg: float = 70.0) -> 
         if best is None or score < best[0]:
             best = (score, landscape, h, cos)
     _, landscape, h, cos = best
+    return landscape, h, float(cos)
+
+
+def sheet_frame(corners_px, width: int, height: int, hfov_deg: float = 70.0) -> SheetFrame:
+    """The plane homography and camera pose from the sheet's four corners, re-ordered TL, TR, BR, BL on screen."""
+    img = order_corners(np.asarray(corners_px, float))
+    k = intrinsics_from_fov(width, height, hfov_deg)
+    landscape, h, cos = pick_orientation(img, width, height, hfov_deg)
     r, t = pose_from_homography(h, k)
     c = -r.T @ t
     return SheetFrame(img, landscape, h, k, r, t, 1.0 if c[2] > 0 else -1.0, float(cos), float(hfov_deg))
@@ -643,5 +655,5 @@ def measure(sam, rgb: np.ndarray, frame: SheetFrame, heights_mm: dict[int, float
 
 
 __all__ = ["FLAT_MM", "SheetFrame", "TwinObject", "auto_masks", "find_sheet", "fit_object", "measure",
-           "order_corners", "paper_mask", "prompt_points", "shadow_like", "sheet_frame", "table_colour",
+           "order_corners", "paper_mask", "pick_orientation", "prompt_points", "shadow_like", "sheet_frame", "table_colour",
            "top_face_colour"]

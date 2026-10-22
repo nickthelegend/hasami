@@ -493,13 +493,15 @@ def create_app(session: Session | None = None) -> FastAPI:
         hh, ww = real["rgb"].shape[:2]
         try:
             if body.sheet == "auto":
-                from hasami_perception.twin import sheet_frame
+                from hasami_perception.twin import pick_orientation
 
-                # the same test the twin uses: fit both ways the sheet can lie, keep the one whose pose is a rotation
-                landscape = sheet_frame(body.corners, ww, hh, body.hfov_deg or 70.0).landscape
+                # the same test the twin uses (fit both ways the sheet can lie, keep the one whose pose is a
+                # rotation), on the corners in the order they were clicked: that is the order H is fitted on,
+                # so "landscape" means edge 1 -> 2 is the long side whichever corner the user started at
+                landscape, h, _ = pick_orientation(body.corners, ww, hh, body.hfov_deg or 70.0)
             else:
                 landscape = body.sheet == "a4-landscape"
-            h = homography(a4_corners(landscape), np.array(body.corners))
+                h = homography(a4_corners(landscape), np.array(body.corners))
         except ValueError as e:
             return JSONResponse(status_code=400, content={"error": str(e)})
         real.update(h=h, k=None if body.hfov_deg is None else intrinsics_from_fov(ww, hh, body.hfov_deg))

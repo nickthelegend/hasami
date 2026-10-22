@@ -196,6 +196,62 @@ test('real camera: the sheet orientation is read from the clicked corners, and c
   await shot(page, info, 'cam-05-sheet-chosen');
 });
 
+test('real camera: auto orientation follows the click order (first click on the top-right corner)', async ({ page, guard, request }, info) => {
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Real camera' }).click();
+  const photo = await deskPhoto(request, 3); // its sheet lies landscape as the camera sees it
+  const up = page.waitForResponse((r) => r.url().endsWith('/api/realcam/upload'));
+  await page.locator('.realcam input[type=file]').setInputFiles({ name: 'desk.png', mimeType: 'image/png', buffer: photo.buffer });
+  expect((await up).status()).toBe(200);
+  let found = await readPhoto(page, '.rc-view img:not(.rc-mask)', 'red');
+  expect(found.object).not.toBeNull();
+
+  const calibrate = async (clicks: { x: number; y: number }[]) => {
+    const cal = page.waitForResponse((r) => r.url().endsWith('/api/realcam/calibrate'));
+    for (const [i, p] of clicks.entries()) {
+      await page.mouse.click(p.x, p.y);
+      if (i < 3) await expect(page.locator('.rc-dot:not(.rc-click)')).toHaveCount(i + 1);
+    }
+    const c = await cal;
+    expect(c.status()).toBe(200);
+    await expect(page.locator('.rc-step')).toHaveText('Type the object height, then click the object.', { timeout: 30_000 });
+    return c.json();
+  };
+  const locate = async () => {
+    const seg = page.waitForResponse((r) => r.url().endsWith('/api/realcam/segment'));
+    await page.mouse.click(found.object!.x, found.object!.y);
+    const s = await seg;
+    expect(s.status()).toBe(200);
+    return (await s.json()).target as { x_mm: number; y_mm: number };
+  };
+
+  // clicked from the top-left: edge 1 -> 2 is the long side
+  const [tl, tr, br, bl] = found.corners;
+  const a = await calibrate([tl, tr, br, bl]);
+  expect(a.orientation).toBe('landscape');
+  // height 0: the object is located on the table plane itself, so the two clicked frames must agree exactly
+  // (with a typed height the parallax step also uses the camera pose, which an assumed 70 deg field of view
+  // makes depend on the click order by a few mm)
+  await page.getByLabel('Object height in millimetres').fill('0');
+  const fromTl = await locate();
+
+  // the same sheet clicked from the top-right: edge 1 -> 2 (top-right -> bottom-right) is the short side
+  await page.getByRole('button', { name: 'Re-click sheet' }).click();
+  found = await readPhoto(page, '.rc-view img:not(.rc-mask)', 'red'); // the button click may have scrolled the page
+  const [tl2, tr2, br2, bl2] = found.corners;
+  const b = await calibrate([tr2, br2, bl2, tl2]);
+  expect(b.orientation).toBe('portrait');
+  expect(b.size_mm).toEqual([210, 297]);
+  await expect(page.locator('.rc-sheet')).toHaveText('Sheet: A4 portrait (210 × 297 mm across × down), detected from the clicked corners.');
+  const fromTr = await locate();
+  await expect(page.locator('.rc-out')).toContainText('not corrected');
+  // the same object in the second frame (origin top-right, x down the right edge, y along the top edge leftwards)
+  expect(Math.abs(fromTr.x_mm - fromTl.y_mm)).toBeLessThan(2);
+  expect(Math.abs(fromTr.y_mm - (297 - fromTl.x_mm))).toBeLessThan(2);
+  await expectNoHScroll(page);
+  await shot(page, info, 'cam-06-sheet-clicked-from-top-right');
+});
+
 test('twin: after a reload the Twin tab shows the twin the server still holds', async ({ page, guard, request }, info) => {
   // build a twin straight through the API, as an earlier page load would have
   const photo = await deskPhoto(request, 1);
