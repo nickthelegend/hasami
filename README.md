@@ -262,6 +262,11 @@ MCP client config:
 `GET /api/runs/{id}` · `GET /api/runs/{id}/steps/{i}.png` · `GET /api/runs/{id}/video` (when the MP4 is in the runs folder) · `POST /api/realcam/grab|upload|calibrate|segment` ·
 `GET /api/realcam/frame.png`.
 
+Local only: a request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]` gets 400 (DNS rebinding;
+`HASAMI_ALLOWED_HOSTS=name1,name2` adds names). A write from a foreign site's page gets 403: every POST needs
+the `X-Hasami: 1` header (the dashboard sends it) or a `Content-Type` of `application/json`, `image/png` or
+`image/jpeg`, e.g. `curl -H 'Content-Type: image/png' --data-binary @desk.png http://127.0.0.1:8420/api/twin`.
+
 ## Limits
 
 - Simulation first, and a kind one: perfect metric depth, no sensor noise, ideal lighting, rigid objects.

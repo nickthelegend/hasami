@@ -177,13 +177,24 @@ function setupField(body: unknown): string | undefined {
   return undefined;
 }
 
+/** The server refuses writes without this header (or a JSON / PNG / JPEG body): a foreign page cannot send it
+ *  without a CORS preflight, which only localhost origins pass. Added to every non-GET request. */
+export function withWriteHeader(init?: RequestInit): RequestInit | undefined {
+  const method = (init?.method ?? 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD') return init;
+  return { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), 'X-Hasami': '1' } };
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(path, {
-      ...init,
-      headers: init?.body ? { 'Content-Type': 'application/json', ...init.headers } : init?.headers,
-    });
+    res = await fetch(
+      path,
+      withWriteHeader({
+        ...init,
+        headers: init?.body ? { 'Content-Type': 'application/json', ...(init.headers as Record<string, string> | undefined) } : init?.headers,
+      }),
+    );
   } catch {
     throw new ApiError('unreachable', 0, 'The Hasami server is not reachable.');
   }

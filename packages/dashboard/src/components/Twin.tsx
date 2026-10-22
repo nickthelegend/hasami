@@ -1,6 +1,7 @@
 // Your desk, twinned: one photo with an A4 sheet on it becomes a MuJoCo scene, shown side by side with the
 // photo, and the simulated SO-101 runs a task on it. Labelled everywhere: the arm is simulated.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { withWriteHeader } from '../api';
 import { deg } from '../format';
 
 export const TWIN_LABEL = 'digital twin from one photo · simulated arm';
@@ -36,7 +37,7 @@ interface Goal { ok: boolean; detail: Record<string, boolean> }
 async function call(path: string, init?: RequestInit) {
   let r: Response;
   try {
-    r = await fetch(path, init);
+    r = await fetch(path, withWriteHeader(init));
   } catch {
     throw new Error('The Hasami server is not reachable.');
   }

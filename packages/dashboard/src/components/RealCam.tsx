@@ -2,6 +2,7 @@
 // on a clicked object -> its x / y / yaw on the table plane. Segment and locate only: the arm is simulated
 // and is not connected to this camera.
 import { useCallback, useRef, useState } from 'react';
+import { withWriteHeader } from '../api';
 import { deg } from '../format';
 
 type Pt = [number, number];
@@ -15,7 +16,7 @@ interface Cal { orientation: 'portrait' | 'landscape'; orientation_source: strin
 async function call(path: string, init?: RequestInit) {
   let r: Response;
   try {
-    r = await fetch(path, init);
+    r = await fetch(path, withWriteHeader(init));
   } catch {
     throw new Error('The Hasami server is not reachable.');
   }

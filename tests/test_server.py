@@ -17,7 +17,8 @@ from hasami_server import create_app
 def client(session, runs_tmp, no_model_key, monkeypatch):
     monkeypatch.delenv("HASAMI_SO101_PORT", raising=False)
     session.reset(1)
-    with TestClient(create_app(session)) as c:
+    # as the dashboard calls it: on 127.0.0.1, every POST with the X-Hasami header
+    with TestClient(create_app(session), base_url="http://127.0.0.1:8420", headers={"X-Hasami": "1"}) as c:
         yield c
     session.store_images = session.snapshot_on_phase = False  # the session fixture outlives this client
     session.reset(1)
@@ -204,6 +205,45 @@ def test_cors_allows_localhost_dev_ports(client):
     assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
     r = client.get("/api/status", headers={"Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in r.headers
+
+
+def test_foreign_hosts_and_cross_site_writes_are_refused(client):
+    """DNS rebinding (a page on another name resolved to 127.0.0.1 sends its own Host) gets 400. A cross-site
+    POST that needs no CORS preflight (text/plain or no body) gets 403 and changes nothing: every write needs the
+    X-Hasami header or a JSON / PNG / JPEG Content-Type, which a foreign page cannot send without a preflight."""
+    bare = TestClient(client.app, base_url="http://127.0.0.1:8420")  # no X-Hasami header; the app is already up
+    for host in ("rebind.evil.example", "rebind.evil.example:8420", "192.168.1.20:8420", "127.0.0.1.evil.example"):
+        r = bare.get("/api/status", headers={"Host": host})
+        assert r.status_code == 400 and "Host" in r.json()["error"], (host, r.status_code)
+    for host in ("127.0.0.1:8420", "localhost:8420", "[::1]:8420", "localhost"):
+        assert bare.get("/api/status", headers={"Host": host}).status_code == 200, host
+
+    def photo(value: int) -> bytes:
+        buf = io.BytesIO()
+        Image.fromarray(np.full((48, 64, 3), value, np.uint8)).save(buf, format="PNG")
+        return buf.getvalue()
+
+    # the dashboard's own upload (or curl with an image Content-Type) works without the header
+    assert bare.post("/api/realcam/upload", content=photo(200), headers={"Content-Type": "image/png"}).status_code == 200
+    before = png(bare.get("/api/realcam/frame.png"))
+    for headers in ({"Origin": "https://evil.example", "Content-Type": "text/plain"},
+                    {"Content-Type": "text/plain"},
+                    {"Origin": "null", "Content-Type": "application/x-www-form-urlencoded"},
+                    {"Origin": "https://evil.example", "Content-Type": "image/png"},  # passed a preflight? not from there
+                    {"Origin": "https://evil.example", "X-Hasami": "1", "Content-Type": "image/png"}):
+        r = bare.post("/api/realcam/upload", content=photo(30), headers=headers)
+        assert r.status_code == 403, (headers, r.status_code)
+        assert "cross-site" in r.json()["error"]
+    assert np.array_equal(png(bare.get("/api/realcam/frame.png")), before)  # the frame was not replaced
+    # body-less writes need the header too
+    seed = bare.get("/api/status").json()["scene"]["seed"]
+    assert bare.post("/api/reset", headers={"Origin": "https://evil.example"}).status_code == 403
+    assert bare.post("/api/reset").status_code == 403
+    assert bare.get("/api/status").json()["scene"]["seed"] == seed
+    assert bare.post("/api/realcam/grab", headers={"Origin": "https://evil.example"}).status_code == 403
+    # JSON from the page itself, or a localhost dev server, is fine
+    assert bare.post("/api/reset", json={"seed": 7}, headers={"Origin": "http://localhost:5190"}).status_code == 200
+    assert bare.post("/api/reset", headers={"X-Hasami": "1", "Origin": "http://127.0.0.1:8420"}).status_code == 200
 
 
 # ---- real camera endpoints (no webcam here: grab is Setup required; a synthetic photo is uploaded) ----

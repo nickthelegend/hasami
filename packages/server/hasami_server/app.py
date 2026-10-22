@@ -29,6 +29,52 @@ from hasami_planner import Plan, Planner, PlanError, plan_from_clicks
 DASHBOARD_DIST = ROOT / "packages" / "dashboard" / "dist"
 TERMINAL = {"done", "error"}
 
+# ---- local only: DNS rebinding and cross-site writes ---------------------------------------------------
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "[::1]")
+LOCAL_ORIGIN = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?"
+WRITE_TYPES = {"application/json", "image/png", "image/jpeg"}  # none is CORS-safelisted: a preflight comes first
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def _host_name(host: str) -> str:
+    """The name in a Host header, without its port ("[::1]:8420" -> "[::1]", "localhost:8420" -> "localhost")."""
+    host = host.strip().lower()
+    if host.startswith("["):
+        end = host.find("]")
+        return host[: end + 1] if end > 0 else host
+    return host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+
+
+class LocalOnly:
+    """ASGI guard in front of everything. Any request whose Host is not this machine's (DNS rebinding: a page on
+    another name that resolves to 127.0.0.1) gets 400. A write (any method but GET / HEAD / OPTIONS) gets 403 when
+    its Origin is a foreign site, or when it carries neither the X-Hasami header nor a JSON / PNG / JPEG
+    Content-Type: a foreign page can send neither without a CORS preflight, which only localhost origins pass."""
+
+    def __init__(self, app, allowed_hosts):
+        self.app = app
+        self.allowed = {h.strip().lower() for h in allowed_hosts if h.strip()}
+        self.origin = re.compile(LOCAL_ORIGIN)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope["headers"]}
+        host = _host_name(headers.get("host", ""))
+        if host not in self.allowed:
+            msg = (f"unknown Host header {host!r}: Hasami answers only on {', '.join(sorted(self.allowed))} "
+                   "(HASAMI_ALLOWED_HOSTS adds names)")
+            return await JSONResponse(status_code=400, content={"error": msg})(scope, receive, send)
+        if scope["method"] not in SAFE_METHODS:
+            origin = headers.get("origin")
+            ctype = headers.get("content-type", "").split(";")[0].strip().lower()
+            if (origin is not None and not self.origin.fullmatch(origin)) or \
+                    (headers.get("x-hasami") != "1" and ctype not in WRITE_TYPES):
+                msg = ("cross-site request refused: writes come from this machine's pages with the X-Hasami: 1 "
+                       "header, or with Content-Type application/json (image/png or image/jpeg for a photo)")
+                return await JSONResponse(status_code=403, content={"error": msg})(scope, receive, send)
+        await self.app(scope, receive, send)
+
 
 # ---- request bodies ------------------------------------------------------------------------
 class SegmentReq(BaseModel):
@@ -213,7 +259,14 @@ def _setup_response(e: SetupRequired) -> JSONResponse:
     return JSONResponse(status_code=503, content={"setup_required": setup_name(e), "message": str(e)})
 
 
-def create_app(session: Session | None = None) -> FastAPI:
+def allowed_hosts_from_env() -> list[str]:
+    import os
+
+    extra = [h for h in os.environ.get("HASAMI_ALLOWED_HOSTS", "").split(",") if h.strip()]
+    return [*LOCAL_HOSTS, *extra]
+
+
+def create_app(session: Session | None = None, allowed_hosts: list[str] | None = None) -> FastAPI:
     state: dict = {"session": session}
 
     @asynccontextmanager
@@ -233,8 +286,8 @@ def create_app(session: Session | None = None) -> FastAPI:
 
     app = FastAPI(title="Hasami", version="0.1.0", lifespan=lifespan,
                   description="Muse plans, SAM sees, an SO-101 picks.")
-    app.add_middleware(CORSMiddleware, allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
-                       allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(CORSMiddleware, allow_origin_regex=LOCAL_ORIGIN, allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(LocalOnly, allowed_hosts=allowed_hosts or allowed_hosts_from_env())  # outermost
 
     def sess(request: Request) -> Session:
         return request.app.state.session
@@ -742,4 +795,4 @@ def serve(host: str | None = None, port: int | None = None) -> None:
                 port=port or int(os.environ.get("HASAMI_PORT", "8420")), log_level="info")
 
 
-__all__ = ["EventBus", "Runner", "app", "create_app", "serve"]
+__all__ = ["EventBus", "LocalOnly", "Runner", "app", "create_app", "serve"]
