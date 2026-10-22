@@ -200,11 +200,39 @@ def test_root_serves_dashboard_or_a_note(client):
         assert "Dashboard not built" in r.json()["note"]
 
 
-def test_cors_allows_localhost_dev_ports(client):
-    r = client.get("/api/status", headers={"Origin": "http://localhost:5173"})
-    assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
-    r = client.get("/api/status", headers={"Origin": "https://evil.example"})
-    assert "access-control-allow-origin" not in r.headers
+def test_cors_allows_only_the_dashboard_and_its_dev_server(client):
+    """CORS and the write guard trust an exact list: the server's own origin (8420) and the dashboard's Vite dev
+    server (5190), on 127.0.0.1 / localhost / [::1]. Another app on another localhost port is a foreign site: it
+    cannot read the API (no CORS header) and its writes get 403 even with X-Hasami or a JSON Content-Type."""
+    for origin in ("http://localhost:5190", "http://127.0.0.1:5190", "http://127.0.0.1:8420", "http://localhost:8420",
+                   "http://[::1]:8420"):
+        r = client.get("/api/status", headers={"Origin": origin})
+        assert r.headers.get("access-control-allow-origin") == origin, origin
+    for origin in ("http://localhost:5173", "http://localhost:8888", "http://127.0.0.1:3000", "https://evil.example",
+                   "http://localhost", "https://localhost:8420"):
+        r = client.get("/api/realcam/frame.png", headers={"Origin": origin})
+        assert "access-control-allow-origin" not in r.headers, origin
+        pre = client.options("/api/reset", headers={"Origin": origin, "Access-Control-Request-Method": "POST",
+                                                    "Access-Control-Request-Headers": "x-hasami,content-type"})
+        assert "access-control-allow-origin" not in pre.headers, origin
+    seed = client.get("/api/status").json()["scene"]["seed"]
+    for headers in ({"Origin": "http://localhost:8888", "X-Hasami": "1"},
+                    {"Origin": "http://127.0.0.1:3000", "Content-Type": "application/json"}):
+        assert client.post("/api/realcam/upload", headers=headers, content=b"").status_code == 403, headers
+        r = client.post("/api/reset", headers=headers, content=b'{"seed": 9}')
+        assert r.status_code == 403 and "cross-site" in r.json()["error"], headers
+    assert client.get("/api/status").json()["scene"]["seed"] == seed
+
+
+def test_allowed_origins_follow_the_port_and_the_env(monkeypatch):
+    from hasami_server.app import allowed_origins_from_env
+
+    monkeypatch.setenv("HASAMI_PORT", "8431")
+    monkeypatch.setenv("HASAMI_ALLOWED_ORIGINS", "http://studio.local:9000, http://127.0.0.1:7000")
+    got = set(allowed_origins_from_env())
+    assert {"http://127.0.0.1:8431", "http://localhost:8431", "http://127.0.0.1:8420", "http://localhost:5190",
+            "http://studio.local:9000", "http://127.0.0.1:7000"} <= got
+    assert not any(o.endswith(":8888") or o.endswith(":5173") for o in got)
 
 
 def test_foreign_hosts_and_cross_site_writes_are_refused(client):
