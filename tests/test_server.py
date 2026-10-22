@@ -749,6 +749,24 @@ def test_off_frame_clicks_and_non_finite_points_are_refused(client):
     assert client.post("/api/segment", json={"point": [639.4, 479.4]}).status_code == 200  # the last pixel is fine
 
 
+def test_realcam_segment_on_the_last_pixel_column_or_row(client):
+    """A click at x = 319.7 on a 320-wide photo rounds to column 320. It used to pass the bounds check and crash
+    SAM's mask lookup (500 IndexError); now it is a 400, and a click that rounds inside the frame segments."""
+    buf = io.BytesIO()
+    img = np.full((240, 320, 3), 200, np.uint8)
+    img[100:140, 280:320] = (210, 40, 40)
+    Image.fromarray(img).save(buf, format="PNG")
+    assert client.post("/api/realcam/upload", content=buf.getvalue()).status_code == 200
+    corners = [[20, 20], [300, 20], [300, 220], [20, 220]]
+    assert client.post("/api/realcam/calibrate", json={"corners": corners, "sheet": "a4"}).status_code == 200
+    for pt in ([319.7, 120], [100, 239.6], [-0.6, 120]):
+        r = client.post("/api/realcam/segment", json={"point": pt, "height_mm": 10})
+        assert r.status_code == 400 and "outside" in r.json()["error"], (pt, r.status_code, r.text)
+    r = client.post("/api/realcam/segment", json={"point": [319.4, 120], "height_mm": 10})
+    assert r.status_code == 200, r.text
+    assert r.json()["mask_png"]
+
+
 def test_seeds_must_fit_32_bits(client):
     for seed in (-1, 2**32, 2**70):
         assert client.post("/api/reset", json={"seed": seed}).status_code == 422, seed

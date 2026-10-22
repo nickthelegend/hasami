@@ -124,14 +124,16 @@ export function RealCam() {
         setErr('Type the object height in mm (0-300) first.');
         return;
       }
-      setClick(p);
+      // the pixel the click is in, whole and inside the photo (x = w - 0.3 is column w - 1, never w)
+      const px: Pt = [Math.min(size.w - 1, Math.max(0, Math.floor(p[0]))), Math.min(size.h - 1, Math.max(0, Math.floor(p[1])))];
+      setClick(px);
       setBusy('Segmenting with SAM 2.1…');
       try {
         setRes(
           await call('/api/realcam/segment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ point: p, height_mm: h }),
+            body: JSON.stringify({ point: px, height_mm: h }),
           }),
         );
       } catch (e) {

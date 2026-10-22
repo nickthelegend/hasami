@@ -93,6 +93,37 @@ test('real camera: webcam is Setup required; an uploaded photo is calibrated on 
   await expect(page.locator('.rc-out')).toHaveCount(0);
 });
 
+test('real camera: a click on the photo\'s last pixel column is sent as that pixel and segments', async ({ page, guard, request }) => {
+  // On a w-wide photo a click at the right edge maps to x ~ w - 0.1. It used to be sent as is; the server rounded
+  // it to column w and crashed (500 IndexError), later refused it (400). The dashboard now sends pixel w - 1.
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Real camera' }).click();
+  const photo = await deskPhoto(request, 3);
+  const up = page.waitForResponse((r) => r.url().endsWith('/api/realcam/upload'));
+  await page.locator('.realcam input[type=file]').setInputFiles({ name: 'desk.png', mimeType: 'image/png', buffer: photo.buffer });
+  expect((await up).status()).toBe(200);
+  const found = await readPhoto(page, '.rc-view img:not(.rc-mask)', 'red');
+  for (const [i, p] of found.corners.entries()) {
+    await page.mouse.click(p.x, p.y);
+    if (i < 3) await expect(page.locator('.rc-dot')).toHaveCount(i + 1);
+  }
+  await expect(page.locator('.rc-step')).toHaveText('Type the object height, then click the object.', { timeout: 30_000 });
+  await page.getByLabel('Object height in millimetres').fill('25');
+  const img = page.locator('.rc-view img:not(.rc-mask)');
+  const box = (await img.boundingBox())!;
+  const seg = page.waitForResponse((r) => r.url().endsWith('/api/realcam/segment'), { timeout: 60_000 });
+  await page.mouse.click(box.x + box.width - 0.02, box.y + box.height / 2);
+  const r = await seg;
+  const sent = JSON.parse(r.request().postData() ?? '{}');
+  // the pixel the click is in: whole numbers, the last column at most (the mouse lands on whole device pixels,
+  // so the exact column depends on the photo's scale; any fraction sent here is what the server used to round)
+  expect(sent.point.every((x: number) => Number.isInteger(x))).toBe(true);
+  expect(sent.point[0]).toBeGreaterThanOrEqual(found.px.w - 4);
+  expect(sent.point[0]).toBeLessThanOrEqual(found.px.w - 1);
+  expect(r.status()).toBe(200);
+  await expect(page.locator('.realcam .notice-error')).toHaveCount(0);
+});
+
 test('twin: a non-image is refused, a synthetic photo becomes a twin, refit, show it, run a task on it', async ({ page, guard, request }, info) => {
   guard.allow(400, /^\/api\/twin\?/);
   await page.goto('/');

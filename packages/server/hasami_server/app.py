@@ -756,8 +756,10 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         if real["rgb"] is None or real["h"] is None:
             return JSONResponse(status_code=409, content={"error": "grab or upload a frame and click the sheet's corners first"})
         hh, ww = real["rgb"].shape[:2]
-        if not (0 <= body.point[0] < ww and 0 <= body.point[1] < hh):
-            return JSONResponse(status_code=400, content={"error": "point is outside the frame"})
+        u, v = int(round(body.point[0])), int(round(body.point[1]))  # SAM reads its mask at the rounded pixel
+        if not (0 <= u < ww and 0 <= v < hh):
+            return JSONResponse(status_code=400, content={"error": f"point ({body.point[0]:.1f}, {body.point[1]:.1f}) "
+                                                                   f"is outside the {ww} x {hh} frame"})
         s = sess(request)
         t0 = time.perf_counter()
         with s.lock:

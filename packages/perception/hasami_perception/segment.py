@@ -69,7 +69,9 @@ class LocalSam2:
             keep[max(0, y1):y2 + 1, max(0, x1):x2 + 1] = True
             masks = masks & keep
         # Of SAM's three hypotheses, keep the best-scored one that contains the clicked pixel.
-        u, v = int(round(point[0])), int(round(point[1]))
+        # the rounded pixel, clamped to the mask: 639.6 on a 640-wide frame is column 639, not 640
+        u = min(max(int(round(point[0])), 0), masks.shape[2] - 1)
+        v = min(max(int(round(point[1])), 0), masks.shape[1] - 1)
         order = np.argsort(-scores)
         for i in order:
             if masks[i][v, u]:

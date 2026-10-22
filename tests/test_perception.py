@@ -54,6 +54,16 @@ def test_click_on_bare_table_has_no_target(session):
     assert seg.truth_label == "table"
 
 
+def test_sam_does_not_index_past_the_frame_edge(session):
+    """LocalSam2.segment looks the clicked pixel up in each mask after rounding: 639.6 must not become column 640
+    (IndexError). The pixel is clamped to the mask, so even a caller that skips the bounds check gets a mask."""
+    session.reset(SEEDS[0])
+    rgb = session.observe().rgb
+    h, w = rgb.shape[:2]
+    mask = session.sam.segment(rgb, point=(w - 0.4, h - 0.4))
+    assert mask.shape == (h, w)
+
+
 def test_every_shape_iou_localisation_and_grasp_width(session):
     """Procedural scene with one object of each kind: SAM 2.1 at an oracle click, then mask + depth."""
     from hasami_core.tasks import oracle_click
