@@ -522,3 +522,62 @@ def test_twins_are_capped_and_the_least_recently_used_is_dropped(session, runs_t
     finally:
         session.store_images = session.snapshot_on_phase = False
         session.reset(1)
+
+
+# ---- malformed but schema-shaped inputs: a readable 4xx (or 502 for a failing remote model), never a bare 500 ----
+def test_off_frame_clicks_and_non_finite_points_are_refused(client):
+    for pt in ([700, 10], [-40, -40], [10, 480], [640, 0], [-0.6, 5]):
+        r = client.post("/api/segment", json={"point": pt})
+        assert r.status_code == 400, (pt, r.status_code)
+        assert "outside the 640 x 480 frame" in r.json()["error"], r.json()
+    r = client.post("/api/segment", content=b'{"point": [NaN, 10]}', headers={"Content-Type": "application/json"})
+    assert r.status_code == 422
+    assert client.post("/api/segment", json={"point": [639.4, 479.4]}).status_code == 200  # the last pixel is fine
+
+
+def test_seeds_must_fit_32_bits(client):
+    for seed in (-1, 2**32, 2**70):
+        assert client.post("/api/reset", json={"seed": seed}).status_code == 422, seed
+        assert client.post("/api/reset", json={"seed": seed, "family": "stack-two"}).status_code == 422, seed
+    assert client.post("/api/reset", json={"seed": 2**32 - 1}).json()["seed"] == 2**32 - 1
+    assert client.post("/api/reset", json={"seed": 0, "family": "stack-two"}).status_code == 200
+
+
+def test_corners_must_be_four_finite_pairs(client, tmp_path, monkeypatch):
+    from hasami_sim.photo import PhotoCamera, SheetPose, render_photo
+    from hasami_sim.scene import ObjectSpec
+
+    buf = io.BytesIO()
+    Image.fromarray(np.full((480, 640, 3), 120, np.uint8)).save(buf, format="PNG")
+    assert client.post("/api/realcam/upload", content=buf.getvalue()).status_code == 200
+    bad = ([[1], [2], [3], [4]], [[10, 10, 5], [600, 10, 5], [600, 400, 5], [10, 400, 5]], [[1, 2]] * 3)
+    for corners in bad:
+        r = client.post("/api/realcam/calibrate", json={"corners": corners, "sheet": "auto"})
+        assert r.status_code == 422, (corners, r.status_code)
+    r = client.post("/api/realcam/calibrate", content=b'{"corners": [[NaN, 1], [5, 1], [5, 5], [1, 5]]}',
+                    headers={"Content-Type": "application/json"})
+    assert r.status_code == 422
+    # a twin's adjust takes the same corners
+    monkeypatch.setenv("HASAMI_TWINS_DIR", str(tmp_path / "twins"))
+    cam = PhotoCamera(pos=(0.52, 0.07, 0.34), fovy_deg=50)
+    photo = io.BytesIO()
+    Image.fromarray(render_photo([ObjectSpec("a", "cube", "red", 0.20, 0.06, 0.3)], SheetPose(), cam)).save(photo, format="PNG")
+    tw = client.post("/api/twin", content=photo.getvalue(), params={"hfov_deg": cam.hfov_deg})
+    assert tw.status_code == 200, tw.text
+    for corners in bad:
+        r = client.post(f"/api/twin/{tw.json()['twin_id']}/adjust", json={"corners": corners})
+        assert r.status_code == 422, (corners, r.status_code)
+
+
+def test_a_failing_meta_segmenter_is_a_readable_502(client, monkeypatch):
+    """SAM 3.1's endpoint unreachable (a real refused connection on 127.0.0.1, nothing mocked; the placeholder
+    key never leaves this machine): 502 with the error's type, not a bare 500."""
+    import socket
+
+    with socket.socket() as closed:
+        closed.bind(("127.0.0.1", 0))  # bound, not listening: connections are refused
+        monkeypatch.setenv("MODEL_API_KEY", "placeholder-not-a-key")
+        monkeypatch.setenv("MODEL_API_BASE_URL", f"http://127.0.0.1:{closed.getsockname()[1]}/v1")
+        r = client.post("/api/segment", json={"text": "red cube", "segmenter": "meta"})
+    assert r.status_code == 502, (r.status_code, r.text)
+    assert r.json()["error"].startswith("URLError"), r.json()

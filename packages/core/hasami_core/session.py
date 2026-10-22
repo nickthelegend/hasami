@@ -470,6 +470,10 @@ class Session:
                 raise ValueError("the meta segmenter (SAM 3.1) needs a text prompt, e.g. 'red cube'")
             seg_model = self.segmenter(segmenter)
             frame = frame or self.observe()
+            if point is not None:  # SAM indexes the mask at the rounded pixel: off-frame would fail or wrap around
+                hh, ww = frame.rgb.shape[:2]
+                if not (0 <= int(round(point[0])) < ww and 0 <= int(round(point[1])) < hh):
+                    raise ValueError(f"point ({point[0]:.1f}, {point[1]:.1f}) is outside the {ww} x {hh} frame")
             t0 = time.perf_counter()
             if segmenter == "local":
                 mask = seg_model.segment(frame.rgb, point=(float(point[0]), float(point[1])))  # type: ignore[index]

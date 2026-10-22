@@ -14,9 +14,10 @@ import threading
 import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -78,8 +79,12 @@ class LocalOnly:
 
 
 # ---- request bodies ------------------------------------------------------------------------
+Num = Annotated[float, Field(allow_inf_nan=False)]  # NaN / Infinity in JSON is refused (422)
+Pair = Annotated[list[Num], Field(min_length=2, max_length=2)]  # a pixel [u, v]
+
+
 class SegmentReq(BaseModel):
-    point: list[float] | None = Field(default=None, min_length=2, max_length=2)
+    point: Pair | None = None
     text: str | None = None
     segmenter: Literal["local", "meta"] = "local"
 
@@ -89,8 +94,8 @@ class PlanReq(BaseModel):
 
 
 class ClickStep(BaseModel):
-    pick_point: list[float] = Field(min_length=2, max_length=2)
-    place_point: list[float] = Field(min_length=2, max_length=2)
+    pick_point: Pair
+    place_point: Pair
     pick: str | None = None
     place: str | None = None
 
@@ -102,19 +107,19 @@ class RunReq(BaseModel):
 
 
 class CalibrateReq(BaseModel):
-    corners: list[list[float]] = Field(min_length=4, max_length=4, description="A4 corners clicked TL, TR, BR, BL")
+    corners: list[Pair] = Field(min_length=4, max_length=4, description="A4 corners in click order (TL, TR, BR, BL as seen)")
     sheet: Literal["a4", "a4-landscape", "auto"] = Field(
         default="a4", description="auto: portrait or landscape, whichever gives a camera pose that is a rotation")
     hfov_deg: float | None = Field(default=70.0, ge=20, le=150, description="camera field of view; null: no parallax correction")
 
 
 class RealSegmentReq(BaseModel):
-    point: list[float] = Field(min_length=2, max_length=2)
+    point: Pair
     height_mm: float = Field(ge=0, le=300)
 
 
 class ResetReq(BaseModel):
-    seed: int | None = None
+    seed: int | None = Field(default=None, ge=0, le=2**32 - 1)  # numpy seeds are non-negative; 32 bits stay exact in JS
     family: str | None = None  # a benchmark task family (hasami_core.tasks): load its scene for this seed
 
 
@@ -123,7 +128,7 @@ class TwinAdjustReq(BaseModel):
     hfov_deg: float | None = Field(default=None, ge=20, le=150)
     side: Literal["far", "near", "left", "right"] | None = None
     offset_mm: float | None = Field(default=None, ge=100, le=400)
-    corners: list[list[float]] | None = Field(default=None, min_length=4, max_length=4)
+    corners: list[Pair] | None = Field(default=None, min_length=4, max_length=4)
     default_height_mm: float | None = Field(default=None, ge=5, le=150)
 
 class TwinRunReq(BaseModel):
@@ -348,6 +353,19 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
 
     app = FastAPI(title="Hasami", version="0.1.0", lifespan=lifespan,
                   description="Muse plans, SAM sees, an SO-101 picks.")
+    @app.exception_handler(RequestValidationError)
+    async def invalid(request: Request, e: RequestValidationError) -> JSONResponse:
+        """FastAPI's 422, without echoing the input back (a NaN in it could not even be written as JSON)."""
+        errs = [{k: err[k] for k in ("type", "loc", "msg") if k in err} for err in e.errors()]
+        summary = "; ".join(f"{'.'.join(str(x) for x in err.get('loc', ())[1:]) or 'body'}: {err.get('msg', '')}"
+                            for err in errs)
+        return JSONResponse(status_code=422, content={"error": summary, "detail": errs})
+
+    @app.exception_handler(Exception)
+    async def unhandled(request: Request, e: Exception) -> JSONResponse:
+        """Anything not caught on purpose still answers JSON that says what failed (and is logged)."""
+        return JSONResponse(status_code=500, content={"error": f"{type(e).__name__}: {e}"})
+
     app.add_middleware(CORSMiddleware, allow_origin_regex=LOCAL_ORIGIN, allow_methods=["*"], allow_headers=["*"])
     app.add_middleware(LocalOnly, allowed_hosts=allowed_hosts or allowed_hosts_from_env())  # outermost
 
@@ -384,8 +402,10 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                                         segmenter=body.segmenter)
         except SetupRequired as e:
             return _setup_response(e)
-        except ValueError as e:
+        except (ValueError, IndexError) as e:
             return JSONResponse(status_code=400, content={"error": str(e)})
+        except Exception as e:  # noqa: BLE001 - the segmenter failed (e.g. SAM 3.1 unreachable); say how
+            return JSONResponse(status_code=502, content={"error": f"{type(e).__name__}: {e}"})
         return seg.to_dict()
 
     @app.post("/api/plan")
@@ -481,9 +501,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         if body.family not in FAMILIES:
             return JSONResponse(status_code=422, content={"error": f"unknown family {body.family!r}; known: {FAMILIES}"})
         seed = body.seed if body.seed is not None else int(time.time()) % 100000
-        task = make_task(body.family, seed)
         try:
-            out = setup_task(task, s)
+            out = setup_task(task := make_task(body.family, seed), s)
         except ValueError as e:
             return JSONResponse(status_code=422, content={"error": str(e)})
         return {**out, "scene": body.family, "instruction": task.instruction}
@@ -708,6 +727,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                                  photo_source=opts.get("source") or "upload")
         except ValueError as e:
             return JSONResponse(status_code=422, content={"error": str(e)})
+        except IndexError as e:
+            return JSONResponse(status_code=400, content={"error": f"IndexError: {e}"})
         save_twin(twin, rgb)
         with twins_lock:
             twins.pop(twin.id, None)

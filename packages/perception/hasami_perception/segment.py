@@ -118,12 +118,13 @@ class MetaSam3:
 
     name = "sam-3.1 (Meta Model API)"
 
-    def __init__(self, api_key: str | None = None, model: str = "sam-3.1", base_url: str = META_BASE_URL):
+    def __init__(self, api_key: str | None = None, model: str = "sam-3.1", base_url: str | None = None):
         self.api_key = api_key or os.environ.get("MODEL_API_KEY")
         if not self.api_key:
             raise SetupRequired("Setup required: MODEL_API_KEY (Meta Model API key from https://dev.meta.ai/api-keys/)")
         self.model = model
-        self.base_url = base_url.rstrip("/")
+        # read when constructed (as the Muse client does), not when this module was imported
+        self.base_url = (base_url or os.environ.get("MODEL_API_BASE_URL") or META_BASE_URL).rstrip("/")
 
     def request_body(self, rgb: np.ndarray, text: str) -> dict:
         buf = io.BytesIO()
