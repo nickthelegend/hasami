@@ -368,9 +368,35 @@ def create_app(session: Session | None = None) -> FastAPI:
             return JSONResponse(status_code=422, content={"error": str(e)})
         return {**out, "scene": body.family, "instruction": task.instruction}
 
+    def _video_path(rec: dict):
+        """The run's recorded video file in the runs folder, if it is there (videos are not kept in git)."""
+        v = rec.get("video")
+        name = v.get("file") if isinstance(v, dict) else v if isinstance(v, str) else None
+        if not isinstance(name, str) or not re.fullmatch(r"[0-9A-Za-z_.-]{1,96}\.mp4", name):
+            return None
+        path = runs_dir() / name
+        return path if path.is_file() else None
+
     @app.get("/api/runs")
     def get_runs() -> dict:
-        return {"runs": list_runs(), "dir": str(runs_dir())}
+        runs = list_runs()
+        for r in runs:
+            if r.get("run_id") and _video_path(r) is not None:
+                r["video_url"] = f"/api/runs/{r['run_id']}/video"
+        return {"runs": runs, "dir": str(runs_dir())}
+
+    @app.get("/api/runs/{run_id}/video")
+    def get_run_video(run_id: str):
+        """The run's recorded MP4 (scripts/run_demo.py records one), when the file is in the runs folder."""
+        from fastapi.responses import FileResponse
+
+        path = runs_dir() / f"{run_id}.json"
+        if not re.fullmatch(r"[0-9A-Za-z_-]{1,64}", run_id) or not path.is_file():
+            return JSONResponse(status_code=404, content={"error": f"no run {run_id!r}"})
+        video = _video_path(json.loads(path.read_text()))
+        if video is None:
+            return JSONResponse(status_code=404, content={"error": f"run {run_id} has no video file here"})
+        return FileResponse(video, media_type="video/mp4")
 
     @app.get("/api/runs/{run_id}")
     def get_run(run_id: str):

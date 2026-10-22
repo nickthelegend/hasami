@@ -148,6 +148,27 @@ def test_run_streams_events_to_done(client, session, runs_tmp):
     assert client.get(f"/api/runs/{run_id}/steps/0.png", params={"attempt": 3}).status_code == 404
 
 
+def test_recorded_video_is_served_when_the_file_is_there(client, runs_tmp):
+    # a record the way scripts/run_demo.py writes it, and one whose video file is not in this folder (videos stay out of git)
+    runs_tmp.mkdir(parents=True, exist_ok=True)
+    mp4 = b"\x00\x00\x00\x18ftypmp42" + bytes(range(256)) * 8
+    (runs_tmp / "20261021T000000000Z-demo.mp4").write_bytes(mp4)
+    for rid, video in (("20261021T000000000Z", {"file": "20261021T000000000Z-demo.mp4", "seconds": 1.0}),
+                       ("20261021T000000001Z", {"file": "20261021T000000001Z-demo.mp4", "seconds": 2.0}),
+                       ("20261021T000000002Z", {"file": "../../etc/passwd.mp4"})):
+        (runs_tmp / f"{rid}.json").write_text(json.dumps({"run_id": rid, "steps": [], "video": video}))
+    runs = {r["run_id"]: r for r in client.get("/api/runs").json()["runs"]}
+    assert runs["20261021T000000000Z"]["video_url"] == "/api/runs/20261021T000000000Z/video"
+    assert "video_url" not in runs["20261021T000000001Z"] and "video_url" not in runs["20261021T000000002Z"]
+    r = client.get("/api/runs/20261021T000000000Z/video")
+    assert r.status_code == 200 and r.headers["content-type"] == "video/mp4" and r.content == mp4
+    part = client.get("/api/runs/20261021T000000000Z/video", headers={"Range": "bytes=0-15"})
+    assert part.status_code == 206 and part.content == mp4[:16]
+    assert client.get("/api/runs/20261021T000000001Z/video").status_code == 404
+    assert client.get("/api/runs/20261021T000000002Z/video").status_code == 404
+    assert client.get("/api/runs/nope/video").status_code == 404
+
+
 def test_reset_to_a_task_scene(client):
     r = client.post("/api/reset", json={"seed": 3, "family": "sort-by-colour"}).json()
     assert r["scene"] == "sort-by-colour" and "instruction" in r and 4 <= len(r["objects"]) - 2 <= 8
