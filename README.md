@@ -1,8 +1,10 @@
 # Hasami (鋏)
 
-**Muse plans, SAM sees, an SO-101 picks.** Say what you want moved. Muse (Meta Model API) looks at the
-camera frame and plans the steps, SAM segments each object it names, depth turns each mask into a 3D
-grasp, and an SO-101 arm picks and places it, checking every step and retrying when it fails.
+**Muse plans (wired; it runs once a Meta Model API key is set), SAM 2.1 sees, a simulated SO-101 picks.**
+Every number below is SAM 2.1 with a clicked or scripted planner, not Muse. Say what you want moved: Muse
+(Meta Model API) is to read the camera frame and plan the steps (Setup required: `MODEL_API_KEY`, never
+called yet), SAM segments each object, depth turns each mask into a 3D grasp, and a MuJoCo simulation of the
+SO-101 arm picks and places it, checking every step and retrying when it fails. No real SO-101 has run.
 
 **Sim-first, scored against ground truth.** The arm is the official SO-101 model in MuJoCo. The pipeline
 sees only RGB + depth and the gripper's own position; the simulator's ground truth is used only to score

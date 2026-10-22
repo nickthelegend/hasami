@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hasami"
 version = "0.1.0"
-description = "Muse plans, SAM sees, an SO-101 picks: language-driven pick-and-place on a simulated (or real) SO-101 arm."
+description = "Language-driven pick-and-place on a simulated SO-101 arm: SAM 2.1 sees, the arm picks; the Muse planner is wired and runs once a Meta Model API key is set."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

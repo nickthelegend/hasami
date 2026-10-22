@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hasami — SAM cuts it out of the frame, an SO-101 picks it up</title>
-    <meta name="description" content="Muse plans from the overhead camera, SAM cuts each object out of the frame, depth turns the cut into a 3D grasp, and a simulated SO-101 arm closes its jaws on it. MuJoCo simulation of the official SO-101 model." />
+    <title>Hasami — SAM cuts it out of the frame, a simulated SO-101 picks it up</title>
+    <meta name="description" content="Muse plans from the overhead camera once a Meta Model API key is set (Setup required, never called yet); today SAM 2.1 cuts each clicked object out of the frame, depth turns the cut into a 3D grasp, and a simulated SO-101 arm closes its jaws on it. MuJoCo simulation of the official SO-101 model." />
     <meta name="theme-color" content="#1b1622" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b1622'/%3E%3Cg fill='none' stroke='%2338f2c4' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='9' cy='9' r='4'/%3E%3Ccircle cx='9' cy='23' r='4'/%3E%3Cpath d='M12.4 11.2 27 21M12.4 20.8 27 11'/%3E%3C/g%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -326,7 +326,7 @@
               <h1 id="h1">SAM <span class="cut">cuts it out</span> of the frame. The arm picks it up.</h1>
             </div>
             <div>
-              <p class="lede">Say what you want moved. <b>Muse</b> plans from the overhead camera, <b>SAM</b> segments each object, depth turns the mask into a 3D grasp, and a simulated <b>SO-101</b> arm closes its jaws on it.</p>
+              <p class="lede">Say what you want moved. <b>Muse</b> plans from the overhead camera once a Meta Model API key is set (wired, Setup required until then), <b>SAM</b> segments each object, depth turns the mask into a 3D grasp, and a simulated <b>SO-101</b> arm closes its jaws on it. Every number here is SAM 2.1 with a clicked or scripted plan, not Muse.</p>
               <div class="acts">
                 <a class="btn btn-mint" href="#run">Run it locally</a>
                 <a class="tlink" href="#sheet">Read the results sheet</a>
@@ -405,7 +405,7 @@
           <div class="entries">
             <article class="entry">
               <span class="no">01 · say it</span>
-              <h3>Muse plans</h3>
+              <h3>Muse plans (once keyed)</h3>
               <p>muse-spark-1.3 reads the instruction and the overhead frame and returns a plan the server validates.</p>
               <pre>[{ <b>"pick"</b>: "red cube",
    <b>"point"</b>: [u, v],

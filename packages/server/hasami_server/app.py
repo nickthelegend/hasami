@@ -352,7 +352,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
             runner.thread.join(timeout=120)
 
     app = FastAPI(title="Hasami", version="0.1.0", lifespan=lifespan,
-                  description="Muse plans, SAM sees, an SO-101 picks.")
+                  description="SAM 2.1 sees, a simulated SO-101 picks; Muse plans once MODEL_API_KEY is set "
+                              "(Setup required until then).")
     @app.exception_handler(RequestValidationError)
     async def invalid(request: Request, e: RequestValidationError) -> JSONResponse:
         """FastAPI's 422, without echoing the input back (a NaN in it could not even be written as JSON)."""

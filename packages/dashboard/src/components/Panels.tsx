@@ -73,7 +73,7 @@ export function InstructionCard(props: {
         <h2 id="ins-h">
           <span className="eno">01</span>Instruction
         </h2>
-        <span className="muted small">Muse plans from the frame</span>
+        <span className="muted small">{props.status?.planner.ready ? 'Muse plans from the frame' : 'Muse plans from the frame once MODEL_API_KEY is set'}</span>
       </div>
       <form
         className="ins"
