@@ -335,8 +335,9 @@ export default function App() {
         )}
 
         <div className="grid">
-          <div className="col-main" id="cam" tabIndex={-1}>
-            <div className="title-row">
+          <div className="col-main">
+            {/* the skip link's target: under 1100 px .col-main is display: contents (no box to scroll to or focus) */}
+            <div className="title-row" id="cam" tabIndex={-1}>
               <h1>
                 Viewfinder <span>/ {camera}</span>
               </h1>
