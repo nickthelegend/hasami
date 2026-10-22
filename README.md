@@ -311,7 +311,9 @@ Local only: a request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]` ge
 `HASAMI_ALLOWED_HOSTS=name1,name2` adds names). Browsers may call the API only from an exact list of origins:
 the server's own (`http://127.0.0.1:8420`, `localhost`, `[::1]`; the port follows `HASAMI_PORT`) and the
 dashboard's Vite dev server on 5190, plus `HASAMI_ALLOWED_ORIGINS=origin1,origin2`. A page on any other origin,
-another localhost port included, gets no CORS header (it cannot read the API) and its writes get 403. Every POST
+another localhost port included, gets no CORS header, and any request naming it as `Origin` (reads too) gets 403.
+The dev server itself (Vite 5.4.21) listens on 127.0.0.1, sends no CORS headers and refuses foreign `Host` names,
+so it does not relax this for the `/api` it proxies (`packages/dashboard/devserver.test.mjs` checks it). Every POST
 also needs the `X-Hasami: 1` header (the dashboard sends it) or a `Content-Type` of `application/json`,
 `image/png` or `image/jpeg`, e.g. `curl -H 'Content-Type: image/png' --data-binary @desk.png http://127.0.0.1:8420/api/twin`
 (curl sends no Origin, so it is not a browser page).

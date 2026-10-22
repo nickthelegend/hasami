@@ -49,7 +49,8 @@ def _host_name(host: str) -> str:
 
 class LocalOnly:
     """ASGI guard in front of everything. Any request whose Host is not this machine's (DNS rebinding: a page on
-    another name that resolves to 127.0.0.1) gets 400. A write (any method but GET / HEAD / OPTIONS) gets 403 when
+    another name that resolves to 127.0.0.1) gets 400. A GET / HEAD naming a foreign Origin gets 403 (so a proxy
+    or dev server that relaxes CORS cannot hand a foreign page the API's answers). A write (any method but GET / HEAD / OPTIONS) gets 403 when
     its Origin is not one of `allowed_origins` (the dashboard's own origin and its dev server: another app on another
     localhost port is foreign too), or when it carries neither the X-Hasami header nor a JSON / PNG / JPEG
     Content-Type: a foreign page can send neither without a CORS preflight, which only those origins pass."""
@@ -68,11 +69,16 @@ class LocalOnly:
             msg = (f"unknown Host header {host!r}: Hasami answers only on {', '.join(sorted(self.allowed))} "
                    "(HASAMI_ALLOWED_HOSTS adds names)")
             return await JSONResponse(status_code=400, content={"error": msg})(scope, receive, send)
+        origin = headers.get("origin")
+        foreign = origin is not None and origin.strip().lower().rstrip("/") not in self.origins
+        if foreign and scope["method"] in ("GET", "HEAD"):
+            # A browser names its Origin on a cross-origin read only; the dashboard's own reads are same-origin.
+            msg = ("cross-site read refused: a page on another origin cannot read this API "
+                   "(HASAMI_ALLOWED_ORIGINS adds origins)")
+            return await JSONResponse(status_code=403, content={"error": msg})(scope, receive, send)
         if scope["method"] not in SAFE_METHODS:
-            origin = headers.get("origin")
             ctype = headers.get("content-type", "").split(";")[0].strip().lower()
-            if (origin is not None and origin.strip().lower().rstrip("/") not in self.origins) or \
-                    (headers.get("x-hasami") != "1" and ctype not in WRITE_TYPES):
+            if foreign or (headers.get("x-hasami") != "1" and ctype not in WRITE_TYPES):
                 msg = ("cross-site request refused: writes come from this machine's pages with the X-Hasami: 1 "
                        "header, or with Content-Type application/json (image/png or image/jpeg for a photo)")
                 return await JSONResponse(status_code=403, content={"error": msg})(scope, receive, send)

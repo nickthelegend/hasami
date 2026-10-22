@@ -286,6 +286,20 @@ def test_cors_allows_only_the_dashboard_and_its_dev_server(client):
     assert client.get("/api/status").json()["scene"]["seed"] == seed
 
 
+def test_reads_from_a_foreign_origin_are_refused(client):
+    """A browser sends Origin on a cross-origin read, never on the dashboard's own same-origin GETs. A read that
+    names a foreign origin is refused outright (403, no body), so a proxy or dev server that relaxes CORS cannot
+    hand it the desk photo, the real-camera frame or the run register. The dashboard's origins still read."""
+    for origin in ("https://evil.example", "http://localhost:8888", "null"):
+        for path in ("/api/status", "/api/runs", "/api/realcam/frame.png", "/api/frame.png"):
+            r = client.get(path, headers={"Origin": origin})
+            assert r.status_code == 403 and "cross-site" in r.json()["error"], (origin, path, r.status_code)
+            assert "access-control-allow-origin" not in r.headers
+    for origin in ("http://localhost:5190", "http://127.0.0.1:8420"):
+        assert client.get("/api/status", headers={"Origin": origin}).status_code == 200, origin
+    assert client.get("/api/status").status_code == 200  # same-origin and curl send no Origin
+
+
 def test_allowed_origins_follow_the_port_and_the_env(monkeypatch):
     from hasami_server.app import allowed_origins_from_env
 
