@@ -18,10 +18,15 @@ export HF_HOME=/path/to/huggingface-cache   # where SAM 2.1 weights are cached (
 .venv/bin/python -m pytest -q
 ```
 
-## Results (2026-10-22 ~15:15 UTC; Mac, CPU, no MODEL_API_KEY, no SO-101, no webcam)
+## Results (2026-10-23; Mac, CPU, no MODEL_API_KEY, no SO-101, no webcam)
 
-`213 passed, 1 skipped in 157.02s` (2026-10-22, after the ultra round's server fixes: +9 server tests; 204
-before them, 191 before the sheet-orientation and twin-restore fixes, 180 before the target check)
+`226 passed, 1 skipped in 187.99s` (2026-10-23, after the second ultra round: +7 server, +2 robot, +4 docs
+tests; 213 before it, 204 before the first ultra round, 180 before the target check)
+
+**Fresh clone (2026-10-22):** `git clone` of this repository into an empty folder, `uv venv --python 3.12`,
+`uv pip install -e '.[dev]'` with an empty uv cache, then `python -m pytest -q --collect-only`: every test
+file collected (219 tests at that commit), nothing missing. With `uv pip install -e .` alone pytest is not
+installed, which is why every install line now says `'.[dev]'` (`tests/test_docs.py` checks them).
 
 | File | What it checks | Passed | Skipped |
 |---|---|---:|---:|
@@ -35,12 +40,13 @@ before them, 191 before the sheet-orientation and twin-restore fixes, 180 before
 | `tests/test_tasks.py` | eight task families: goal predicate true on a hand-placed solution, false when a move is undone or a kept object knocked (3 seeds each); reproducible tasks; sort-by-colour and sort-by-shape moves; tower order; line-up slots free and sizes ordered; `in_row` (reversed, 17 mm off line, touching, tipped); pick-from-bin starts in the bin; single-pose predicates; one seed of line-up, pick-from-bin and sort-by-shape run in MuJoCo by the oracle meets its goal | 42 | 0 |
 | `tests/test_twin.py` | digital twin, as round trips through MuJoCo renders: sheet corners within 2 px and the photo's camera within 12 mm (2 random desks); no sheet -> readable error; box and cylinder fits on truth masks within 2 mm height / 1.5 mm sides, typed height kept; SAM 2.1 automatic masks on 2 random desks find every object, nothing extra, centre < 5 mm, yaw < 3 deg, height < 10 mm, sides < 8 mm, shape and colour right; a 2 mm card dropped as flat; the twin renders from the photo's viewpoint and clear-desk on it meets its goal; objects under the base / tray / out of reach say why | 9 | 0 |
 | `tests/test_planner.py` | plan schema, `PlanError.raw`, `submit_plan` tool schema, image only in the user message, exact Setup required text; live Muse call | 12 | 1 (live, needs `MODEL_API_KEY`) |
-| `tests/test_robot.py` | sim -> LeRobot conversion; Setup required without / with a missing port; step limit; the sim arm streams joint targets to the hook; RealMirror units against a recording stand-in; a session stays sim-only when the port is missing | 13 | 0 |
+| `tests/test_robot.py` | sim -> LeRobot conversion; Setup required without / with a missing port; step limit; the sim arm streams joint targets to the hook; RealMirror units against a recording stand-in; a session stays sim-only when the port is missing. Second ultra round: **the very first mirrored command is capped at 6°** (it is measured from the arm's present position; 1.5 rad on shoulder_pan was sent whole, 85.9°), the gripper is capped too, and a follower whose position cannot be read is not mirrored | 15 | 0 |
 | `tests/test_realcam.py` | homography and camera pose from four A4 corners on a synthetic tilted camera; a 50 x 30 x 40 mm box located within 1 mm / 1.5 deg with parallax correction (> 10 mm off without); capture Setup required; **the sheet's orientation read from four clicked corners for 6 camera poses x portrait/landscape (fields of view 60-80 deg, 70 assumed): the detected one measures two marks 150 mm apart exactly, the other does not** | 17 | 0 |
-| `tests/test_server.py` | status; frames; segment; 503 setup_required; 422s; clicked run over SSE, 409 while busy, recorded; per-step images and composites with IoU matching the record; reset to a task family; CORS; real-camera endpoints, **calibrate `sheet: auto` detects a landscape sheet and an explicit choice is labelled chosen**; **twin: a rendered photo through POST /api/twin -> side-by-side PNG -> adjust a height -> run clear-desk over SSE, `goal` before `done`, recorded with the twin's label; 422 without a sheet or with bad corners, 400 for a non-image, 404 for an unknown twin, GET /api/twin returns the latest twin with its images**; a recorded run's MP4 served (Range too) only when the file is in the runs folder. Ultra round (each failed on the code before its fix): **`sheet: auto` follows the click order** (portrait / landscape x sheet yaw 0/30/50 deg x first click on each corner x both windings: edge 1 -> 2 measures its true length within 2 mm; 24 of 48 were wrong); **local only**: foreign `Host` -> 400, a text/plain, form or foreign-origin upload -> 403 with the frame unchanged, body-less writes need `X-Hasami`; **photo uploads**: 400 MP and 81 MP header-only PNGs -> 400 "photo too large", over 15 MB -> 413; **a real uvicorn keeps answering `/api/status` in under 200 ms during a twin build** (6 ms max; 11 s before); **twins capped** (`HASAMI_MAX_TWINS`, least recently used dropped, folder removed); **malformed input**: off-frame / NaN clicks, seeds outside 0..2^32-1, corners that are not four pairs -> 4xx; SAM 3.1 against a refused connection on 127.0.0.1 -> 502 | 28 | 0 |
+| `tests/test_server.py` | status; frames; segment; 503 setup_required; 422s; clicked run over SSE, 409 while busy, recorded; per-step images and composites with IoU matching the record; reset to a task family; CORS; real-camera endpoints, **calibrate `sheet: auto` detects a landscape sheet and an explicit choice is labelled chosen**; **twin: a rendered photo through POST /api/twin -> side-by-side PNG -> adjust a height -> run clear-desk over SSE, `goal` before `done`, recorded with the twin's label; 422 without a sheet or with bad corners, 400 for a non-image, 404 for an unknown twin, GET /api/twin returns the latest twin with its images**; a recorded run's MP4 served (Range too) only when the file is in the runs folder. Ultra round (each failed on the code before its fix): **`sheet: auto` follows the click order** (portrait / landscape x sheet yaw 0/30/50 deg x first click on each corner x both windings: edge 1 -> 2 measures its true length within 2 mm; 24 of 48 were wrong); **local only**: foreign `Host` -> 400, a text/plain, form or foreign-origin upload -> 403 with the frame unchanged, body-less writes need `X-Hasami`; **photo uploads**: 400 MP and 81 MP header-only PNGs -> 400 "photo too large", over 15 MB -> 413; **a real uvicorn keeps answering `/api/status` in under 200 ms during a twin build** (6 ms max; 11 s before); **twins capped** (`HASAMI_MAX_TWINS`, least recently used dropped, folder removed); **malformed input**: off-frame / NaN clicks, seeds outside 0..2^32-1, corners that are not four pairs -> 4xx; SAM 3.1 against a refused connection on 127.0.0.1 -> 502. Second ultra round (each failed on the code before its fix): **CORS and the write guard trust an exact origin list** (8420 and the 5190 dev server; `http://localhost:8888` got `access-control-allow-origin` and its writes passed, now no header and 403), the list follows `HASAMI_PORT` and `HASAMI_ALLOWED_ORIGINS`; **a stale `Last-Event-ID`** (99999, another process's id, garbage) still gets the current run from `plan` (it got nothing); **twin photos**: folders an earlier process left in `HASAMI_TWINS_DIR` are deleted at startup, and without it twins go to a temporary folder removed at shutdown, never to `deployments/twins`; **run records**: a truncated record is a 503 "damaged or still being written" (was 500) and is listed as damaged (was hidden), and a failed rename leaves the old record untouched; **`/api/realcam/segment` during a run** -> 409 at once (it waited 9 s for the run); **a run posted while a reset replaces the scene** -> 409 (it started on the new scene with the old scene's clicks) | 35 | 0 |
+| `tests/test_docs.py` | a fresh clone gets pytest: every install line in the README, TESTING and the landing installs `'.[dev]'`; `scripts/setup.sh` exists, is executable, passes `bash -n` and answers `--help`; CI runs pytest files that exist and the dashboard build (the first two failed before the fix) | 4 | 0 |
 | `tests/test_plausible.py` | the target check before any move: a synthetic **594 mm-wide** leak (wider than the jaws, longer than any object, 6 mm tall, off the frame edge) is rejected; a normal cube passes; a lying cylinder and a leaning cube pass, an out-of-reach centre and a noise speck fail, a target inside a bin counts as workspace; a bare-table mask on a real noisy frame locates hundreds of mm wide and is rejected, a cube's mask passes; **retry path** with SAM 2.1 fault-injected: a leaked first mask is re-prompted with a box and the step places the cube; every prompt leaking falls back to the red blob; nothing plausible near a bare-table click skips the step as `implausible` with no pick-and-place phase and no object moved; **the sweep's own case, no injection:** tower-of-3 seed 0 under the noisy camera no longer sends the arm to the 594 mm target (step 2 is `implausible`); a clean run passes the check first time. 6 of these 10 fail on b1d6bfa's code (the other 4 test the new module directly) | 10 | 0 |
 | `tests/test_mcp.py` | `python -m hasami_mcp` over stdio: tools, status, look, find, Setup required by label, call log | 1 | 0 |
-| **Total** | | **213** | **1** |
+| **Total** | | **226** | **1** |
 
 ## Dashboard (not part of pytest)
 
@@ -48,9 +54,19 @@ before them, 191 before the sheet-orientation and twin-restore fixes, 180 before
 cd packages/dashboard && pnpm test     # vite bundles src/runState.test.ts, node --test runs it
 ```
 
-`2 passed` (2026-10-21, Node 26): the run reducer ignores the previous run's events that
+`3 passed` (2026-10-23, Node 26): the run reducer ignores the previous run's events that
 `GET /api/events` replays before `POST /api/run` names the new run, and keeps the new run's own early
-events in order. `pnpm build` (tsc + vite) passes.
+events in order; **a run the server no longer has** (its status names another run or none, or the slot is
+free) ends from its record or as "The server restarted; this run was lost." instead of staying on running
+(failed before the fix: no such check existed). `pnpm build` (tsc + vite) passes.
+
+## CI
+
+`.github/workflows/ci.yml` runs on push and pull request: the pytest files that need no SAM 2.1 weights
+(`test_docs`, `test_colour`, `test_scene`, `test_sim`, `test_tasks`, `test_realcam`, `test_robot`,
+`test_planner`) on headless MuJoCo (OSMesa) with CPU torch, and the dashboard's type check, build and unit
+test. **It has not run yet:** the repository has no GitHub remote until Nick creates it. The full suite and
+the browser E2E run locally.
 
 ## Browser E2E (Playwright in Google Chrome)
 
@@ -58,8 +74,9 @@ events in order. `pnpm build` (tsc + vite) passes.
 cd e2e && pnpm install && pnpm test:e2e      # builds the dashboard, then runs Playwright
 ```
 
-`38 passed` (2026-10-22, Playwright 1.63.0, installed Google Chrome; 19 tests x two viewports, desktop
-1280x800 and mobile 375x812; 4.1 minutes; 34 before this round). `e2e/serve.sh` starts the real server on 127.0.0.1:8420
+`41 passed, 1 skipped` (2026-10-23, Playwright 1.63.0, installed Google Chrome; 20 tests x two viewports,
+desktop 1280x800 and mobile 375x812, plus the server-restart test, which runs on desktop only and is the
+skip on mobile; 4.5 minutes; 38 before this round). `e2e/serve.sh` starts the real server on 127.0.0.1:8420
 (MuJoCo + SAM 2.1; run records go to a throwaway `e2e/.runs` seeded with the committed evidence runs, not
 `deployments/runs`, and twins to a throwaway `e2e/.twins`) and the landing on :8421, with no
 `MODEL_API_KEY`, `HASAMI_REALCAM` or `HASAMI_SO101_PORT`, so those stay Setup required. Nothing is routed
@@ -67,9 +84,10 @@ or stubbed. A test fails on any console error, page error or failed same-origin 
 
 | File | What a user does | Tests per viewport |
 |---|---|---:|
-| `e2e/tests/dashboard.spec.ts` | status pills and empty states, camera toggle, skip link; Muse Setup required with no plan drawn; clicked steps (add, remove, clear, a bare-table click, keyboard); click a cube, click the tray, Run: run log, results, agent trace (perception / truth, frame after), register, Replay a new and a committed run, Watch a video, reset; the run log follows a run after a reload; task scenes | 6 |
+| `e2e/tests/dashboard.spec.ts` | status pills and empty states, camera toggle, skip link; Muse Setup required with no plan drawn; clicked steps (add, remove, clear, a bare-table click, keyboard); click a cube, click the tray, Run: run log, results, agent trace (perception / truth, frame after), register, Replay a new and a committed run, Watch a video, reset; the run log follows a run after a reload; task scenes; **the register tabs as a WAI-ARIA tab widget: roving tabindex, ArrowRight / ArrowLeft wrap, Home / End, a tabpanel labelled by its tab** (failed before the fix: no tabindex, no tabpanel) | 7 |
 | `e2e/tests/photo.spec.ts` | Real camera: webcam Setup required, a MuJoCo render with an A4 sheet uploaded, four corners clicked, an object located. Twin: a non-image refused, a render becomes a twin, refit with a typed height, shown in the arm's camera, a task run with its goal check, the picker after a reload, the synthetic-photo button. The sheet's orientation detected from the clicked corners (a landscape sheet), then chosen portrait and landscape, the object measuring differently. **The same sheet clicked from its top-right corner: portrait (edge 1 -> 2 is 210 mm), and the object's position matches the top-left frame's, rotated, within 2 mm.** **Keyboard only: Tab to the photo, arrows + Enter on the four corners, Space on the object.** A twin built earlier is shown again after a load, a reload and a tab switch | 6 |
-| `e2e/tests/landing.spec.ts` | hero and every image; nav 01-06, hero and footer links, skip link, the quickstart's three commands (venv + install, dashboard build, server); every anchor; the scissors cut once, and stay still under reduced motion; the results sheet matches `deployments/bench/*.json` row for row (32 rows); replay strip; apparatus | 7 |
+| `e2e/tests/restart.spec.ts` | **A server restart mid-run** (second ultra round): the test starts its own server on 127.0.0.1:8432 (`HASAMI_E2E_RESTART_PORT`), starts a 3-step clicked run, kills that server by PID with SIGKILL, starts a new one; the run log ends with "The server restarted; this run was lost.", the live-frame banner goes, and a new step can be run. Before the fix the page stayed on "running" (failed on the old dashboard) | 1 (desktop) |
+| `e2e/tests/landing.spec.ts` | hero and every image; nav 01-06, hero and footer links, skip link, the quickstart's three commands (venv + `'.[dev]'` install, dashboard build, server); every anchor; the scissors cut once, and stay still under reduced motion; the results sheet matches `deployments/bench/*.json` row for row (32 rows); replay strip; apparatus | 7 |
 
 The photos are MuJoCo renders (`GET /api/twin/sample.png`); the webcam is never opened.
 

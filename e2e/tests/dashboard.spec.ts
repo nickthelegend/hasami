@@ -336,6 +336,6 @@ test('the register tabs are an ARIA tab widget: arrow keys, Home / End, a labell
   await page.keyboard.press('End');
   await expect(cam).toBeFocused();
   await expect(cam).toHaveAttribute('aria-selected', 'true');
-  await shot(page, info, 'dash-14-tabs-keyboard');
+  await shot(page, info, 'dash-15-tabs-keyboard');
   await page.keyboard.press('Home'); // leave the register on its default tab
 });

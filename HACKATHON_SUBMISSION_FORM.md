@@ -100,8 +100,9 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
   server stops. Run records are written atomically; a damaged one is a readable 503.
 - After a server restart mid-run, the dashboard ends the run (from its record if one was written, else
   "the server restarted; this run was lost") instead of showing "running" forever.
-- 214 automated tests: 213 pass (real physics, real SAM weights, real HTTP and MCP, MuJoCo-rendered photos
-  for the twin), 1 skipped (live Muse call); browser E2E in Google Chrome: 38 passed (19 tests x desktop and mobile).
+- 227 automated tests: 226 pass (real physics, real SAM weights, real HTTP and MCP, MuJoCo-rendered photos
+  for the twin), 1 skipped (live Muse call); browser E2E in Google Chrome: 41 passed, 1 skipped (20 tests x
+  desktop and mobile, plus a server-restart test on desktop only).
 - MCP server so any agent can `look`, `find` and `pick_place`.
 
 **Honest status:**
