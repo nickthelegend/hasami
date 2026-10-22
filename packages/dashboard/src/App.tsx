@@ -8,6 +8,8 @@ import { RunTrace } from './components/RunTrace';
 import { LogoMark, StatusPills } from './components/TopBar';
 import { initialRun, runReducer } from './runState';
 
+const SCENES = ['classic', 'sort-by-colour', 'stack-two', 'clear-except-X', 'tower-of-3', 'sort-by-shape', 'line-up', 'pick-from-bin'];
+
 type Notice = { tone: 'busy' | 'setup' | 'error'; text: string } | null;
 
 function errText(e: unknown): string {
@@ -57,6 +59,16 @@ export default function App() {
       }
     }
   }, []);
+
+  // On load, the scene picker starts at what the simulator holds (a task family or a twin loaded earlier, or
+  // before a reload), not always "3 cubes". Later polls leave it alone: the user may be choosing the next scene.
+  const sceneSynced = useRef(false);
+  useEffect(() => {
+    const name = status?.scene.name;
+    if (sceneSynced.current || !name) return;
+    sceneSynced.current = true;
+    if (SCENES.includes(name) || name === 'twin') setScene(name);
+  }, [status]);
 
   useEffect(() => {
     void loadStatus();
