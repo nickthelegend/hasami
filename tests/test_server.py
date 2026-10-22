@@ -149,6 +149,33 @@ def test_run_streams_events_to_done(client, session, runs_tmp):
     assert client.get(f"/api/runs/{run_id}/steps/0.png", params={"attempt": 3}).status_code == 404
 
 
+def test_a_stale_last_event_id_still_gets_the_current_run(client, session):
+    """A browser reconnecting after a server restart sends the Last-Event-ID of the old process, e.g. 99999 while
+    this process has published a dozen events. That id means nothing here: the stream starts at the current run's
+    first event (plan) instead of waiting forever for event 100000. Ids carry the process's boot epoch."""
+    frame = session.observe()
+    pick = simulated_click(frame.rgb, "green cube")
+    drop = simulated_drop_clicks(frame.rgb, 1)[0]
+    r = client.post("/api/run", json={"steps": [{"pick_point": list(pick), "place_point": list(drop)}]})
+    assert r.status_code == 200, r.text
+    run_id = r.json()["run_id"]
+    for stale in ("99999", "0badc0de-99999", "garbage", f"{getattr(client.app.state.bus, 'boot', '')}-99999"):
+        with client.stream("GET", "/api/events", params={"once": "true"}, headers={"Last-Event-ID": stale}) as resp:
+            events = read_sse(resp)
+        kinds = [k for k, _ in events]
+        assert kinds and kinds[0] == "plan" and kinds[-1] == "done", (stale, kinds)
+        assert all(d["run_id"] == run_id for _, d in events), stale
+    # an id from this process resumes right after it
+    boot = client.app.state.bus.boot
+    with client.stream("GET", "/api/events", params={"once": "true"}) as resp:
+        ids = [line[4:] for line in resp.iter_lines() if line.startswith("id: ")]
+    assert ids and all(i.startswith(f"{boot}-") for i in ids)
+    with client.stream("GET", "/api/events", params={"once": "true"}, headers={"Last-Event-ID": ids[0]}) as resp:
+        rest = [line[4:] for line in resp.iter_lines() if line.startswith("id: ")]
+    assert rest == ids[1:]
+    client.app.state.runner.thread.join(timeout=60)
+
+
 def test_recorded_video_is_served_when_the_file_is_there(client, runs_tmp):
     # a record the way scripts/run_demo.py writes it, and one whose video file is not in this folder (videos stay out of git)
     runs_tmp.mkdir(parents=True, exist_ok=True)

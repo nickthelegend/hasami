@@ -138,9 +138,14 @@ class TwinRunReq(BaseModel):
 
 # ---- events --------------------------------------------------------------------------------
 class EventBus:
-    """Thread-safe event log. Runs publish from a worker thread; SSE readers poll by sequence number."""
+    """Thread-safe event log. Runs publish from a worker thread; SSE readers poll by sequence number.
+    `boot` is new for every server process: SSE ids are "<boot>-<seq>", so a browser reconnecting with the
+    Last-Event-ID of an earlier process (whose numbers mean nothing here) is not mistaken for a cursor."""
 
     def __init__(self, keep: int = 5000):
+        import secrets
+
+        self.boot = secrets.token_hex(4)
         self._lock = threading.Lock()
         self._events: list[dict] = []
         self._seq = 0
@@ -161,6 +166,20 @@ class EventBus:
     def since(self, seq: int) -> list[dict]:
         with self._lock:
             return [e for e in self._events if e["id"] > seq]
+
+    @property
+    def seq(self) -> int:
+        with self._lock:
+            return self._seq
+
+    def cursor_from(self, last_event_id: str | None) -> int:
+        """Where a stream resumes. A Last-Event-ID from this process ("<boot>-<seq>", seq not ahead of the log)
+        resumes after it; anything else (none, another process's id, a bare or future number, garbage) starts
+        at the latest run's first event, so a reconnect after a server restart still sees the current run."""
+        m = re.fullmatch(r"([0-9a-f]{8})-(\d{1,18})", (last_event_id or "").strip())
+        if m and m.group(1) == self.boot and int(m.group(2)) <= self.seq:
+            return int(m.group(2))
+        return self.run_start_seq - 1
 
 
 class Runner:
@@ -476,11 +495,9 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
 
     @app.get("/api/events")
     async def get_events(request: Request, once: bool = Query(False, description="end the stream after the run finishes"),
-                         since: int | None = Query(None, description="replay events after this id")):
+                         since: int | None = Query(None, description="replay events after this sequence number (an SSE id is <boot>-<seq>)")):
         bus: EventBus = request.app.state.bus
-        last_id = request.headers.get("last-event-id")
-        cursor = since if since is not None else (int(last_id) if last_id and last_id.isdigit()
-                                                  else bus.run_start_seq - 1)
+        cursor = since if since is not None else bus.cursor_from(request.headers.get("last-event-id"))
 
         async def stream():
             nonlocal cursor
@@ -490,7 +507,7 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                 for ev in bus.since(cursor):
                     cursor = ev["id"]
                     payload = json.dumps({"run_id": ev["run_id"], **ev["data"]}, default=str)
-                    yield f"id: {ev['id']}\nevent: {ev['event']}\ndata: {payload}\n\n"
+                    yield f"id: {bus.boot}-{ev['id']}\nevent: {ev['event']}\ndata: {payload}\n\n"
                     if once and ev["event"] in TERMINAL:
                         return
                 if once and not request.app.state.runner.busy and not bus.since(cursor):
