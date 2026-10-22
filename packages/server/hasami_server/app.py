@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from hasami_core import Session, SetupRequired, list_runs, new_run_id, runs_dir, setup_name, status
 from hasami_core.session import ROOT
@@ -257,6 +258,67 @@ def compose_view(frame_path, mask_paths) -> bytes:
 
 def _setup_response(e: SetupRequired) -> JSONResponse:
     return JSONResponse(status_code=503, content={"setup_required": setup_name(e), "message": str(e)})
+
+
+# ---- photo bodies (real camera, twin) ------------------------------------------------------------------
+MAX_PHOTO_BYTES = 15_000_000
+MAX_PHOTO_PIXELS = 40_000_000
+PHOTO_SIDE = 1280  # photos are scaled down to fit 1280 x 1280
+
+
+class PhotoError(ValueError):
+    """A photo body that cannot be used; the message is shown to the user."""
+
+
+async def read_photo_body(request: Request) -> bytes | JSONResponse:
+    """The request body, at most 15 MB, read as it streams in (413 above it, without buffering the rest)."""
+    too_big = JSONResponse(status_code=413, content={"error": "photo too big: send a PNG or JPEG under 15 MB"})
+    declared = request.headers.get("content-length")
+    if declared is not None and declared.isdigit() and int(declared) > MAX_PHOTO_BYTES:
+        return too_big
+    buf = bytearray()
+    async for chunk in request.stream():
+        buf += chunk
+        if len(buf) > MAX_PHOTO_BYTES:
+            return too_big
+    if not buf:
+        return JSONResponse(status_code=400, content={"error": "send a PNG or JPEG photo (under 15 MB) as the body"})
+    return bytes(buf)
+
+
+def decode_photo(data: bytes):
+    """PNG / JPEG bytes -> an RGB array that fits 1280 x 1280. The pixel count is checked from the header before
+    anything is decoded (decompression bombs: over 40 MP is refused); JPEGs decode at a reduced scale.
+    Blocking (PIL): call it from a worker thread."""
+    import io
+    import warnings
+
+    import numpy as np
+    from PIL import Image, UnidentifiedImageError
+
+    def too_large(w: int, h: int) -> PhotoError:
+        return PhotoError(f"photo too large: {w} x {h} px ({w * h / 1e6:.0f} MP); send one under "
+                          f"{MAX_PHOTO_PIXELS // 1_000_000} MP")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Image.DecompressionBombWarning)
+        try:
+            img = Image.open(io.BytesIO(data))
+            w, h = img.size
+            if w * h > MAX_PHOTO_PIXELS:
+                raise too_large(w, h)
+            img.draft("RGB", (PHOTO_SIDE, PHOTO_SIDE))  # JPEG: let the decoder scale down (no-op for PNG)
+            img = img.convert("RGB")
+        except (Image.DecompressionBombError, Image.DecompressionBombWarning) as e:
+            m = re.search(r"\((\d+) pixels\)", str(e))
+            raise PhotoError(f"photo too large ({int(m.group(1)) / 1e6:.0f} MP); send one under "
+                             f"{MAX_PHOTO_PIXELS // 1_000_000} MP" if m else "photo too large (MP)") from e
+        except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as e:
+            if isinstance(e, PhotoError):
+                raise
+            raise PhotoError("not an image") from e
+    img.thumbnail((PHOTO_SIDE, PHOTO_SIDE))
+    return np.asarray(img).copy()
 
 
 def allowed_hosts_from_env() -> list[str]:
@@ -511,21 +573,15 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
 
     @app.post("/api/realcam/upload")
     async def realcam_upload(request: Request):
-        import io
-
-        import numpy as np
-        from PIL import Image, UnidentifiedImageError
-
-        data = await request.body()
-        if not data or len(data) > 15_000_000:
-            return JSONResponse(status_code=400, content={"error": "send a PNG or JPEG photo (under 15 MB) as the body"})
+        data = await read_photo_body(request)
+        if isinstance(data, JSONResponse):
+            return data
         try:
-            img = Image.open(io.BytesIO(data)).convert("RGB")
-        except (UnidentifiedImageError, OSError):
-            return JSONResponse(status_code=400, content={"error": "not an image"})
-        img.thumbnail((1280, 1280))
-        real.update(rgb=np.asarray(img).copy(), h=None, k=None, source="upload")
-        return {"width": img.width, "height": img.height, "source": "upload", "note": REAL_NOTE}
+            rgb = await run_in_threadpool(decode_photo, data)  # PIL off the event loop
+        except PhotoError as e:
+            return JSONResponse(status_code=400, content={"error": str(e)})
+        real.update(rgb=rgb, h=None, k=None, source="upload")
+        return {"width": rgb.shape[1], "height": rgb.shape[0], "source": "upload", "note": REAL_NOTE}
 
     @app.get("/api/realcam/frame.png")
     def realcam_frame():
@@ -643,22 +699,10 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                         corners: str | None = Query(None, description="u,v,u,v,u,v,u,v: the sheet's corners (else found)"),
                         source: Literal["upload", "synthetic"] = Query("upload", description="synthetic: a /api/twin/sample.png render")):
         """A photo of a desk with an A4 sheet on it (PNG or JPEG body) -> a digital twin the simulated arm can
-        work in. The photo is never sent anywhere; SAM 2.1 runs locally."""
-        import io
-
-        import numpy as np
-        from PIL import Image, UnidentifiedImageError
-
+        work in. The photo is never sent anywhere; SAM 2.1 runs locally. The decode and the build (seconds of
+        SAM 2.1 and MuJoCo) run in a worker thread, so the event stream and every other request keep going."""
         if request.app.state.runner.busy:
             return busy_response(request)
-        data = await request.body()
-        if not data or len(data) > 15_000_000:
-            return JSONResponse(status_code=400, content={"error": "send a PNG or JPEG photo (under 15 MB) as the body"})
-        try:
-            img = Image.open(io.BytesIO(data)).convert("RGB")
-        except (UnidentifiedImageError, OSError):
-            return JSONResponse(status_code=400, content={"error": "not an image"})
-        img.thumbnail((1280, 1280))
         pts = None
         if corners:
             try:
@@ -670,7 +714,16 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                 return JSONResponse(status_code=422, content={"error": "corners: eight numbers u,v,u,v,u,v,u,v"})
         opts = {"hfov_deg": hfov_deg, "side": side, "offset_mm": offset_mm, "default_height_mm": default_height_mm,
                 "corners": pts, "source": source}
-        return _build_twin(request, np.asarray(img).copy(), opts)
+        data = await read_photo_body(request)
+        if isinstance(data, JSONResponse):
+            return data
+        try:
+            rgb = await run_in_threadpool(decode_photo, data)
+        except PhotoError as e:
+            return JSONResponse(status_code=400, content={"error": str(e)})
+        if request.app.state.runner.busy:  # a run may have started while the body was arriving
+            return busy_response(request)
+        return await run_in_threadpool(_build_twin, request, rgb, opts)
 
     @app.post("/api/twin/{twin_id}/adjust")
     def adjust_twin(twin_id: str, body: TwinAdjustReq, request: Request):

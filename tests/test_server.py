@@ -402,3 +402,86 @@ def test_twin_needs_a_sheet(client, tmp_path, monkeypatch):
     assert r.status_code == 422 and "sheet" in r.json()["error"]
     assert client.post("/api/twin", content=b"nope").status_code == 400
     assert client.post("/api/twin", content=buf.getvalue(), params={"corners": "1,2,3"}).status_code == 422
+
+
+# ---- photo uploads: size caps, decompression bombs, and never blocking the server ----
+def _png_header_only(w: int, h: int) -> bytes:
+    """A tiny PNG file that claims to be w x h pixels (a decompression bomb when w x h is huge)."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 0, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(b"\x00" * 10)) + chunk(b"IEND", b"")
+
+
+def test_photo_uploads_refuse_bombs_and_oversize_bodies(client):
+    """A photo that claims 400 MP (PIL's own bomb limit) or 81 MP (under PIL's warning, over Hasami's 40 MP) is
+    refused with a readable 400 before any pixel is decoded; a body over 15 MB gets 413. Both upload endpoints."""
+    for path in ("/api/realcam/upload", "/api/twin"):
+        for w, h in ((20000, 20000), (9000, 9000)):
+            r = client.post(path, content=_png_header_only(w, h), headers={"Content-Type": "image/png"})
+            assert r.status_code == 400, (path, w, h, r.status_code)
+            assert "too large" in r.json()["error"] and "MP" in r.json()["error"], r.json()
+        r = client.post(path, content=b"\x00" * 15_000_001, headers={"Content-Type": "image/png"})
+        assert r.status_code == 413 and "15 MB" in r.json()["error"], (path, r.status_code)
+        assert client.post(path, content=b"", headers={"Content-Type": "image/png"}).status_code == 400
+    assert client.get("/api/realcam/frame.png").status_code == 404  # nothing was stored
+
+
+def test_a_twin_build_does_not_block_the_server(session, runs_tmp, no_model_key, tmp_path, monkeypatch):
+    """A real uvicorn on 127.0.0.1: while POST /api/twin runs SAM 2.1 and MuJoCo (seconds), /api/status keeps
+    answering quickly, because the decode and the build run in a worker thread, not on the event loop."""
+    import socket
+    import threading
+    import time
+
+    import httpx2
+    import uvicorn
+
+    monkeypatch.setenv("HASAMI_TWINS_DIR", str(tmp_path / "twins"))
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(create_app(session), log_level="error"))
+    thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{port}"
+    try:
+        for _ in range(100):
+            if server.started:
+                break
+            time.sleep(0.1)
+        sample = httpx2.get(f"{base}/api/twin/sample.png?seed=3", timeout=60)
+        hfov = sample.headers["x-hasami-hfov"]
+        lat: list[float] = []
+        stop = threading.Event()
+
+        def poll():
+            while not stop.is_set():
+                t0 = time.perf_counter()
+                assert httpx2.get(f"{base}/api/status", timeout=60).status_code == 200
+                lat.append(time.perf_counter() - t0)
+                time.sleep(0.05)
+
+        poller = threading.Thread(target=poll)
+        poller.start()
+        time.sleep(0.5)
+        t0 = time.perf_counter()
+        r = httpx2.post(f"{base}/api/twin?source=synthetic&hfov_deg={hfov}", content=sample.content,
+                        headers={"Content-Type": "image/png"}, timeout=180)
+        build_s = time.perf_counter() - t0
+        time.sleep(0.3)
+        stop.set()
+        poller.join()
+        assert r.status_code == 200, r.text
+        during = len(lat)
+        assert build_s > 1.0 and during > 10, (build_s, during)
+        assert max(lat) < 0.2, f"/api/status took up to {max(lat) * 1000:.0f} ms during a {build_s:.1f} s twin build"
+    finally:
+        server.should_exit = True
+        thread.join(timeout=30)
+        session.store_images = session.snapshot_on_phase = False
+        session.reset(1)
