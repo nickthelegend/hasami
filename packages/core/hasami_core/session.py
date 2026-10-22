@@ -11,6 +11,7 @@ import base64
 import io
 import json
 import os
+import re
 import secrets
 import threading
 import time
@@ -1170,20 +1171,77 @@ def load_run_record(path: Path) -> dict:
     return r
 
 
-def list_runs(out_dir: Path | str | None = None) -> list[dict]:
-    """Summaries of recorded runs, newest first. A record that cannot be read is listed with damaged: true and
-    the reason in error, not hidden."""
+# The committed evidence runs (named in .gitignore): pruning never deletes them.
+EVIDENCE_RUNS = frozenset({"20261020T221547959Z", "20261020T221658918Z", "20261021T053112874Z", "20261021T053203432Z"})
+DEFAULT_MAX_RUNS = 200
+_RUN_FILE = re.compile(r"[0-9A-Za-z_-]{1,64}\.json")
+_summaries: dict[str, tuple[int, int, dict]] = {}  # record path -> (mtime_ns, size, summary)
+
+
+def max_runs() -> int:
+    """HASAMI_MAX_RUNS (default 200): how many run records a runs folder keeps besides the evidence runs; 0 keeps all."""
+    v = os.environ.get("HASAMI_MAX_RUNS", "").strip()
+    try:
+        return max(0, int(v)) if v else DEFAULT_MAX_RUNS
+    except ValueError:
+        return DEFAULT_MAX_RUNS
+
+
+def _run_files(d: Path) -> list[Path]:
+    """The run records in a folder, newest first (run ids are UTC timestamps)."""
+    return sorted((p for p in d.glob("*.json") if _RUN_FILE.fullmatch(p.name)), reverse=True)
+
+
+def prune_runs(out_dir: Path | str | None = None, keep: int | None = None) -> list[str]:
+    """Delete the oldest run records (and their step images and video) past `keep` (HASAMI_MAX_RUNS), never an
+    evidence run. Returns the run ids deleted."""
+    import shutil
+
     d = Path(out_dir) if out_dir else runs_dir()
-    out = []
-    for p in sorted(d.glob("*.json"), reverse=True):
-        try:
-            r = load_run_record(p)
-        except (OSError, ValueError) as e:
-            out.append({"run_id": p.stem, "damaged": True, "error": str(e), "file": p.name, "ok": None})
-            continue
-        out.append({"run_id": r.get("run_id", p.stem), "started_at": r.get("started_at"), "ok": r.get("ok"),
-                    "placed": r.get("placed"), "total": r.get("total"), "segmenter": r.get("segmenter_name"),
-                    "source": (r.get("plan") or {}).get("source"), "instruction": (r.get("plan") or {}).get("instruction"),
-                    "iou_mean": (r.get("iou") or {}).get("mean"), "error": r.get("error"),
-                    "video": r.get("video"), "file": p.name})
-    return out
+    keep = max_runs() if keep is None else keep
+    if keep <= 0 or not d.is_dir():
+        return []
+    gone = []
+    for p in [p for p in _run_files(d) if p.stem not in EVIDENCE_RUNS][keep:]:
+        folder = d / p.stem
+        if folder.is_dir() and not folder.is_symlink():
+            shutil.rmtree(folder, ignore_errors=True)
+        for f in (p, d / f"{p.stem}.mp4", d / f"{p.stem}.json.tmp"):
+            f.unlink(missing_ok=True)
+        _summaries.pop(str(p), None)
+        gone.append(p.stem)
+    return gone
+
+
+def _summary(p: Path) -> dict:
+    """A record's list entry, parsed once per version of the file (keyed by mtime and size)."""
+    try:
+        st = p.stat()
+        hit = _summaries.get(str(p))
+        if hit and hit[:2] == (st.st_mtime_ns, st.st_size):
+            return dict(hit[2])
+        r = load_run_record(p)
+    except (OSError, ValueError) as e:
+        return {"run_id": p.stem, "damaged": True, "error": str(e), "file": p.name, "ok": None}
+    out = {"run_id": r.get("run_id", p.stem), "started_at": r.get("started_at"), "ok": r.get("ok"),
+           "placed": r.get("placed"), "total": r.get("total"), "segmenter": r.get("segmenter_name"),
+           "source": (r.get("plan") or {}).get("source"), "instruction": (r.get("plan") or {}).get("instruction"),
+           "iou_mean": (r.get("iou") or {}).get("mean"), "error": r.get("error"),
+           "video": r.get("video"), "file": p.name}
+    _summaries[str(p)] = (st.st_mtime_ns, st.st_size, out)
+    return dict(out)
+
+
+def count_runs(out_dir: Path | str | None = None) -> int:
+    d = Path(out_dir) if out_dir else runs_dir()
+    return len(_run_files(d)) if d.is_dir() else 0
+
+
+def list_runs(out_dir: Path | str | None = None, limit: int | None = None, offset: int = 0) -> list[dict]:
+    """Summaries of recorded runs, newest first, `limit` of them from `offset`. Only the records on that page are
+    read, each once per version. A record that cannot be read is listed with damaged: true and the reason in
+    error, not hidden."""
+    d = Path(out_dir) if out_dir else runs_dir()
+    files = _run_files(d) if d.is_dir() else []
+    page = files[offset:] if limit is None else files[offset:offset + limit]
+    return [_summary(p) for p in page]

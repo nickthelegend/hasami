@@ -342,14 +342,17 @@ function videoFile(r: RecordedRun): { name: string; seconds?: number } | null {
   return null;
 }
 
-export type RunsView = { state: 'loading' } | { state: 'ok'; runs: RecordedRun[] } | { state: 'error'; message: string };
+export type RunsView = { state: 'loading' } | { state: 'ok'; runs: RecordedRun[]; total?: number } | { state: 'error'; message: string };
 
 export function RunsTable({ view, onReplay, active }: { view: RunsView; onReplay?: (id: string) => void; active?: string | null }) {
   return (
     <section className="runs" aria-labelledby="runs-h">
       <div className="sec-head">
         <h2 id="runs-h">Run register</h2>
-        <span className="muted small">deployments/runs · every finished run writes a record</span>
+        <span className="muted small">
+          deployments/runs · every finished run writes a record
+          {view.state === 'ok' && (view.total ?? 0) > view.runs.length ? ` · newest ${view.runs.length} of ${view.total}` : ''}
+        </span>
       </div>
       {view.state === 'loading' ? (
         <div className="empty-box">

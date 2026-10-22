@@ -242,9 +242,12 @@ export const api = {
     post<unknown>('/api/reset', { ...(seed === undefined ? {} : { seed }), ...(family ? { family } : {}) }),
   /** A run's full record (GET /api/runs/{id}); a 404 is an ApiError with status 404. */
   runRecord: (runId: string) => request<RecordedRun & { steps?: { result?: RunResult | null }[] }>(`/api/runs/${encodeURIComponent(runId)}`),
-  runs: async (): Promise<RecordedRun[]> => {
-    const body = await request<RecordedRun[] | { runs: RecordedRun[] }>('/api/runs');
-    return Array.isArray(body) ? body : Array.isArray(body?.runs) ? body.runs : [];
+  /** The newest page of run summaries (the server reads only that page) and how many records there are. */
+  runs: async (): Promise<{ runs: RecordedRun[]; total: number }> => {
+    const body = await request<RecordedRun[] | { runs: RecordedRun[]; total?: number }>('/api/runs');
+    const runs = Array.isArray(body) ? body : Array.isArray(body?.runs) ? body.runs : [];
+    const total = !Array.isArray(body) && typeof body?.total === 'number' ? body.total : runs.length;
+    return { runs, total };
   },
 };
 

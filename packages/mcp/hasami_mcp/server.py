@@ -17,7 +17,7 @@ from typing import Any
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from hasami_core import Session, status as core_status
+from hasami_core import Session, prune_runs, status as core_status
 
 INSTRUCTIONS = """Hasami drives a simulated SO-101 robot arm over a tabletop with a red, a green and a blue cube
 and a tray. Pixel coordinates are [u, v] in the 640x480 overhead image (u right, v down).
@@ -121,6 +121,7 @@ def pick_place(pick_point: list[float], place_point: list[float]) -> dict:
     s = session()
     rec = s.run([{"pick_point": pick_point, "place_point": place_point}])
     s.record(rec)
+    prune_runs()  # HASAMI_MAX_RUNS, never the evidence runs
     step = rec["steps"][0]
     return {"run_id": rec["run_id"], "result": step["result"], "place_how": step.get("place_how"),
             "phases": [{"phase": p["phase"], "error_mm": p["error_mm"], "ok": p["ok"]} for p in step["phases"]],

@@ -925,3 +925,93 @@ def test_a_failing_meta_segmenter_is_a_readable_502(client, monkeypatch):
         r = client.post("/api/segment", json={"text": "red cube", "segmenter": "meta"})
     assert r.status_code == 502, (r.status_code, r.text)
     assert r.json()["error"].startswith("URLError"), r.json()
+
+
+# ---- the runs folder: bounded, listed a page at a time, and its records are data ----
+def _fake_record(d, run_id: str, **extra) -> None:
+    import json
+
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{run_id}.json").write_text(json.dumps({"run_id": run_id, "started_at": run_id, "ok": True, "placed": 1,
+                                                  "total": 1, "plan": {"source": "clicks"}, **extra}))
+
+
+def test_runs_are_listed_a_page_at_a_time_and_each_record_is_read_once(client, runs_tmp, monkeypatch):
+    """GET /api/runs used to json-load every record in the folder on every call (it grows without limit: each
+    dashboard run stores about 6 PNGs per attempt). Now it reads only the page asked for, each record once per
+    version, says how many there are, and names the folder relative to the repo instead of an absolute path."""
+    import hasami_core.session as core
+
+    for i in range(500):
+        _fake_record(runs_tmp, f"20250101T000000{i:03d}Z")
+    reads = []
+    real_load = core.load_run_record
+    monkeypatch.setattr(core, "load_run_record", lambda p: reads.append(p.name) or real_load(p))
+    body = client.get("/api/runs", params={"limit": 50}).json()
+    assert len(body["runs"]) == 50 and body["total"] == 500 and body["offset"] == 0
+    assert body["runs"][0]["run_id"] == "20250101T000000499Z"  # newest first
+    assert len(reads) == 50, f"read {len(reads)} records for a page of 50"
+    assert not body["dir"].startswith("/") and "Volumes" not in body["dir"], body["dir"]
+    page2 = client.get("/api/runs", params={"limit": 50, "offset": 50}).json()["runs"]
+    assert page2[0]["run_id"] == "20250101T000000449Z"
+    reads.clear()
+    assert len(client.get("/api/runs", params={"limit": 50}).json()["runs"]) == 50
+    assert reads == [], "an unchanged record was parsed again"
+    assert len(client.get("/api/runs").json()["runs"]) == 100  # the default page
+    assert client.get("/api/runs", params={"limit": 0}).status_code == 422
+
+
+def test_the_runs_folder_is_pruned_to_hasami_max_runs_and_keeps_the_evidence_runs(client, runs_tmp, session, monkeypatch):
+    """Every dashboard run writes a record and its step images. With HASAMI_MAX_RUNS=3, a run prunes the folder to
+    the 3 newest records (with their images and video), and the committed evidence runs are never deleted."""
+    import shutil
+
+    from hasami_core.session import EVIDENCE_RUNS, ROOT
+
+    runs_tmp.mkdir(parents=True, exist_ok=True)
+    for rid in sorted(EVIDENCE_RUNS):
+        shutil.copy(ROOT / "deployments" / "runs" / f"{rid}.json", runs_tmp / f"{rid}.json")
+    for i in range(5):
+        rid = f"20250101T00000000{i}Z"
+        _fake_record(runs_tmp, rid)
+        (runs_tmp / rid).mkdir()
+        (runs_tmp / rid / "s0a1-frame.png").write_bytes(b"x")
+        (runs_tmp / f"{rid}.mp4").write_bytes(b"x")
+    monkeypatch.setenv("HASAMI_MAX_RUNS", "3")
+    frame = session.observe()
+    r = client.post("/api/run", json={"steps": [{"pick_point": list(simulated_click(frame.rgb, "red cube")),
+                                                 "place_point": list(simulated_drop_clicks(frame.rgb, 1)[0])}]})
+    assert r.status_code == 200
+    client.app.state.runner.thread.join(timeout=120)
+    left = sorted(p.stem for p in runs_tmp.glob("*.json"))
+    assert set(EVIDENCE_RUNS) <= set(left), left
+    others = [x for x in left if x not in EVIDENCE_RUNS]
+    assert others == ["20250101T000000003Z", "20250101T000000004Z", r.json()["run_id"]], others
+    for gone in ("20250101T000000000Z", "20250101T000000001Z", "20250101T000000002Z"):
+        assert not (runs_tmp / gone).exists() and not (runs_tmp / f"{gone}.mp4").exists()
+    assert (runs_tmp / "20250101T000000004Z" / "s0a1-frame.png").exists()
+
+
+def test_evidence_runs_match_the_committed_records():
+    """Pruning protects exactly the run records .gitignore lets into git."""
+    import re
+
+    from hasami_core.session import EVIDENCE_RUNS, ROOT
+
+    kept = set(re.findall(r"^!deployments/runs/([0-9A-Za-z]+)\.json$", (ROOT / ".gitignore").read_text(), re.M))
+    assert kept == set(EVIDENCE_RUNS)
+
+
+def test_step_images_are_only_served_from_the_runs_own_folder(client, runs_tmp):
+    """A run record is data: an image path in it that leaves runs/<run_id>/ (an absolute path, ../) used to be read
+    and served (GET /api/runs/{id}/steps/0.png?kind=frame returned /etc/hosts). Now it is a 404."""
+    secret = runs_tmp.parent / "secret.png"
+    secret.write_bytes(b"not for the browser")
+    for name in ("/etc/hosts", "../secret.png", str(secret)):
+        rid = "20250101T000000777Z"
+        _fake_record(runs_tmp, rid, steps=[{"attempts": [{"images": {"frame": name, "pick": name}}]}])
+        (runs_tmp / rid).mkdir(exist_ok=True)
+        for kind in ("frame", "pick", "view"):
+            r = client.get(f"/api/runs/{rid}/steps/0.png", params={"kind": kind})
+            assert r.status_code == 404, (name, kind, r.status_code, r.content[:40])
+            assert b"not for the browser" not in r.content and b"localhost" not in r.content

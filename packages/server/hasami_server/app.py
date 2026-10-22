@@ -24,7 +24,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from hasami_core import Session, SetupRequired, list_runs, new_run_id, runs_dir, setup_name, status
+from hasami_core import (Session, SetupRequired, count_runs, list_runs, new_run_id, prune_runs, runs_dir, setup_name,
+                         status)
 from hasami_core.session import ROOT
 from hasami_planner import Plan, Planner, PlanError, plan_from_clicks
 
@@ -288,6 +289,18 @@ class Runner:
             rec = self.session.last_run
             if rec and rec.get("run_id") == run_id:
                 self.session.record(rec)
+        finally:
+            self._prune()
+
+    @staticmethod
+    def _prune() -> None:
+        """Keep the runs folder to HASAMI_MAX_RUNS records (every dashboard run stores its frames and masks)."""
+        import logging
+
+        try:
+            prune_runs()
+        except OSError as e:
+            logging.getLogger("hasami").warning("could not prune the runs folder: %s", e)
 
     def _last_is_terminal(self, run_id: str) -> bool:
         evs = [e for e in self.bus.since(0) if e["run_id"] == run_id]
@@ -633,13 +646,22 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         path = runs_dir() / name
         return path if path.is_file() else None
 
+    def _runs_dir_label() -> str:
+        """The runs folder relative to the repo (never an absolute path of this machine)."""
+        d = runs_dir().resolve()
+        try:
+            return str(d.relative_to(ROOT.resolve()))
+        except ValueError:
+            return "HASAMI_RUNS_DIR"
+
     @app.get("/api/runs")
-    def get_runs() -> dict:
-        runs = list_runs()
+    def get_runs(limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0)) -> dict:
+        """A page of run summaries, newest first; only that page's records are read."""
+        runs = list_runs(limit=limit, offset=offset)
         for r in runs:
             if r.get("run_id") and _video_path(r) is not None:
                 r["video_url"] = f"/api/runs/{r['run_id']}/video"
-        return {"runs": runs, "dir": str(runs_dir())}
+        return {"runs": runs, "total": count_runs(), "offset": offset, "limit": limit, "dir": _runs_dir_label()}
 
     @app.get("/api/runs/{run_id}/video")
     def get_run_video(run_id: str):
@@ -677,19 +699,32 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         a = attempts[(attempt or len(attempts)) - 1] if (attempt or len(attempts)) <= len(attempts) else None
         if a is None:
             return JSONResponse(status_code=404, content={"error": f"step {step} has no attempt {attempt}"})
-        imgs = a.get("images") or {}
-        folder = runs_dir() / run_id
+        imgs = a.get("images") if isinstance(a.get("images"), dict) else {}
+        folder = (runs_dir() / run_id).resolve()
+
+        def stored(k: str):
+            """The PNG the record names for k, resolved inside runs/<run_id>/; None when it is missing or not a name."""
+            name = imgs.get(k)
+            p = (folder / name).resolve() if isinstance(name, str) and name else None
+            return p if p is not None and p.is_relative_to(folder) and p.suffix == ".png" and p.is_file() else None
+
+        # a record is data: an image path that leaves the run's folder (/etc/hosts, ../x) is never served
+        outside = [k for k, name in imgs.items()
+                   if not isinstance(name, str) or not (folder / name).resolve().is_relative_to(folder)]
+        if outside:
+            return JSONResponse(status_code=404, content={"error": f"step image {outside[0]!r} is not a file in the run's folder"})
         if kind in ("view", "view_truth"):
-            if "frame" not in imgs:
+            frame = stored("frame")
+            if frame is None:
                 return JSONResponse(status_code=404, content={"error": "no stored frame for this step"})
             suffix = "_truth" if kind == "view_truth" else ""
-            png = compose_view(folder / imgs["frame"], [folder / imgs[k] for k in (f"pick{suffix}", f"place{suffix}")
-                                                         if k in imgs])
+            masks = [m for m in (stored(f"pick{suffix}"), stored(f"place{suffix}")) if m is not None]
+            png = compose_view(frame, masks)
             return Response(png, media_type="image/png", headers={"Cache-Control": "max-age=3600"})
-        if kind not in imgs:
+        img = stored(kind)
+        if img is None:
             return JSONResponse(status_code=404, content={"error": f"no {kind} image stored for this step"})
-        return Response((folder / imgs[kind]).read_bytes(), media_type="image/png",
-                        headers={"Cache-Control": "max-age=3600"})
+        return Response(img.read_bytes(), media_type="image/png", headers={"Cache-Control": "max-age=3600"})
 
     # ---- real camera (segment + locate only; the arm stays simulated) --------------------------
     # One frame for the server, shared by every tab. Each grab / upload gets a new frame_id; calibrate and

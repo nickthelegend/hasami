@@ -106,7 +106,7 @@ export default function App() {
 
   const loadRuns = useCallback(async () => {
     try {
-      setRuns({ state: 'ok', runs: await api.runs() });
+      setRuns({ state: 'ok', ...(await api.runs()) });
     } catch (e) {
       setRuns({ state: 'error', message: e instanceof ApiError && e.kind === 'unreachable' ? 'Server not reachable.' : errText(e) });
     }
