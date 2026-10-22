@@ -6,18 +6,18 @@
 ## Built before the event, built during it
 
 Hasami was started before the event. Its first commit is `5390ae3` (2026-10-20 21:14 UTC), and every commit
-up to the tag **`pre-event-2026-10-22`** predates the Oct 26 – Nov 4 window. The tag sits on the last commit
-made before the event (it was moved forward to the head after each pre-event round, so
-`git log pre-event-2026-10-22..main` is empty today). If more commits land after Oct 22 and before the
-event opens, the last of them is tagged `pre-event-2026-10-25` and that tag is used instead. Either way,
-`git log --format='%h %cI' <tag>..main` must show only commits dated Oct 26 or later.
+up to the tag **`pre-event-2026-10-25`** predates the Oct 26 – Nov 4 window. `pre-event-2026-10-22` marks the
+Oct 22 head (980f6cf); commits landed after it on Oct 23 (a hardening round), so the last pre-event commit is
+tagged `pre-event-2026-10-25`, the tag to use. It is moved forward if more commits land before the event
+opens, so `git log pre-event-2026-10-25..main` is empty today, and
+`git log --format='%h %cI' pre-event-2026-10-25..main` must show only commits dated Oct 26 or later.
 
 **Official rules:** the event page says "Official Rules will be published before the Hackathon begins on
 October 26, 2026" (read 2026-10-22). They are not out yet, and the page does not say whether work started
 before the event may be entered. When they appear, Nick reads them for a build-during-the-event clause and
 quotes it here. If there is one, only the in-window work below is claimed.
 
-- **Built before the event (up to `pre-event-2026-10-22`):** the MuJoCo SO-101 simulation and pick/place
+- **Built before the event (up to `pre-event-2026-10-25`):** the MuJoCo SO-101 simulation and pick/place
   skill, SAM 2.1 perception and grounding, the target check, verify + retry, eight benchmark task families
   and their result sheets, the digital twin from one photo (measured on MuJoCo-rendered photos), the real
   camera tab, the agent trace, the MCP server, the dashboard, the landing, the unit and browser E2E suites.
@@ -25,7 +25,7 @@ quotes it here. If there is one, only the in-window work below is claimed.
   `MODEL_API_KEY`; credits come on acceptance), a Muse row in the benchmark beside the oracle and scripted
   rows, a twin from a real desk photo with a ruler check, and the narrated demo video.
 - **In-window commits:** none yet (Oct 23). Once the event is under way,
-  `git log --oneline pre-event-2026-10-22..main` lists them; they are listed here before submitting.
+  `git log --oneline pre-event-2026-10-25..main` lists them; they are listed here before submitting.
 
 **Project name:** Hasami (鋏)
 
@@ -101,9 +101,9 @@ dashboard, the official SO-101 model from TheRobotStudio, LeRobot for the real a
   server stops. Run records are written atomically; a damaged one is a readable 503.
 - After a server restart mid-run, the dashboard ends the run (from its record if one was written, else
   "the server restarted; this run was lost") instead of showing "running" forever.
-- 227 automated tests: 226 pass (real physics, real SAM weights, real HTTP and MCP, MuJoCo-rendered photos
-  for the twin), 1 skipped (live Muse call); browser E2E in Google Chrome: 41 passed, 1 skipped (20 tests x
-  desktop and mobile, plus a server-restart test on desktop only).
+- 246 automated tests: 245 pass (real physics, real SAM weights, real HTTP and MCP, MuJoCo-rendered photos
+  for the twin), 1 skipped (live Muse call); dashboard unit tests: 6 passed; browser E2E in Google Chrome:
+  49 passed, 1 skipped (24 tests x desktop and mobile, plus a server-restart test on desktop only).
 - MCP server so any agent can `look`, `find` and `pick_place`.
 
 **Honest status:**

@@ -41,10 +41,10 @@ Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/m
 **Built before the event, and what is left for it.** The event runs Oct 26 – Nov 4, 2026. Hasami was
 started on Oct 20 (first commit `5390ae3`), and everything up to the tag `pre-event-2026-10-22` predates the
 event: the simulation, SAM 2.1 perception, the benchmark, the digital twin on rendered photos, the real
-camera tab, the agent trace, MCP, the dashboard, the landing and both test suites. The tag sits on the last
-commit made before the event (it is moved forward with each later pre-event commit, and the final
-pre-event head is tagged `pre-event-2026-10-25` if work lands after Oct 22), so `git log <tag>..main` lists
-only work done during it. Left for the event: the live Muse plan and SAM 3.1 (they need `MODEL_API_KEY`), a
+camera tab, the agent trace, MCP, the dashboard, the landing and both test suites. Work landed after Oct 22
+(a hardening round on Oct 23), so the last pre-event commit is tagged `pre-event-2026-10-25`, the tag to use;
+it is moved forward if more pre-event commits land. `git log pre-event-2026-10-25..main` lists only work done
+during the event. Left for the event: the live Muse plan and SAM 3.1 (they need `MODEL_API_KEY`), a
 Muse benchmark row, a twin from a real photo, and the narrated video. The official rules were not published
 yet on Oct 22; see [HACKATHON_SUBMISSION_FORM.md](HACKATHON_SUBMISSION_FORM.md).
 
@@ -243,7 +243,7 @@ score (not used by the robot): physics state, goal predicate
 | Yaw (fourth-order moment / minimum-area rectangle) | max 1.76°, mean 0.18° over 60 cubes |
 | Real-camera geometry (synthetic tilted camera, 50 × 30 × 40 mm box) | centre within 1 mm, yaw within 1.5° with parallax correction; > 10 mm off without it |
 | Recorded demo runs (replay them in the dashboard's Agent trace) | [`20261021T053112874Z`](deployments/runs/20261021T053112874Z.json): 3/3 in the tray, no retries. [`20261021T053203432Z`](deployments/runs/20261021T053203432Z.json): 6 mm offset injected on every first attempt, each first attempt fails at the descent, each retry places the cube: 3/3. Videos (captioned "MuJoCo simulation · official SO-101 model") are shared separately until hosted. |
-| Test suite | `226 passed, 1 skipped` (the skip is the live Muse call); browser E2E in Google Chrome `41 passed, 1 skipped` (see [TESTING.md](TESTING.md)) |
+| Test suite | `245 passed, 1 skipped` (the skip is the live Muse call); dashboard unit `6 passed`; browser E2E in Google Chrome `49 passed, 1 skipped` (see [TESTING.md](TESTING.md)) |
 
 ## Watch the agent think
 
