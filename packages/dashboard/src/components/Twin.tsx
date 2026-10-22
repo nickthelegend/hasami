@@ -77,9 +77,13 @@ export function Twin({
   const [myRun, setMyRun] = useState<string | null>(null);
   const [goal, setGoal] = useState<Goal | null>(null);
   const [sampleSeed, setSampleSeed] = useState(0);
+  const [restored, setRestored] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const built = useRef(false); // a twin was built in this tab: never replace it with the restored one
 
-  const shown = (t: TwinRes) => {
+  const shown = (t: TwinRes, fromServer = false) => {
+    if (!fromServer) built.current = true;
+    setRestored(fromServer);
     setTwin(t);
     setHeights({});
     setGoal(null);
@@ -103,6 +107,23 @@ export function Twin({
     },
     [side],
   );
+
+  // After a reload (or coming back to this tab) the twin is still in the server's memory: show the latest one.
+  useEffect(() => {
+    let stop = false;
+    (async () => {
+      try {
+        const r = await call('/api/twin');
+        if (!stop && r?.twin && !built.current) shown(r.twin, true);
+      } catch (e) {
+        if (!stop) setErr(`Could not read the last twin from the server: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    })();
+    return () => {
+      stop = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const upload = (f: File) => {
     const h = Number(hfov);
@@ -237,7 +258,7 @@ export function Twin({
           </select>
         </label>
       </div>
-      <p className="muted small rc-step" aria-live="polite">{busy ?? (twin ? `Twin ${twin.twin_id} · ${twin.photo.source === 'synthetic' ? 'synthetic photo (MuJoCo render)' : 'your photo'} · ${twin.stats.total_ms ? (twin.stats.total_ms / 1000).toFixed(1) + ' s' : ''}` : 'No photo yet.')}</p>
+      <p className="muted small rc-step" aria-live="polite">{busy ?? (twin ? `Twin ${twin.twin_id} · ${twin.photo.source === 'synthetic' ? 'synthetic photo (MuJoCo render)' : 'your photo'} · ${twin.stats.total_ms ? (twin.stats.total_ms / 1000).toFixed(1) + ' s' : ''}${restored ? ' · restored from the server' : ''}` : 'No photo yet.')}</p>
       {err && <div className="notice notice-error" role="alert">{err}</div>}
 
       {twin ? (

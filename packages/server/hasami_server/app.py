@@ -522,7 +522,14 @@ def create_app(session: Session | None = None) -> FastAPI:
                 "segmenter": s.sam.name, "source": real["source"], "arm": "sim", "note": REAL_NOTE}
 
     # ---- digital twin from one photo (the arm is simulated) -----------------------------------------
-    twins: dict = {}  # id -> {"twin": Twin, "rgb": photo}
+    twins: dict = {}  # id -> {"twin": Twin, "rgb": photo}; insertion order = last built, adjusted or loaded last
+
+    def _twin_view(twin) -> dict:
+        return twin.to_dict() | {"images": {"side_by_side": f"/api/twin/{twin.id}/side_by_side.png",
+                                            "photo": f"/api/twin/{twin.id}/photo.png"}}
+
+    def _touch(twin_id: str) -> None:
+        twins[twin_id] = twins.pop(twin_id)
 
     def _twin_or_404(twin_id: str):
         t = twins.get(twin_id)
@@ -545,9 +552,9 @@ def create_app(session: Session | None = None) -> FastAPI:
         except ValueError as e:
             return JSONResponse(status_code=422, content={"error": str(e)})
         save_twin(twin, rgb)
+        twins.pop(twin.id, None)
         twins[twin.id] = {"twin": twin, "rgb": rgb, "opts": opts}
-        return twin.to_dict() | {"images": {"side_by_side": f"/api/twin/{twin.id}/side_by_side.png",
-                                            "photo": f"/api/twin/{twin.id}/photo.png"}}
+        return _twin_view(twin)
 
     @app.get("/api/twin/sample.png")
     def twin_sample(seed: int = Query(0, ge=0, le=10_000)):
@@ -615,10 +622,18 @@ def create_app(session: Session | None = None) -> FastAPI:
                 opts[k] = v
         return _build_twin(request, t["rgb"], opts, twin_id=twin_id)
 
+    @app.get("/api/twin")
+    def get_latest_twin():
+        """The twin built, adjusted, loaded or run last (the dashboard restores it after a reload), or null.
+        Twins live in server memory until it restarts."""
+        if not twins:
+            return {"twin": None, "note": "no twin yet (twins live until the server restarts)"}
+        return {"twin": _twin_view(next(reversed(twins.values()))["twin"])}
+
     @app.get("/api/twin/{twin_id}")
     def get_twin(twin_id: str):
         t, err = _twin_or_404(twin_id)
-        return err or t["twin"].to_dict()
+        return err or _twin_view(t["twin"])
 
     @app.get("/api/twin/{twin_id}/{name}.png")
     def get_twin_png(twin_id: str, name: Literal["photo", "side_by_side"]):
@@ -642,6 +657,7 @@ def create_app(session: Session | None = None) -> FastAPI:
             out = sess(request).load_scene(t["twin"].spec)
         except ValueError as e:
             return JSONResponse(status_code=422, content={"error": str(e)})
+        _touch(twin_id)
         return {**out, "scene": "twin", "twin_id": twin_id, "label": t["twin"].label}
 
     @app.post("/api/twin/{twin_id}/run")
@@ -686,6 +702,7 @@ def create_app(session: Session | None = None) -> FastAPI:
                                   prepare=prepare, finish=finish)
         except RuntimeError:
             return busy_response(request)
+        _touch(twin_id)
         return {"run_id": run_id, "task": body.task, "instruction": task.instruction, "label": TWIN_LABEL,
                 "planner": ORACLE_LABEL}
 

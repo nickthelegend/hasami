@@ -279,6 +279,10 @@ def test_twin_from_a_photo_then_run_a_task_on_it(client, tmp_path, monkeypatch):
 
     assert client.post(f"/api/twin/{tw['twin_id']}/run", json={"task": "stack-everything"}).status_code == 422
     assert client.get("/api/twin/nope").status_code == 404
+    # a reloaded dashboard restores the latest twin from the server, images included
+    latest = client.get("/api/twin").json()["twin"]
+    assert latest["twin_id"] == tw["twin_id"] and latest["tasks"] and latest["images"]["side_by_side"].endswith(".png")
+    assert client.get(f"/api/twin/{tw['twin_id']}").json()["images"] == latest["images"]
     run = client.post(f"/api/twin/{tw['twin_id']}/run", json={"task": "clear-desk"})
     assert run.status_code == 200, run.text
     with client.stream("GET", "/api/events", params={"once": "true"}) as resp:

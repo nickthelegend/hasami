@@ -93,7 +93,10 @@ test('twin: a non-image is refused, a synthetic photo becomes a twin, refit, sho
   await page.goto('/');
   await page.getByRole('tab', { name: 'Twin' }).click();
   const twin = page.locator('section.twin');
-  await expect(twin).toContainText('No twin yet');
+  // the server keeps twins in memory: a twin built by an earlier test (or project) is shown, else the empty state
+  const held = (await (await request.get('/api/twin')).json()).twin;
+  if (held) await expect(twin.locator('.rc-step')).toContainText(`Twin ${held.twin_id}`);
+  else await expect(twin).toContainText('No twin yet');
 
   await twin.locator('input[type=file]').setInputFiles({ name: 'notes.png', mimeType: 'image/png', buffer: Buffer.from('not a photo') });
   await expect(twin.locator('.notice-error')).toHaveText('not an image', { timeout: 30_000 });
@@ -148,4 +151,36 @@ test('twin: a non-image is refused, a synthetic photo becomes a twin, refit, sho
   await expect(twin.locator('figcaption')).toContainText('Synthetic photo (MuJoCo render)');
   await expectNoHScroll(page);
   await shot(page, info, 'twin-04-synthetic-button');
+});
+
+test('twin: after a reload the Twin tab shows the twin the server still holds', async ({ page, guard, request }, info) => {
+  // build a twin straight through the API, as an earlier page load would have
+  const photo = await deskPhoto(request, 1);
+  const r = await request.post(`/api/twin?hfov_deg=${photo.hfov}&source=synthetic`, { data: photo.buffer, headers: { 'Content-Type': 'image/png' }, timeout: 150_000 });
+  expect(r.status()).toBe(200);
+  const tw = await r.json();
+
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Twin' }).click();
+  const twin = page.locator('section.twin');
+  const restoredOk = async () => {
+    await expect(twin.locator('.rc-step')).toContainText(`Twin ${tw.twin_id} · synthetic photo (MuJoCo render)`);
+    await expect(twin.locator('.rc-step')).toContainText('restored from the server');
+    await expect(twin).not.toContainText('No twin yet');
+    const sbs = twin.locator('.tw-sbs img');
+    await expect(sbs).toBeVisible();
+    await expect.poll(() => sbs.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth)).toBeGreaterThan(0);
+    await expect(twin.locator('.tw-table tbody tr')).toHaveCount(tw.objects.length);
+    if (tw.tasks.length) await expect(twin.getByRole('button', { name: 'Run on the twin' })).toBeEnabled();
+  };
+  await restoredOk();
+  await page.reload();
+  await page.getByRole('tab', { name: 'Twin' }).click();
+  await restoredOk();
+  await shot(page, info, 'twin-05-restored-after-reload', true);
+  // leaving the tab and coming back keeps it too
+  await page.getByRole('tab', { name: 'Recorded runs' }).click();
+  await page.getByRole('tab', { name: 'Twin' }).click();
+  await restoredOk();
+  await expectNoHScroll(page);
 });
