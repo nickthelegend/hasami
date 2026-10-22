@@ -1,4 +1,4 @@
-"""The HTTP contract (specs/hasami.md) through FastAPI's TestClient against the real session."""
+"""The HTTP contract (README.md "HTTP API (port 8420)") through FastAPI's TestClient against the real session."""
 
 import base64
 import io

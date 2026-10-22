@@ -1,6 +1,6 @@
 """Hasami HTTP API (FastAPI): REST + server-sent events, and the dashboard build at /.
 
-Contract: specs/hasami.md ("HTTP contract"). One run at a time; a second POST /api/run gets 409.
+Contract: README.md "HTTP API (port 8420)". One run at a time; a second POST /api/run gets 409.
 SSE events: plan, segment, target, phase, verify, retry, result, done, error.
 Missing credentials come back as 503 {"setup_required": NAME, "message": ...}, never as a fake result.
 """

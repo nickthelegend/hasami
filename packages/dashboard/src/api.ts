@@ -1,5 +1,5 @@
 // Typed client for the Hasami server (packages/server, default port 8420).
-// Contract: specs/hasami.md "HTTP contract". Every failure surfaces as an ApiError with a kind
+// Contract: README.md "HTTP API (port 8420)". Every failure surfaces as an ApiError with a kind
 // the UI can act on; nothing here invents data when the server cannot answer.
 
 export type Camera = 'overhead' | 'demo';

@@ -120,3 +120,24 @@ def test_sam_iou_claims_are_the_recorded_demo_runs_numbers():
         assert "0.71–0.92" not in text, f
     landing = (ROOT / "packages/landing/index.html").read_text()
     assert f"IoU {rec['steps'][0]['pick']['iou_vs_truth']:.3f}" in landing  # the red cube, step 1
+
+
+def test_cited_contract_documents_exist_in_this_repo():
+    """The server, the dashboard client and the server tests cited 'specs/hasami.md (HTTP contract)', a file that
+    is not in this repo; a reader following it found nothing. Every docs path a source file cites must exist here."""
+    cited = []
+    for folder in ("packages", "tests", "scripts", "e2e/tests"):
+        for p in (ROOT / folder).rglob("*"):
+            if (p.suffix not in (".py", ".ts", ".tsx", ".mjs", ".sh") or "node_modules" in p.parts or "dist" in p.parts
+                    or p == Path(__file__).resolve()):  # this test quotes the old reference
+                continue
+            for m in re.finditer(r"\b((?:specs|docs|packages/docs)/[\w./-]+\.md)\b", p.read_text(errors="ignore")):
+                cited.append((p.relative_to(ROOT).as_posix(), m.group(1)))
+    missing = [(f, ref) for f, ref in cited if not (ROOT / ref).is_file()]
+    assert not missing, missing
+    contract = [ROOT / f for f in ("packages/server/hasami_server/app.py", "packages/dashboard/src/api.ts",
+                                   "tests/test_server.py")]
+    readme = (ROOT / "README.md").read_text()
+    assert "## HTTP API (port 8420)" in readme
+    for f in contract:
+        assert 'README.md "HTTP API' in f.read_text()[:400], f
