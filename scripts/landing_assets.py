@@ -2,6 +2,7 @@
 
     python scripts/landing_assets.py
     python scripts/landing_assets.py --twin 1     # the twin figure from synthetic desk photo seed 1
+    python scripts/landing_assets.py --run-gif    # the README's opening animation (the hero run, step by step)
 
 Everything comes from deployments/runs/: the overhead frame a run stored before each attempt, the
 SAM 2.1 mask it used, and the frame after the attempt. Nothing is drawn by hand: the outlines are the
@@ -11,6 +12,7 @@ exact pixel boundary of each stored mask, printed as SVG paths in the frame's ow
 
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
 
@@ -179,10 +181,61 @@ def twin_figure(seed: int = TWIN_SEED) -> None:
                                  "y": round(o.y, 4)} for o in objs]}, indent=1))
 
 
+def run_animation(run: str = HERO_RUN) -> None:
+    """The README's opening animation: each step of a recorded run as the agent saw it (the stored overhead
+    frame with its SAM 2.1 masks tinted: pick mint, place lilac, the same composite GET /api/runs/{id}/steps/{i}.png
+    serves) and then the frame after the arm placed it. The pixels are the stored images, unedited; a caption
+    bar is added under each frame, never drawn on it. Writes packages/landing/assets/run-hero.webp (animated)."""
+    from PIL import ImageDraw, ImageFont
+
+    from hasami_server.app import compose_view
+
+    rec = json.loads((RUNS / f"{run}.json").read_text())
+    folder = RUNS / run
+    try:
+        font = ImageFont.load_default(size=15)
+    except TypeError:  # Pillow < 10.1
+        font = ImageFont.load_default()
+    n = len(rec["steps"])
+    frames, durations = [], []
+
+    box = (40, 90, 560, 470)  # the work area: tray, cubes, the arm's base (cropped, never scaled or retouched)
+
+    def captioned(img: Image.Image, text: str) -> Image.Image:
+        img = img.crop(box)
+        bar = 30
+        out = Image.new("RGB", (img.width, img.height + bar), (18, 20, 22))
+        out.paste(img, (0, 0))
+        ImageDraw.Draw(out).text((10, img.height + 7), text, fill=(232, 236, 230), font=font)
+        return out
+
+    for s in rec["steps"]:
+        a = s["attempts"][-1]
+        tag = f"s{s['step']}a{a['attempt']}"
+        obj = s["result"]["object"]
+        view = Image.open(io.BytesIO(compose_view(folder / f"{tag}-frame.png",
+                                                  [folder / f"{tag}-pick.png", folder / f"{tag}-place.png"])))
+        iou = a["pick"]["iou_vs_truth"]
+        frames.append(captioned(view.convert("RGB"), f"MuJoCo sim · step {s['step'] + 1}/{n}: SAM 2.1 masks {obj} "
+                                                     f"(IoU {iou:.2f}) and the tray"))
+        durations.append(1600)
+        after = Image.open(folder / f"{tag}-after.png").convert("RGB")
+        verdict = "placed, check passed" if s["result"]["ok"] else "not placed"
+        frames.append(captioned(after, f"MuJoCo sim · step {s['step'] + 1}/{n}: {obj} {verdict} "
+                                       f"({s['result']['error_mm']:.1f} mm from target)"))
+        durations.append(1300)
+    dst = OUT / "run-hero.webp"
+    frames[0].save(dst, "WEBP", save_all=True, append_images=frames[1:], duration=durations, loop=0,
+                   quality=80, method=6)
+    print(f"wrote {dst.relative_to(ROOT)} {frames[0].size} x {len(frames)} frames {dst.stat().st_size} bytes")
+
+
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) > 2 and sys.argv[1] == "--twin":
         twin_figure(int(sys.argv[2]))
+    elif len(sys.argv) > 1 and sys.argv[1] == "--run-gif":
+        run_animation()
     else:
         main()

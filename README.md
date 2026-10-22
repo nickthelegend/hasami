@@ -1,10 +1,34 @@
 # Hasami (鋏)
 
+![A recorded run in the MuJoCo simulation: SAM 2.1's masks on the overhead frame, then the frame after the simulated SO-101 placed each cube](packages/landing/assets/run-hero.webp)
+
+*Recorded run `20261021T053112874Z` in the MuJoCo simulation, frames as stored (cropped; captions added under
+each frame): SAM 2.1's masks (pick mint, place lilac), then the frame after the simulated SO-101 placed the cube.*
+
+**Click what to move; SAM 2.1 sees it, a simulated SO-101 picks it, checks its own work and retries.**
+A camera frame becomes masks, metric 3D grasps and a verified pick-and-place on the official SO-101 model in
+MuJoCo. A photo of your desk with an A4 sheet becomes a digital twin the simulated arm can work in.
+
+| Running now, no key needed | Waiting |
+|---|---|
+| SAM 2.1 hiera-tiny on this Mac · the SO-101 in MuJoCo (simulated) · the 8-family benchmark · the digital twin (on rendered photos) · dashboard, HTTP API, MCP | Muse planner and SAM 3.1: `MODEL_API_KEY` (Setup required, never called yet) · a real SO-101 (no arm attached) · a real desk photo with a ruler check |
+
+**146/160** benchmark tasks solved (8 families x 20 seeds, simulated-click planner, SAM 2.1) · under
+injected disturbances the robot's own check matched the physics in **1106 of 1111** checks · twin from one
+photo: **86/86** objects found, **1.2 mm** mean centre error on 20 rendered photos.
+
+```bash
+git clone https://github.com/nickthelegend/hasami && cd hasami
+scripts/setup.sh                     # .venv with '.[dev]' (pytest too), the dashboard build, SAM 2.1 weights
+.venv/bin/python -m hasami_server    # http://127.0.0.1:8420 — click a cube, click the tray, Run
+```
+
 **Muse plans (wired; it runs once a Meta Model API key is set), SAM 2.1 sees, a simulated SO-101 picks.**
-Every number below is SAM 2.1 with a clicked or scripted planner, not Muse. Say what you want moved: Muse
-(Meta Model API) is to read the camera frame and plan the steps (Setup required: `MODEL_API_KEY`, never
-called yet), SAM segments each object, depth turns each mask into a 3D grasp, and a MuJoCo simulation of the
-SO-101 arm picks and places it, checking every step and retrying when it fails. No real SO-101 has run.
+Every number in this README is SAM 2.1 with a clicked or scripted planner, not Muse. Say what you want
+moved: Muse (Meta Model API) is to read the camera frame and plan the steps (Setup required:
+`MODEL_API_KEY`, never called yet), SAM segments each object, depth turns each mask into a 3D grasp, and a
+MuJoCo simulation of the SO-101 arm picks and places it, checking every step and retrying when it fails. No
+real SO-101 has run.
 
 **Sim-first, scored against ground truth.** The arm is the official SO-101 model in MuJoCo. The pipeline
 sees only RGB + depth and the gripper's own position; the simulator's ground truth is used only to score
@@ -17,10 +41,12 @@ Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/m
 **Built before the event, and what is left for it.** The event runs Oct 26 – Nov 4, 2026. Hasami was
 started on Oct 20 (first commit `5390ae3`), and everything up to the tag `pre-event-2026-10-22` predates the
 event: the simulation, SAM 2.1 perception, the benchmark, the digital twin on rendered photos, the real
-camera tab, the agent trace, MCP, the dashboard, the landing and both test suites. Left for the event: the
-live Muse plan and SAM 3.1 (they need `MODEL_API_KEY`), a Muse benchmark row, a twin from a real photo,
-and the narrated video. `git log pre-event-2026-10-22..main` lists what was built during it. The official
-rules were not published yet on Oct 22; see [HACKATHON_SUBMISSION_FORM.md](HACKATHON_SUBMISSION_FORM.md).
+camera tab, the agent trace, MCP, the dashboard, the landing and both test suites. The tag sits on the last
+commit made before the event (it is moved forward with each later pre-event commit, and the final
+pre-event head is tagged `pre-event-2026-10-25` if work lands after Oct 22), so `git log <tag>..main` lists
+only work done during it. Left for the event: the live Muse plan and SAM 3.1 (they need `MODEL_API_KEY`), a
+Muse benchmark row, a twin from a real photo, and the narrated video. The official rules were not published
+yet on Oct 22; see [HACKATHON_SUBMISSION_FORM.md](HACKATHON_SUBMISSION_FORM.md).
 
 ## Benchmark
 
@@ -177,9 +203,11 @@ a sheet corner needs the corners clicked; the field of view is assumed unless kn
 ```
 "put the red things in the tray and the blue things in the grey bin"
    │  Muse (muse-spark-1.3, image + instruction) ── plan: pick "red cube" @ hint (u,v), place "tray" @ (u,v)
+   │  [waits for MODEL_API_KEY: never called; the image + forced-tool call is unverified until then.
+   │   Today a clicked plan, the simulated-click oracle or a scripted Muse-format plan enters here]
    ▼
 grounding: SAM 2.1 at the hint ─ check size, distance, raised, colour ─ else colour blob ─ else raised blob
-           (or SAM 3.1 on the Meta Model API by name, validated the same way)
+           (or SAM 3.1 on the Meta Model API by name, validated the same way: also waits for the key)
    ▼
 mask + metric depth ── centre, top height, yaw, footprint (square / elongated / round) ── grasp axis + width
    ▼
@@ -200,8 +228,8 @@ score (not used by the robot): physics state, goal predicate
 | SAM 2.1 | `facebook/sam2.1-hiera-tiny`, open weights, on this Mac. Every number here comes from it. |
 | Grasp + image check, retry | Running: gripper position after close / lift / carry, SAM on the frame after each step, re-find and retry. SSE `verify` / `retry`. |
 | Scenes | Procedural (`mujoco.MjSpec`): 20/25/30 mm cubes, blocks, flat boxes, 40 mm cylinders, six colours, 4–8 objects, tray + grey bin. Stacking works (place height from the measured surface). |
-| Muse planner | `muse-spark-1.3` at `https://api.meta.ai/v1` (model id confirmed in the dev.meta.ai docs). **Setup required: `MODEL_API_KEY`.** Without it `/api/plan` answers 503 `setup_required`; never a canned plan. Grounding of its hints is tested in the sim with deliberately bad hints. |
-| SAM 3.1 | `sam-3.1` via `POST /v1/responses` (both confirmed in the docs); the special-token output is parsed per the docs, the mask payload only through Meta's `meta-sam-parser`. **Setup required: `MODEL_API_KEY`; unverified until then.** |
+| Muse planner | `muse-spark-1.3` at `https://api.meta.ai/v1` (the model id and base URL are in the dev.meta.ai docs; the image part and the forced tool call on Chat Completions are unverified until a key exists). **Setup required: `MODEL_API_KEY`.** Without it `/api/plan` answers 503 `setup_required`; never a canned plan. Grounding of its hints is tested in the sim with deliberately bad hints. |
+| SAM 3.1 | `sam-3.1` via `POST /v1/responses` (both confirmed in the docs); the special-token output is parsed per the docs. Its mask payload can be decoded only by Meta's `meta-sam-parser`, which is **not installed and not a dependency**, so in a run today a SAM 3.1 answer would be used for its box only: SAM 2.1 is prompted at the box centre and that mask is checked as usual. **Setup required: `MODEL_API_KEY`; unverified until then.** |
 | Real SO-101 | Wired into `Session` behind `HASAMI_SO101_PORT`: a connected LeRobot follower mirrors every joint target the simulated arm is commanded (≤ 6° per joint and gripper per command, ~30 Hz; the first command is measured from the arm's present position, read when mirroring starts). `/api/status` says `"arm": "so101"` only while one is connected. Unit conversion tested; **never run on hardware. BLOCKED: no arm attached** (`HASAMI_SO101_PORT` + `pip install lerobot[feetech]`). |
 | Digital twin | One desk photo with an A4 sheet → a MuJoCo scene with the simulated arm (`POST /api/twin`, Twin tab). 86/86 objects found, 1.2 mm mean centre error on 20 rendered photos; **a real photo is pending.** |
 | Real camera | Dashboard tab: webcam frame (`HASAMI_REALCAM`) or a photo, A4 sheet / ArUco for the table plane (portrait or landscape, read from the corners in the order clicked, from any first corner), SAM 2.1 on a clicked object (mouse or keyboard), x / y / yaw / size on the plane (typed height, parallax-corrected). Segment and locate only; the arm stays simulated. Geometry tested on synthetic cameras; **ruler check on real objects pending.** |
