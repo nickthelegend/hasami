@@ -575,6 +575,18 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
             return JSONResponse(status_code=422, content={"error": str(e)})
         return {**out, "scene": body.family, "instruction": task.instruction}
 
+    def _record(run_id: str):
+        """(record, None) for a run in the runs folder, else (None, a 404 / 503 response)."""
+        from hasami_core.session import load_run_record
+
+        path = runs_dir() / f"{run_id}.json"
+        if not re.fullmatch(r"[0-9A-Za-z_-]{1,64}", run_id) or not path.is_file():
+            return None, JSONResponse(status_code=404, content={"error": f"no run {run_id!r}"})
+        try:
+            return load_run_record(path), None
+        except (OSError, ValueError) as e:
+            return None, JSONResponse(status_code=503, content={"error": str(e), "run_id": run_id})
+
     def _video_path(rec: dict):
         """The run's recorded video file in the runs folder, if it is there (videos are not kept in git)."""
         v = rec.get("video")
@@ -597,20 +609,18 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         """The run's recorded MP4 (scripts/run_demo.py records one), when the file is in the runs folder."""
         from fastapi.responses import FileResponse
 
-        path = runs_dir() / f"{run_id}.json"
-        if not re.fullmatch(r"[0-9A-Za-z_-]{1,64}", run_id) or not path.is_file():
-            return JSONResponse(status_code=404, content={"error": f"no run {run_id!r}"})
-        video = _video_path(json.loads(path.read_text()))
+        rec, err = _record(run_id)
+        if err:
+            return err
+        video = _video_path(rec)
         if video is None:
             return JSONResponse(status_code=404, content={"error": f"run {run_id} has no video file here"})
         return FileResponse(video, media_type="video/mp4")
 
     @app.get("/api/runs/{run_id}")
     def get_run(run_id: str):
-        path = runs_dir() / f"{run_id}.json"
-        if not re.fullmatch(r"[0-9A-Za-z_-]{1,64}", run_id) or not path.is_file():
-            return JSONResponse(status_code=404, content={"error": f"no run {run_id!r}"})
-        return json.loads(path.read_text())
+        rec, err = _record(run_id)
+        return err or rec
 
     @app.get("/api/runs/{run_id}/steps/{step}.png")
     def get_step_png(run_id: str, step: int, attempt: int | None = Query(None, ge=1, le=9),
@@ -618,10 +628,9 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                                    "view_truth"] = "view"):
         """What the agent saw at a step: the overhead frame (before / after), its SAM masks, the simulator's
         truth masks, or a composite (view: SAM masks over the frame; view_truth: truth masks)."""
-        path = runs_dir() / f"{run_id}.json"
-        if not re.fullmatch(r"[0-9A-Za-z_-]{1,64}", run_id) or not path.is_file():
-            return JSONResponse(status_code=404, content={"error": f"no run {run_id!r}"})
-        rec = json.loads(path.read_text())
+        rec, err = _record(run_id)
+        if err:
+            return err
         steps = rec.get("steps") or []
         if not 0 <= step < len(steps):
             return JSONResponse(status_code=404, content={"error": f"run {run_id} has no step {step}"})

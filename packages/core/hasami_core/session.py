@@ -1084,11 +1084,22 @@ class Session:
 
     # ---- records -----------------------------------------------------------------------
     def record(self, run: dict, out_dir: Path | str | None = None) -> Path:
-        """Write the run record to deployments/runs/<run_id>.json (run_id is a UTC timestamp)."""
+        """Write the run record to deployments/runs/<run_id>.json (run_id is a UTC timestamp). Atomically: the JSON
+        goes to <run_id>.json.tmp and is renamed over the record, so a reader never sees half a file and a crash
+        mid-write leaves the previous record (or none), never a truncated one."""
         out = Path(out_dir) if out_dir else runs_dir()
         out.mkdir(parents=True, exist_ok=True)
         path = out / f"{run['run_id']}.json"
-        path.write_text(json.dumps(run, indent=2, default=_json_default) + "\n")
+        tmp = path.with_name(path.name + ".tmp")
+        try:
+            with open(tmp, "w") as f:
+                f.write(json.dumps(run, indent=2, default=_json_default) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
         return path
 
 
@@ -1145,14 +1156,30 @@ def new_run_id() -> str:
             time.sleep(0.001)
 
 
+DAMAGED = "run record damaged or still being written"
+
+
+def load_run_record(path: Path) -> dict:
+    """A run record's JSON. ValueError(DAMAGED: ...) when the file is not a whole JSON object."""
+    try:
+        r = json.loads(path.read_text())
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise ValueError(f"{DAMAGED}: {path.name}: {e}") from e
+    if not isinstance(r, dict):
+        raise ValueError(f"{DAMAGED}: {path.name}: not a JSON object")
+    return r
+
+
 def list_runs(out_dir: Path | str | None = None) -> list[dict]:
-    """Summaries of recorded runs, newest first."""
+    """Summaries of recorded runs, newest first. A record that cannot be read is listed with damaged: true and
+    the reason in error, not hidden."""
     d = Path(out_dir) if out_dir else runs_dir()
     out = []
     for p in sorted(d.glob("*.json"), reverse=True):
         try:
-            r = json.loads(p.read_text())
-        except (OSError, json.JSONDecodeError):
+            r = load_run_record(p)
+        except (OSError, ValueError) as e:
+            out.append({"run_id": p.stem, "damaged": True, "error": str(e), "file": p.name, "ok": None})
             continue
         out.append({"run_id": r.get("run_id", p.stem), "started_at": r.get("started_at"), "ok": r.get("ok"),
                     "placed": r.get("placed"), "total": r.get("total"), "segmenter": r.get("segmenter_name"),

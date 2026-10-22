@@ -197,6 +197,41 @@ def test_recorded_video_is_served_when_the_file_is_there(client, runs_tmp):
     assert client.get("/api/runs/nope/video").status_code == 404
 
 
+def test_damaged_run_records_are_readable_errors_and_flagged(client, runs_tmp):
+    """A record cut short (a crash mid-write, or read while being written) is a readable 503 on every endpoint
+    that reads it, and GET /api/runs lists it as damaged instead of hiding it."""
+    runs_tmp.mkdir(parents=True, exist_ok=True)
+    rid = "20261022T101010101Z"
+    (runs_tmp / f"{rid}.json").write_text('{"run_id": "20261022T101010101Z", "steps": [{"res')
+    for path in (f"/api/runs/{rid}", f"/api/runs/{rid}/steps/0.png", f"/api/runs/{rid}/video"):
+        r = client.get(path)
+        assert r.status_code == 503, (path, r.status_code, r.text)
+        assert "damaged or still being written" in r.json()["error"], path
+    runs = {r["run_id"]: r for r in client.get("/api/runs").json()["runs"]}
+    assert runs[rid]["damaged"] is True and runs[rid]["file"] == f"{rid}.json"
+    assert "damaged" in runs[rid]["error"]
+
+
+def test_run_records_are_replaced_atomically(session, runs_tmp, monkeypatch):
+    """Session.record writes <id>.json.tmp and renames it over the record: a reader sees the old record or the new
+    one, never a half-written file. If the rename fails (a crash before it), the old record is untouched."""
+    import hasami_core.session as core
+
+    runs_tmp.mkdir(parents=True, exist_ok=True)
+    rid = "20261022T111111111Z"
+    path = session.record({"run_id": rid, "ok": True, "steps": []})
+    assert json.loads(path.read_text())["ok"] is True
+
+    def crash(src, dst):
+        raise OSError("power cut before the rename")
+
+    monkeypatch.setattr(core.os, "replace", crash)
+    with pytest.raises(OSError):
+        session.record({"run_id": rid, "ok": False, "steps": [{"big": "x" * 100_000}]})
+    assert json.loads(path.read_text()) == {"run_id": rid, "ok": True, "steps": []}
+    assert sorted(p.name for p in runs_tmp.iterdir()) == [f"{rid}.json"]  # no temp file left behind
+
+
 def test_reset_to_a_task_scene(client):
     r = client.post("/api/reset", json={"seed": 3, "family": "sort-by-colour"}).json()
     assert r["scene"] == "sort-by-colour" and "instruction" in r and 4 <= len(r["objects"]) - 2 <= 8
