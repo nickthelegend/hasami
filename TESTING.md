@@ -25,8 +25,8 @@ tests; 213 before it, 204 before the first ultra round, 180 before the target ch
 
 **Fresh clone (2026-10-22):** `git clone` of this repository into an empty folder, `uv venv --python 3.12`,
 `uv pip install -e '.[dev]'` with an empty uv cache, then `python -m pytest -q --collect-only`: every test
-file collected (219 tests at that commit), nothing missing. With `uv pip install -e .` alone pytest is not
-installed, which is why every install line now says `'.[dev]'` (`tests/test_docs.py` checks them).
+file collected (219 tests at that commit), nothing missing. With a plain editable install (no `[dev]` extra)
+pytest is not installed, which is why every install line now says `'.[dev]'` (`tests/test_docs.py` checks them).
 
 | File | What it checks | Passed | Skipped |
 |---|---|---:|---:|
