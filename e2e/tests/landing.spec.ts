@@ -63,7 +63,12 @@ test('section nav 01-06 and the hero links scroll to their sections', async ({ p
   await page.getByRole('link', { name: 'Run it locally' }).click();
   await expect(page).toHaveURL(/#run$/);
   await expect(page.locator('#run')).toBeInViewport();
-  await expect(page.locator('#run pre')).toHaveText('$ pip install -e . && python -m hasami_server');
+  await expect(page.locator('#run pre')).toHaveText(
+    '$ uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e .\n' +
+      '$ (cd packages/dashboard && pnpm install && pnpm build)\n' +
+      '$ python -m hasami_server',
+  );
+  await expect(page.locator('#run .run-note')).toHaveText('Then open http://127.0.0.1:8420/. The first use downloads about 150 MB of SAM 2.1 weights.');
   const footer = page.getByRole('navigation', { name: 'Footer' });
   for (const [, , id] of SECTIONS.slice(1)) {
     await footer.locator(`a[href="#${id}"]`).click();

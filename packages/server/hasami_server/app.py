@@ -891,7 +891,7 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         @app.get("/")
         def root() -> dict:
             return {"name": "hasami", "api": "/api/status",
-                    "note": f"Dashboard not built: run `npm run build` in packages/dashboard (expected {DASHBOARD_DIST})."}
+                    "note": f"Dashboard not built: run `pnpm install && pnpm build` in packages/dashboard (expected {DASHBOARD_DIST})."}
 
     return app
 
