@@ -656,6 +656,74 @@ def test_twin_photos_do_not_outlive_the_server(session, runs_tmp, no_model_key, 
         session.reset(1)
 
 
+def test_realcam_segment_is_refused_while_a_run_holds_the_arm(client, session):
+    """SAM 2.1 is shared with the run: /api/realcam/segment answers 409 at once while a run is going (as
+    /api/segment does) instead of holding a worker until the run ends."""
+    import time
+
+    from hasami_sim.photo import PhotoCamera, SheetPose, render_photo
+    from hasami_sim.scene import ObjectSpec
+
+    cam = PhotoCamera(pos=(0.52, 0.07, 0.34), fovy_deg=50)
+    buf = io.BytesIO()
+    Image.fromarray(render_photo([ObjectSpec("a", "cube", "red", 0.20, 0.06, 0.3)], SheetPose(), cam)).save(buf, format="PNG")
+    assert client.post("/api/realcam/upload", content=buf.getvalue(), headers={"Content-Type": "image/png"}).status_code == 200
+    corners = [[100, 100], [500, 100], [500, 400], [100, 400]]
+    assert client.post("/api/realcam/calibrate", json={"corners": corners, "sheet": "a4", "hfov_deg": None}).status_code == 200
+
+    frame = session.observe()
+    steps = [{"pick_point": list(simulated_click(frame.rgb, c)), "place_point": list(p)}
+             for c, p in zip(("red cube", "green cube"), simulated_drop_clicks(frame.rgb, 2))]
+    r = client.post("/api/run", json={"steps": steps})
+    assert r.status_code == 200, r.text
+    t0 = time.perf_counter()
+    seg = client.post("/api/realcam/segment", json={"point": [300, 250], "height_mm": 0})
+    took = time.perf_counter() - t0
+    busy = client.app.state.runner.busy
+    client.app.state.runner.thread.join(timeout=120)
+    assert seg.status_code == 409, f"{seg.status_code} after {took:.1f} s (it waited for the run to end)"
+    assert seg.json()["run_id"] == r.json()["run_id"] and took < 2.0, took
+    assert busy, "the run was still going when the 409 came back"
+    assert client.post("/api/realcam/segment", json={"point": [300, 250], "height_mm": 0}).status_code == 200
+
+
+def test_a_run_cannot_start_while_a_reset_replaces_the_scene(client, session, monkeypatch):
+    """The busy check and the scene change are one step: while POST /api/reset is replacing the scene, a POST
+    /api/run (whose clicked pixels belong to the scene being replaced) gets 409 instead of starting afterwards on
+    the new scene; a reset during a run gets 409 too."""
+    import threading
+    import time
+
+    frame = session.observe()
+    steps = [{"pick_point": list(simulated_click(frame.rgb, "red cube")),
+              "place_point": list(simulated_drop_clicks(frame.rgb, 1)[0])}]
+    real_reset = session.reset
+    entered = threading.Event()
+
+    def slow_reset(seed=None):
+        entered.set()
+        time.sleep(1.5)
+        return real_reset(seed)
+
+    monkeypatch.setattr(session, "reset", slow_reset)
+    out: dict = {}
+    t = threading.Thread(target=lambda: out.setdefault("reset", client.post("/api/reset", json={"seed": 77})))
+    t.start()
+    assert entered.wait(10)
+    run = client.post("/api/run", json={"steps": steps})
+    t.join()
+    if run.status_code == 200:
+        client.app.state.runner.thread.join(timeout=120)
+    assert out["reset"].status_code == 200 and out["reset"].json()["seed"] == 77
+    assert run.status_code == 409, f"a run started on pixels from the replaced scene ({run.status_code})"
+    assert "scene" in run.json()["error"]
+    monkeypatch.setattr(session, "reset", real_reset)
+    r = client.post("/api/run", json={"steps": steps})
+    assert r.status_code == 200
+    assert client.post("/api/reset", json={"seed": 3}).status_code == 409
+    client.app.state.runner.thread.join(timeout=120)
+
+
 # ---- malformed but schema-shaped inputs: a readable 4xx (or 502 for a failing remote model), never a bare 500 ----
 def test_off_frame_clicks_and_non_finite_points_are_refused(client):
     for pt in ([700, 10], [-40, -40], [10, 480], [640, 0], [-0.6, 5]):

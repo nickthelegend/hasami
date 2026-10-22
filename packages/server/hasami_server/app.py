@@ -13,7 +13,7 @@ import re
 import threading
 import time
 from collections.abc import Callable
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, Query, Request
@@ -196,12 +196,27 @@ class Runner:
     def busy(self) -> bool:
         return self.thread is not None and self.thread.is_alive()
 
+    @contextmanager
+    def exclusive(self):
+        """Hold the run slot while the scene changes (reset, twin load): RuntimeError("busy") when a run is going or
+        another change holds it, and no run can start until the block ends (start() refuses rather than wait)."""
+        if not self._lock.acquire(blocking=False):
+            raise RuntimeError("scene")
+        try:
+            if self.busy:
+                raise RuntimeError("busy")
+            yield
+        finally:
+            self._lock.release()
+
     def start(self, *, plan: Plan | None, instruction: str | None, planner: Planner | None,
               segmenter: str, prepare: Callable[[], Plan | None] | None = None,
               finish: Callable[[dict, Callable[[str, dict], None]], None] | None = None) -> str:
         """Start a run in the background. `prepare` runs first in the worker (e.g. load a twin scene);
         `finish(record, emit)` runs after the arm is done and before the record is written (e.g. a goal check)."""
-        with self._lock:
+        if not self._lock.acquire(blocking=False):  # the scene is being reset or loaded: its pixels are stale
+            raise RuntimeError("scene")
+        try:
             if self.busy:
                 raise RuntimeError("busy")
             run_id = new_run_id()
@@ -212,6 +227,8 @@ class Runner:
                                            name=f"hasami-run-{run_id}", daemon=True)
             self.thread.start()
             return run_id
+        finally:
+            self._lock.release()
 
     def _work(self, run_id: str, plan: Plan | None, instruction: str | None, planner: Planner | None,
               segmenter: str, prepare=None, finish=None) -> None:
@@ -446,9 +463,10 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         runner = getattr(app.state, "runner", None)
         return bool(runner and runner.busy)
 
-    def busy_response(request: Request) -> JSONResponse:
-        return JSONResponse(status_code=409, content={"error": "a run is in progress",
-                                                      "run_id": request.app.state.runner.run_id})
+    def busy_response(request: Request, why: str = "busy") -> JSONResponse:
+        """409: a run holds the arm, or (why == "scene") the scene is being reset or loaded right now."""
+        msg = "the scene is being reset or loaded; try again" if why == "scene" else "a run is in progress"
+        return JSONResponse(status_code=409, content={"error": msg, "run_id": request.app.state.runner.run_id})
 
     @app.get("/api/status")
     def get_status(request: Request) -> dict:
@@ -521,8 +539,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         try:
             run_id = runner.start(plan=plan, instruction=body.instruction, planner=planner,
                                   segmenter=body.segmenter)
-        except RuntimeError:
-            return busy_response(request)
+        except RuntimeError as e:
+            return busy_response(request, str(e))
         return {"run_id": run_id}
 
     @app.get("/api/events")
@@ -559,21 +577,23 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
 
     @app.post("/api/reset")
     def post_reset(request: Request, body: ResetReq | None = None):
-        if request.app.state.runner.busy:
-            return busy_response(request)
-        s = sess(request)
-        if body is None or not body.family:
-            return s.reset(body.seed if body else None)
         from hasami_core.tasks import FAMILIES, make_task, setup_task
 
-        if body.family not in FAMILIES:
+        if body is not None and body.family and body.family not in FAMILIES:
             return JSONResponse(status_code=422, content={"error": f"unknown family {body.family!r}; known: {FAMILIES}"})
-        seed = body.seed if body.seed is not None else int(time.time()) % 100000
+        s = sess(request)
         try:
-            out = setup_task(task := make_task(body.family, seed), s)
-        except ValueError as e:
-            return JSONResponse(status_code=422, content={"error": str(e)})
-        return {**out, "scene": body.family, "instruction": task.instruction}
+            with request.app.state.runner.exclusive():  # no run starts on the old scene's pixels meanwhile
+                if body is None or not body.family:
+                    return s.reset(body.seed if body else None)
+                seed = body.seed if body.seed is not None else int(time.time()) % 100000
+                try:
+                    out = setup_task(task := make_task(body.family, seed), s)
+                except ValueError as e:
+                    return JSONResponse(status_code=422, content={"error": str(e)})
+                return {**out, "scene": body.family, "instruction": task.instruction}
+        except RuntimeError as e:
+            return busy_response(request, str(e))
 
     def _record(run_id: str):
         """(record, None) for a run in the runs folder, else (None, a 404 / 503 response)."""
@@ -725,6 +745,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         from hasami_core import mask_png_b64
         from hasami_perception.realcam import locate_on_plane
 
+        if request.app.state.runner.busy:  # SAM 2.1 is the run's: answer now rather than wait for the run to end
+            return busy_response(request)
         if real["rgb"] is None or real["h"] is None:
             return JSONResponse(status_code=409, content={"error": "grab or upload a frame and click the sheet's corners first"})
         hh, ww = real["rgb"].shape[:2]
@@ -910,12 +932,14 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         t, err = _twin_or_404(twin_id)
         if err:
             return err
-        if request.app.state.runner.busy:
-            return busy_response(request)
         try:
-            out = sess(request).load_scene(t["twin"].spec)
-        except ValueError as e:
-            return JSONResponse(status_code=422, content={"error": str(e)})
+            with request.app.state.runner.exclusive():
+                try:
+                    out = sess(request).load_scene(t["twin"].spec)
+                except ValueError as e:
+                    return JSONResponse(status_code=422, content={"error": str(e)})
+        except RuntimeError as e:
+            return busy_response(request, str(e))
         _touch(twin_id)
         return {**out, "scene": "twin", "twin_id": twin_id, "label": t["twin"].label}
 
@@ -959,8 +983,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         try:
             run_id = runner.start(plan=None, instruction=task.instruction, planner=None, segmenter="local",
                                   prepare=prepare, finish=finish)
-        except RuntimeError:
-            return busy_response(request)
+        except RuntimeError as e:
+            return busy_response(request, str(e))
         twin_run["id"] = twin_id
         _touch(twin_id)
         return {"run_id": run_id, "task": body.task, "instruction": task.instruction, "label": TWIN_LABEL,
