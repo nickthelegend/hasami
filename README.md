@@ -205,7 +205,7 @@ score (not used by the robot): physics state, goal predicate
 | Yaw (fourth-order moment / minimum-area rectangle) | max 1.76°, mean 0.18° over 60 cubes |
 | Real-camera geometry (synthetic tilted camera, 50 × 30 × 40 mm box) | centre within 1 mm, yaw within 1.5° with parallax correction; > 10 mm off without it |
 | Recorded demo runs (replay them in the dashboard's Agent trace) | [`20261021T053112874Z`](deployments/runs/20261021T053112874Z.json): 3/3 in the tray, no retries. [`20261021T053203432Z`](deployments/runs/20261021T053203432Z.json): 6 mm offset injected on every first attempt, each first attempt fails at the descent, each retry places the cube: 3/3. Videos (captioned "MuJoCo simulation · official SO-101 model") are shared separately until hosted. |
-| Test suite | `190 passed, 1 skipped` (the skip is the live Muse call) (see [TESTING.md](TESTING.md)) |
+| Test suite | `191 passed, 1 skipped` (the skip is the live Muse call); browser E2E in Google Chrome `30 passed` (see [TESTING.md](TESTING.md)) |
 
 ## Watch the agent think
 
@@ -259,7 +259,7 @@ MCP client config:
 `GET /api/status` · `GET /api/frame.png?camera=overhead|demo` · `POST /api/segment` · `POST /api/plan` ·
 `POST /api/run` (409 while busy) · `GET /api/events` (SSE: `plan`, `segment`, `target`, `phase`, `verify`,
 `retry`, `result`, `done`, `error`) · `POST /api/reset` (`{seed?, family?}`) · `GET /api/runs` ·
-`GET /api/runs/{id}` · `GET /api/runs/{id}/steps/{i}.png` · `POST /api/realcam/grab|upload|calibrate|segment` ·
+`GET /api/runs/{id}` · `GET /api/runs/{id}/steps/{i}.png` · `GET /api/runs/{id}/video` (when the MP4 is in the runs folder) · `POST /api/realcam/grab|upload|calibrate|segment` ·
 `GET /api/realcam/frame.png`.
 
 ## Limits

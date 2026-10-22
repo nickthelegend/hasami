@@ -19,7 +19,7 @@ export HF_HOME=/path/to/huggingface-cache   # where SAM 2.1 weights are cached (
 
 ## Results (2026-10-21 ~23:05 UTC; Mac, CPU, no MODEL_API_KEY, no SO-101, no webcam)
 
-`190 passed, 1 skipped in 120.04s` (180 passed before the target check)
+`191 passed, 1 skipped in 127.00s` (2026-10-22; 190 before the video endpoint test, 180 before the target check)
 
 | File | What it checks | Passed | Skipped |
 |---|---|---:|---:|
@@ -35,10 +35,10 @@ export HF_HOME=/path/to/huggingface-cache   # where SAM 2.1 weights are cached (
 | `tests/test_planner.py` | plan schema, `PlanError.raw`, `submit_plan` tool schema, image only in the user message, exact Setup required text; live Muse call | 12 | 1 (live, needs `MODEL_API_KEY`) |
 | `tests/test_robot.py` | sim -> LeRobot conversion; Setup required without / with a missing port; step limit; the sim arm streams joint targets to the hook; RealMirror units against a recording stand-in; a session stays sim-only when the port is missing | 13 | 0 |
 | `tests/test_realcam.py` | homography and camera pose from four A4 corners on a synthetic tilted camera; a 50 x 30 x 40 mm box located within 1 mm / 1.5 deg with parallax correction (> 10 mm off without); capture Setup required | 5 | 0 |
-| `tests/test_server.py` | status; frames; segment; 503 setup_required; 422s; clicked run over SSE, 409 while busy, recorded; per-step images and composites with IoU matching the record; reset to a task family; CORS; real-camera endpoints; **twin: a rendered photo through POST /api/twin -> side-by-side PNG -> adjust a height -> run clear-desk over SSE, `goal` before `done`, recorded with the twin's label; 422 without a sheet or with bad corners, 400 for a non-image, 404 for an unknown twin** | 17 | 0 |
+| `tests/test_server.py` | status; frames; segment; 503 setup_required; 422s; clicked run over SSE, 409 while busy, recorded; per-step images and composites with IoU matching the record; reset to a task family; CORS; real-camera endpoints; **twin: a rendered photo through POST /api/twin -> side-by-side PNG -> adjust a height -> run clear-desk over SSE, `goal` before `done`, recorded with the twin's label; 422 without a sheet or with bad corners, 400 for a non-image, 404 for an unknown twin**; a recorded run's MP4 served (Range too) only when the file is in the runs folder | 18 | 0 |
 | `tests/test_plausible.py` | the target check before any move: a synthetic **594 mm-wide** leak (wider than the jaws, longer than any object, 6 mm tall, off the frame edge) is rejected; a normal cube passes; a lying cylinder and a leaning cube pass, an out-of-reach centre and a noise speck fail, a target inside a bin counts as workspace; a bare-table mask on a real noisy frame locates hundreds of mm wide and is rejected, a cube's mask passes; **retry path** with SAM 2.1 fault-injected: a leaked first mask is re-prompted with a box and the step places the cube; every prompt leaking falls back to the red blob; nothing plausible near a bare-table click skips the step as `implausible` with no pick-and-place phase and no object moved; **the sweep's own case, no injection:** tower-of-3 seed 0 under the noisy camera no longer sends the arm to the 594 mm target (step 2 is `implausible`); a clean run passes the check first time. 6 of these 10 fail on b1d6bfa's code (the other 4 test the new module directly) | 10 | 0 |
 | `tests/test_mcp.py` | `python -m hasami_mcp` over stdio: tools, status, look, find, Setup required by label, call log | 1 | 0 |
-| **Total** | | **190** | **1** |
+| **Total** | | **191** | **1** |
 
 ## Dashboard (not part of pytest)
 
@@ -49,6 +49,27 @@ cd packages/dashboard && pnpm test     # vite bundles src/runState.test.ts, node
 `2 passed` (2026-10-21, Node 26): the run reducer ignores the previous run's events that
 `GET /api/events` replays before `POST /api/run` names the new run, and keeps the new run's own early
 events in order. `pnpm build` (tsc + vite) passes.
+
+## Browser E2E (Playwright in Google Chrome)
+
+```bash
+cd e2e && pnpm install && pnpm test:e2e      # builds the dashboard, then runs Playwright
+```
+
+`30 passed` (2026-10-22, Playwright 1.63.0, installed Google Chrome; 15 tests x two viewports, desktop
+1280x800 and mobile 375x812; about 3.5 minutes). `e2e/serve.sh` starts the real server on 127.0.0.1:8420
+(MuJoCo + SAM 2.1; run records go to a throwaway `e2e/.runs` seeded with the committed evidence runs, not
+`deployments/runs`) and the landing on :8421, with no `MODEL_API_KEY`, `HASAMI_REALCAM` or
+`HASAMI_SO101_PORT`, so those stay Setup required. Nothing is routed or stubbed. A test fails on any
+console error, page error or failed same-origin request it did not declare.
+
+| File | What a user does | Tests per viewport |
+|---|---|---:|
+| `e2e/tests/dashboard.spec.ts` | status pills and empty states, camera toggle, skip link; Muse Setup required with no plan drawn; clicked steps (add, remove, clear, a bare-table click, keyboard); click a cube, click the tray, Run: run log, results, agent trace (perception / truth, frame after), register, Replay a new and a committed run, Watch a video, reset; the run log follows a run after a reload; task scenes | 6 |
+| `e2e/tests/photo.spec.ts` | Real camera: webcam Setup required, a MuJoCo render with an A4 sheet uploaded, four corners clicked, an object located. Twin: a non-image refused, a render becomes a twin, refit with a typed height, shown in the arm's camera, a task run with its goal check, the picker after a reload, the synthetic-photo button | 2 |
+| `e2e/tests/landing.spec.ts` | hero and every image; nav 01-06, hero and footer links, skip link; every anchor; the scissors cut once, and stay still under reduced motion; the results sheet matches `deployments/bench/*.json` row for row (32 rows); replay strip; apparatus | 7 |
+
+The photos are MuJoCo renders (`GET /api/twin/sample.png`); the webcam is never opened.
 
 ## Benchmark and twin accuracy (not part of pytest)
 
