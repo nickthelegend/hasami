@@ -776,6 +776,39 @@ def test_realcam_segment_on_the_last_pixel_column_or_row(client):
     assert r.json()["mask_png"]
 
 
+def test_a_failing_reset_or_twin_load_is_a_500_with_its_message_not_busy(client, session, tmp_path, monkeypatch):
+    """Only a held run slot is a 409. Any other RuntimeError while the scene changes used to be reported as
+    409 'a run is in progress'; it now reaches the JSON 500 handler with its own message."""
+    import hasami_core.tasks as tasks
+
+    monkeypatch.setenv("HASAMI_TWINS_DIR", str(tmp_path / "twins"))
+    raw = TestClient(client.app, base_url="http://127.0.0.1:8420", headers={"X-Hasami": "1"},
+                     raise_server_exceptions=False)
+
+    def boom(*a, **k):
+        raise RuntimeError("boom: the scene could not be built")
+
+    real_setup, real_load = tasks.setup_task, type(session).load_scene
+    monkeypatch.setattr(tasks, "setup_task", boom)
+    r = raw.post("/api/reset", json={"family": "sort-by-colour", "seed": 3})
+    assert r.status_code == 500 and "boom" in r.json()["error"], (r.status_code, r.text)
+    monkeypatch.setattr(tasks, "setup_task", real_setup)
+
+    photo = raw.get("/api/twin/sample.png", params={"seed": 3})
+    assert photo.status_code == 200
+    tw = raw.post("/api/twin", content=photo.content, headers={"Content-Type": "image/png"},
+                  params={"hfov_deg": photo.headers["x-hasami-hfov"]})
+    assert tw.status_code == 200, tw.text
+    monkeypatch.setattr(type(session), "load_scene", boom)
+    r = raw.post(f"/api/twin/{tw.json()['twin_id']}/load")
+    assert r.status_code == 500 and "boom" in r.json()["error"], (r.status_code, r.text)
+    monkeypatch.setattr(type(session), "load_scene", real_load)
+    # a real busy slot is still a 409
+    with client.app.state.runner.exclusive():
+        r = raw.post("/api/reset", json={"seed": 4})
+    assert r.status_code == 409 and "reset or loaded" in r.json()["error"]
+
+
 def test_seeds_must_fit_32_bits(client):
     for seed in (-1, 2**32, 2**70):
         assert client.post("/api/reset", json={"seed": seed}).status_code == 422, seed

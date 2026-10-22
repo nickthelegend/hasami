@@ -188,6 +188,15 @@ class EventBus:
         return self.run_start_seq - 1
 
 
+class SlotBusy(RuntimeError):
+    """The run slot is taken: `why` is "busy" (a run holds the arm) or "scene" (a reset or twin load is changing
+    the scene). Only this is a 409; any other RuntimeError is a real failure (500 with its message)."""
+
+    def __init__(self, why: str):
+        super().__init__(why)
+        self.why = why
+
+
 class Runner:
     """Owns the single background run."""
 
@@ -204,13 +213,13 @@ class Runner:
 
     @contextmanager
     def exclusive(self):
-        """Hold the run slot while the scene changes (reset, twin load): RuntimeError("busy") when a run is going or
+        """Hold the run slot while the scene changes (reset, twin load): SlotBusy("busy") when a run is going or
         another change holds it, and no run can start until the block ends (start() refuses rather than wait)."""
         if not self._lock.acquire(blocking=False):
-            raise RuntimeError("scene")
+            raise SlotBusy("scene")
         try:
             if self.busy:
-                raise RuntimeError("busy")
+                raise SlotBusy("busy")
             yield
         finally:
             self._lock.release()
@@ -221,10 +230,10 @@ class Runner:
         """Start a run in the background. `prepare` runs first in the worker (e.g. load a twin scene);
         `finish(record, emit)` runs after the arm is done and before the record is written (e.g. a goal check)."""
         if not self._lock.acquire(blocking=False):  # the scene is being reset or loaded: its pixels are stale
-            raise RuntimeError("scene")
+            raise SlotBusy("scene")
         try:
             if self.busy:
-                raise RuntimeError("busy")
+                raise SlotBusy("busy")
             run_id = new_run_id()
             self.run_id = run_id
             self.bus.mark_run_start()
@@ -545,8 +554,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         try:
             run_id = runner.start(plan=plan, instruction=body.instruction, planner=planner,
                                   segmenter=body.segmenter)
-        except RuntimeError as e:
-            return busy_response(request, str(e))
+        except SlotBusy as e:
+            return busy_response(request, e.why)
         return {"run_id": run_id}
 
     @app.get("/api/events")
@@ -598,8 +607,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                 except ValueError as e:
                     return JSONResponse(status_code=422, content={"error": str(e)})
                 return {**out, "scene": body.family, "instruction": task.instruction}
-        except RuntimeError as e:
-            return busy_response(request, str(e))
+        except SlotBusy as e:
+            return busy_response(request, e.why)
 
     def _record(run_id: str):
         """(record, None) for a run in the runs folder, else (None, a 404 / 503 response)."""
@@ -946,8 +955,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                     out = sess(request).load_scene(t["twin"].spec)
                 except ValueError as e:
                     return JSONResponse(status_code=422, content={"error": str(e)})
-        except RuntimeError as e:
-            return busy_response(request, str(e))
+        except SlotBusy as e:
+            return busy_response(request, e.why)
         _touch(twin_id)
         return {**out, "scene": "twin", "twin_id": twin_id, "label": t["twin"].label}
 
@@ -991,8 +1000,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         try:
             run_id = runner.start(plan=None, instruction=task.instruction, planner=None, segmenter="local",
                                   prepare=prepare, finish=finish)
-        except RuntimeError as e:
-            return busy_response(request, str(e))
+        except SlotBusy as e:
+            return busy_response(request, e.why)
         twin_run["id"] = twin_id
         _touch(twin_id)
         return {"run_id": run_id, "task": body.task, "instruction": task.instruction, "label": TWIN_LABEL,
@@ -1021,5 +1030,5 @@ def serve(host: str | None = None, port: int | None = None) -> None:
                 port=port or int(os.environ.get("HASAMI_PORT", "8420")), log_level="info")
 
 
-__all__ = ["EventBus", "LocalOnly", "Runner", "allowed_origins_from_env", "app", "create_app", "prune_twin_folders",
+__all__ = ["EventBus", "LocalOnly", "Runner", "SlotBusy", "allowed_origins_from_env", "app", "create_app", "prune_twin_folders",
            "serve"]
