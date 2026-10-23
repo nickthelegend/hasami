@@ -273,8 +273,9 @@ def _mask_ok(mask: np.ndarray, paper: np.ndarray, tablelike: np.ndarray, min_px:
 
 
 def auto_masks(sam, rgb: np.ndarray, frame: SheetFrame, points: list[tuple[float, float]] | None = None,
-               batch: int = 16, min_px: int = 120, max_frac: float = 0.05) -> list[dict]:
-    """SAM 2.1 automatic masks from point prompts: [{mask, score, point}], duplicates merged."""
+               batch: int = 4, min_px: int = 120, max_frac: float = 0.05) -> list[dict]:
+    """SAM 2.1 automatic masks from point prompts: [{mask, score, point}], duplicates merged. `batch` prompts are
+    decoded at once; each brings 3 photo-sized masks, so a large batch costs memory, not accuracy."""
     points = prompt_points(rgb, frame, table_rgb=table_colour(rgb, frame)) if points is None else points
     paper = paper_mask(rgb)
     trgb = table_colour(rgb, frame)

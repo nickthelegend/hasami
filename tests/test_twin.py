@@ -148,3 +148,25 @@ def test_objects_outside_the_twin_say_why():
     assert not world[2]["reachable"] and "reach" in world[2]["twin_notes"][0]
     assert world[3]["reachable"] and not world[3]["twin_notes"]
     assert [o.name for o in spec.objects] == ["twin2_red_box", "twin3_red_box"]
+
+
+def test_auto_masks_decode_few_prompts_at_a_time_with_the_same_masks(session):
+    """Each prompt's masks are upsampled to the photo's size (3 x H x W float before thresholding), so 16 prompts
+    at once on a 1280 px photo took ~0.9 GB for a moment and, on top of a run, got the 3 GB server OOM-killed.
+    The default batch is small now; the masks found do not depend on it (the image is encoded once either way)."""
+    import inspect
+
+    from hasami_perception.segment import LocalSam2
+    from hasami_perception.twin import auto_masks, sheet_frame
+
+    assert inspect.signature(auto_masks).parameters["batch"].default <= 4
+    assert inspect.signature(LocalSam2.segment_many).parameters["batch"].default <= 4
+    objs, cam = random_desk(3)
+    rgb = render_photo(objs, SheetPose(), cam)
+    frame = sheet_frame(find_sheet(rgb), rgb.shape[1], rgb.shape[0], cam.hfov_deg)
+    small = auto_masks(session.sam, rgb, frame)
+    big = auto_masks(session.sam, rgb, frame, batch=16)
+    assert len(small) == len(big) >= len(objs)
+    for a, b in zip(small, big):
+        assert a["point"] == b["point"]
+        assert (a["mask"] ^ b["mask"]).sum() <= 0.01 * a["mask"].sum()

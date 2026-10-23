@@ -79,7 +79,7 @@ class LocalSam2:
         return masks[order[0]]
 
 
-    def segment_many(self, rgb: np.ndarray, points: list[tuple[float, float]], batch: int = 16
+    def segment_many(self, rgb: np.ndarray, points: list[tuple[float, float]], batch: int = 4
                      ) -> list[tuple[np.ndarray, np.ndarray]]:
         """Every point as its own single-click prompt (the image is encoded once). Returns, per point, SAM's
         three hypotheses (3 x H x W bool) and their predicted IoU scores (3,). Used for automatic masks."""
