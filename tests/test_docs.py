@@ -141,3 +141,14 @@ def test_cited_contract_documents_exist_in_this_repo():
     assert "## HTTP API (port 8420)" in readme
     for f in contract:
         assert 'README.md "HTTP API' in f.read_text()[:400], f
+
+
+def test_torchvision_is_a_declared_dependency():
+    """transformers' Sam2ImageProcessor imports torchvision on the first segment. A plain `pip install -e .` must
+    bring it, and CI installs it from the same CPU index as torch so the two wheels match."""
+    meta = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    names = [re.split(r"[<>=!~\[ ]", d, maxsplit=1)[0].lower() for d in meta["dependencies"]]
+    assert "torchvision" in names, "torchvision is missing from [project].dependencies"
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    cpu_line = next(line for line in ci.splitlines() if "download.pytorch.org/whl/cpu" in line)
+    assert re.search(r"\btorch torchvision\b", cpu_line), cpu_line

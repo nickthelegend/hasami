@@ -23,10 +23,10 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: OSMesa for headless MuJoCo rendering
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libosmesa6 libgl1
-      - name: Install (CPU torch, then '.[dev]' as the README does)
+      - name: Install (CPU torch + torchvision, then '.[dev]' as the README does)
         run: |
           uv venv --python 3.12 .venv
-          uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch -c constraints.txt
+          uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch torchvision -c constraints.txt
           uv pip install --python .venv/bin/python -e '.[dev]' PyOpenGL -c constraints.txt
       - name: pytest (no SAM 2.1 weights needed)
         run: >

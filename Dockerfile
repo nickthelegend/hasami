@@ -21,7 +21,7 @@ WORKDIR /app
 COPY constraints.txt pyproject.toml README.md LICENSE ./
 COPY packages ./packages
 # torch's and torchvision's CPU wheels from the PyTorch index, their dependencies at the tested versions from PyPI.
-# torchvision is not in pyproject.toml, but transformers' Sam2ImageProcessor needs it (constraints.txt pins 0.29.1).
+# torchvision (transformers' Sam2ImageProcessor needs it) comes from the same CPU index as torch, as in CI.
 RUN uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match \
       "torch==2.14.1+cpu" "torchvision==0.29.1+cpu" -c constraints.txt \
  && uv pip install --system -e . PyOpenGL -c constraints.txt
