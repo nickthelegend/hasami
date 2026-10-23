@@ -10,6 +10,7 @@ services:
     image: hk-hasami:latest
     restart: unless-stopped
     mem_limit: 3g
+    memswap_limit: 4g
     cpus: 1.5
     env_file:
       - path: .env
