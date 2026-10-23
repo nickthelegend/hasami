@@ -1,0 +1,44 @@
+# Lightweight hackathon-demo deployment on the VPS behind Coolify's Traefik (network "coolify").
+# Redeploy: cd /opt/hk/hasami && docker compose up -d --build
+# Simulator + SAM 2.1 on CPU; the dashboard is served by the same server. MODEL_API_KEY (Muse planner, SAM 3.1)
+# stays "Setup required" until it is added to ./.env. No real arm (HASAMI_SO101_PORT) on the server.
+# Browser origins must be listed exactly (the server 403s any other Origin): add the Vercel URL to
+# HASAMI_ALLOWED_ORIGINS once it exists.
+services:
+  server:
+    build: .
+    image: hk-hasami:latest
+    restart: unless-stopped
+    mem_limit: 3g
+    cpus: 1.5
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HASAMI_ALLOWED_HOSTS: hasami-api.201-18-198-162.sslip.io
+      HASAMI_ALLOWED_ORIGINS: https://hasami-api.201-18-198-162.sslip.io
+      HASAMI_MAX_RUNS: "50"
+      HASAMI_MAX_TWINS: "4"
+    volumes:
+      - hasami-hf:/data/hf
+      - hasami-runs:/app/deployments/runs
+    networks: [coolify]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8420/api/status"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hk-hasami-api.rule=Host(`hasami-api.201-18-198-162.sslip.io`)
+      - traefik.http.routers.hk-hasami-api.entrypoints=https
+      - traefik.http.routers.hk-hasami-api.tls=true
+      - traefik.http.routers.hk-hasami-api.tls.certresolver=letsencrypt
+      - traefik.http.services.hk-hasami-api.loadbalancer.server.port=8420
+volumes:
+  hasami-hf:
+  hasami-runs:
+networks:
+  coolify:
+    external: true

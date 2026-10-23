@@ -1,0 +1,25 @@
+# Keep secrets, local state, caches and build output out of the image build context.
+.env
+.env.*
+.venv/
+.cache/
+.scratch/
+.pytest_cache/
+.git/
+.github/
+**/__pycache__/
+*.egg-info/
+**/node_modules/
+**/dist/
+.test-out/
+deployments/twins/
+e2e/
+MUJOCO_LOG.TXT
+CLAUDE.md
+*.mp4
+*.mov
+*.webm
+*.pt
+*.pth
+*.ckpt
+*.safetensors
