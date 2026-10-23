@@ -152,3 +152,10 @@ def test_torchvision_is_a_declared_dependency():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     cpu_line = next(line for line in ci.splitlines() if "download.pytorch.org/whl/cpu" in line)
     assert re.search(r"\btorch torchvision\b", cpu_line), cpu_line
+
+
+def test_the_image_caps_glibc_malloc_arenas():
+    """Each frame request renders in a worker thread; with glibc's default arenas (8 per core) the server kept
+    ~1.9 GB after 300 parallel GET /api/frame.png and was OOM-killed at its 3 GB limit. Two arenas: ~120 MB."""
+    docker = (ROOT / "Dockerfile").read_text()
+    assert re.search(r"^ENV .*\bMALLOC_ARENA_MAX=2\b", docker, re.M), "Dockerfile must set MALLOC_ARENA_MAX=2"

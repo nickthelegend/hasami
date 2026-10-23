@@ -13,7 +13,9 @@ COPY packages/dashboard ./
 RUN pnpm build
 
 FROM python:3.12-slim-bookworm AS run
-ENV MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
+# MALLOC_ARENA_MAX=2: frames render in many request threads; glibc's default per-thread arenas kept ~1.9 GB
+# after 300 parallel frame requests (OOM at the 3 GB limit). With two arenas the server stays under ~1 GB.
+ENV MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 MALLOC_ARENA_MAX=2 \
     OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 HF_HOME=/data/hf HASAMI_HOST=0.0.0.0 HASAMI_PORT=8420
 RUN apt-get update && apt-get install -y --no-install-recommends libosmesa6 libgl1 curl && rm -rf /var/lib/apt/lists/* \
  && pip install uv==0.9.5
