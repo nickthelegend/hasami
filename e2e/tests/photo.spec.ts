@@ -64,7 +64,11 @@ test('real camera: webcam is Setup required; an uploaded photo is calibrated on 
   await expect(page.locator('.rc-arm')).toHaveText('arm: simulation · not connected to this camera');
 
   await page.getByRole('button', { name: 'Grab webcam frame' }).click();
-  await expect(page.locator('.realcam .notice-error')).toContainText('Setup required: HASAMI_REALCAM');
+  // amber Setup required (not a red failure), said once
+  const setup = page.locator('.realcam .notice-setup');
+  await expect(setup).toContainText('Setup required: HASAMI_REALCAM (camera index');
+  expect(((await setup.textContent()) ?? '').match(/Setup required/g)).toHaveLength(1);
+  await expect(page.locator('.realcam .notice-error')).toHaveCount(0);
   await shot(page, info, 'cam-01-webcam-setup-required');
 
   const photo = await deskPhoto(request, 3);

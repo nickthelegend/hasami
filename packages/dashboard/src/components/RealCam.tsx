@@ -17,6 +17,8 @@ interface Frame { frame_id: string | null; width?: number; height?: number; sour
 
 /** A 409 because another tab (or client) replaced the server's frame since this tab loaded it. */
 class Replaced extends Error {}
+/** A 503 naming a missing setting (HASAMI_REALCAM): shown as Setup required, not as a failure. */
+class SetupRequired extends Error {}
 
 async function call(path: string, init?: RequestInit) {
   let r: Response;
@@ -26,7 +28,11 @@ async function call(path: string, init?: RequestInit) {
     throw new Error('The Hasami server is not reachable.');
   }
   const body = await r.json().catch(() => null);
-  if (r.status === 503 && body?.setup_required) throw new Error(`Setup required: ${body.setup_required}. ${body.message ?? ''}`);
+  if (r.status === 503 && body?.setup_required) {
+    // the server's message already reads "Setup required: NAME (...)"; say it once
+    const msg = typeof body.message === 'string' && body.message.startsWith('Setup required') ? body.message : `Setup required: ${body.setup_required}`;
+    throw new SetupRequired(msg);
+  }
   if (r.status === 409 && body?.replaced) throw new Replaced(body.error);
   if (!r.ok) throw new Error(body?.error ?? `HTTP ${r.status}`);
   return body;
@@ -44,6 +50,7 @@ export function RealCam() {
   const [click, setClick] = useState<Pt | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [setup, setSetup] = useState<string | null>(null); // a Setup required answer (amber), not an error
   const [cursor, setCursor] = useState<Pt | null>(null); // the keyboard crosshair, in photo pixels
   const imgRef = useRef<HTMLImageElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -83,11 +90,13 @@ export function RealCam() {
 
   const grab = useCallback(async () => {
     setErr(null);
+    setSetup(null);
     setBusy('Grabbing a frame…');
     try {
       show(await call('/api/realcam/grab', { method: 'POST' }));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      if (e instanceof SetupRequired) setSetup(e.message);
+      else setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
@@ -95,6 +104,7 @@ export function RealCam() {
 
   const upload = useCallback(async (f: File) => {
     setErr(null);
+    setSetup(null);
     setBusy('Uploading…');
     try {
       show(await call('/api/realcam/upload', { method: 'POST', body: f }));
@@ -268,6 +278,7 @@ export function RealCam() {
         </button>
       </div>
       <p className="muted small rc-step" aria-live="polite">{busy ?? step}</p>
+      {setup && <div className="notice notice-setup" role="status">{setup}</div>}
       {err && <div className="notice notice-error" role="alert">{err}</div>}
       {size && frameId ? (
         <div className="rc-view" role="button" tabIndex={0} aria-label={photoLabel} aria-disabled={!!busy || undefined}
