@@ -315,6 +315,7 @@ h1, h2 { font-weight: 500; letter-spacing: -0.03em; margin: 0; }
 /* ---- agent trace: a contact sheet (dark) ------------------------------------------------------- */
 .trace { margin-top: 32px; padding-top: 18px; border-top: 2px dashed var(--mint); }
 .trace .sec-head h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+#trace-h:focus { outline: none; } /* focused by Replay so a screen reader lands on it; not a control */
 .trace-act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .trace-meta { margin: 0 0 14px; font-family: var(--mono); }
 .tr-steps, .tr-atts, .tr-phases { list-style: none; margin: 0; padding: 0; }

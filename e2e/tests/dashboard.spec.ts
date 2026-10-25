@@ -234,6 +234,9 @@ test('click an object, click the tray, Run: run log, result, agent trace, regist
   const old = table.getByRole('row').filter({ hasText: EVIDENCE_RETRY_RUN });
   await old.getByRole('button', { name: 'Replay' }).click();
   await expect(page.locator('section.trace h2')).toContainText(EVIDENCE_RETRY_RUN);
+  // the trace sits above the register, rows away from the clicked button: Replay brings it into view
+  await expect(page.locator('#trace-h')).toBeInViewport();
+  await expect(page.locator('#trace-h')).toBeFocused();
   await expect(page.locator('.tr-step')).toHaveCount(3);
   await expect(page.locator('.tr-step-head .ok-pill').first()).toHaveText('placed after 2 attempts');
   await expect(page.locator('.tr-why').first()).toContainText('Retry because: the check failed (');

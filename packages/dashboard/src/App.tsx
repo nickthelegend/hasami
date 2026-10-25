@@ -38,6 +38,12 @@ export default function App() {
   const [resetting, setResetting] = useState(false);
   const [scene, setScene] = useState('classic');
   const [traceId, setTraceId] = useState<string | null>(null);
+  // Replay in the register shows the trace above the register, often a screen or more away: bring it into view
+  const [traceAsked, setTraceAsked] = useState(0);
+  const replay = useCallback((id: string) => {
+    setTraceId(id);
+    setTraceAsked((n) => n + 1);
+  }, []);
   const [tab, setTab] = useState<Tab>('runs');
   const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
   // WAI-ARIA tabs: arrows move (and wrap), Home / End jump; the tab that gets focus is selected
@@ -135,6 +141,17 @@ export default function App() {
   }, [run.phase, run.runId, refreshFrame, loadRuns, loadStatus]);
 
   useEffect(() => () => sub.current?.close(), []);
+
+  useEffect(() => {
+    if (!traceAsked) return;
+    const h = document.getElementById('trace-h');
+    if (!h) return;
+    const bar = document.querySelector('.topbar');
+    const covered = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().height : 0;
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: h.getBoundingClientRect().top + window.scrollY - covered - 12, behavior: smooth ? 'smooth' : 'auto' });
+    h.focus({ preventScroll: true });
+  }, [traceAsked]);
 
   // A run this page follows that the server no longer runs (it restarted mid-run, or the stream died without
   // `done`): read its record if it was written, else say it was lost, so Run is enabled again.
@@ -524,7 +541,7 @@ export default function App() {
             ) : tab === 'twin' ? (
               <Twin onRun={doTwinRun} runPhase={run.phase} runId={run.runId} onLoaded={onTwinLoaded} />
             ) : (
-              <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={setTraceId} active={traceId} />
+              <RunsTable view={reachable === false ? { state: 'error', message: 'Server not reachable.' } : runs} onReplay={replay} active={traceId} />
             )}
           </div>
         </section>

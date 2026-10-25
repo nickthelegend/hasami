@@ -225,7 +225,7 @@ export function RunTrace({ runId, onClose, onLoaded }: { runId: string; onClose:
   return (
     <section className="trace" aria-labelledby="trace-h">
       <div className="sec-head">
-        <h2 id="trace-h">
+        <h2 id="trace-h" tabIndex={-1}>
           Agent trace <span className="mono muted small">{runId}</span>
         </h2>
         <div className="trace-act">
