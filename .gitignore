@@ -47,3 +47,5 @@ packages/dashboard/.test-out/
 test-results/
 playwright-report/
 .demo/
+# Loom's local state (event log, attachments, machine config)
+.loom/
