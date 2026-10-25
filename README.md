@@ -264,7 +264,7 @@ can replay any recorded run. `GET /api/runs/{id}/steps/{i}.png?kind=view|view_tr
 | [`packages/server`](packages/server) | `hasami_server` | FastAPI on :8420, REST + SSE (runs, real camera, `/api/twin`), serves the dashboard |
 | [`packages/mcp`](packages/mcp) | `hasami_mcp` | MCP stdio server: `status`, `look`, `find`, `pick_place` |
 | [`packages/dashboard`](packages/dashboard) | — | Vite + React, a camera viewfinder beside a lab notebook: live camera with SAM masks drawn as a cut line, click-to-pick, 3D target readout, Muse instruction, scene picker, run log, agent trace + replay, Twin tab, real camera |
-| [`packages/landing`](packages/landing) | — | One page built from real run data: the overhead frame of a recorded run with its SAM mask outlines, the benchmark sheets, a contact sheet of a disturbed run, the twin figure (`scripts/landing_assets.py` rebuilds the images and outlines) |
+| [`packages/landing`](packages/landing) | — | Built from real run data. `index.html` is the short landing: the overhead frame of a recorded run with its SAM mask outlines, three steps, three numbers, what runs vs Setup required. `evidence.html` is the lab notebook: the step-by-step notebook, the benchmark sheets, a contact sheet of a disturbed run, the twin figure and the apparatus list (`scripts/landing_assets.py` rebuilds the images and outlines) |
 | [`packages/docs`](packages/docs) | — | Method, checks, digital twin, Meta API confirmed vs unverified, sim-to-real, limits |
 
 ## Run it
