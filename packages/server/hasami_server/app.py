@@ -14,6 +14,7 @@ import threading
 import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
+from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, Query, Request
@@ -30,6 +31,17 @@ from hasami_core.session import ROOT
 from hasami_planner import Plan, Planner, PlanError, plan_from_clicks
 
 DASHBOARD_DIST = ROOT / "packages" / "dashboard" / "dist"
+
+
+class DashboardFiles(StaticFiles):
+    """The built dashboard. index.html is revalidated on every load, so a browser sees a redeploy at once
+    instead of a heuristically cached page pointing at the old bundle; Vite's content-hashed assets never change."""
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        resp = super().file_response(full_path, stat_result, scope, status_code)
+        hashed = Path(full_path).parent.name == "assets"
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable" if hashed else "no-cache"
+        return resp
 TERMINAL = {"done", "error"}
 
 # ---- local only: DNS rebinding and cross-site writes ---------------------------------------------------
@@ -1095,7 +1107,7 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                 "planner": ORACLE_LABEL}
 
     if DASHBOARD_DIST.is_dir():
-        app.mount("/", StaticFiles(directory=DASHBOARD_DIST, html=True), name="dashboard")
+        app.mount("/", DashboardFiles(directory=DASHBOARD_DIST, html=True), name="dashboard")
     else:
         @app.get("/")
         def root() -> dict:

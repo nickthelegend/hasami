@@ -262,6 +262,21 @@ def test_root_serves_dashboard_or_a_note(client):
         assert "Dashboard not built" in r.json()["note"]
 
 
+def test_dashboard_page_is_revalidated_and_hashed_assets_are_immutable(client):
+    """After a redeploy a returning browser must load the new index.html (and so the new hashed bundle):
+    without Cache-Control it may reuse a heuristically cached page that points at the old bundle."""
+    from hasami_server.app import DASHBOARD_DIST
+
+    if not DASHBOARD_DIST.is_dir():
+        pytest.skip("dashboard not built")
+    for path in ("/", "/index.html"):
+        assert client.get(path).headers["cache-control"] == "no-cache"
+    bundle = next((DASHBOARD_DIST / "assets").glob("index-*.js")).name
+    r = client.get(f"/assets/{bundle}")
+    assert r.status_code == 200
+    assert r.headers["cache-control"] == "public, max-age=31536000, immutable"
+
+
 def test_cors_allows_only_the_dashboard_and_its_dev_server(client):
     """CORS and the write guard trust an exact list: the server's own origin (8420) and the dashboard's Vite dev
     server (5190), on 127.0.0.1 / localhost / [::1]. Another app on another localhost port is a foreign site: it
