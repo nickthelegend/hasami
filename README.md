@@ -114,6 +114,34 @@ Limits of this demo: simulation only, one fridge; the door is already open and t
 it (no driving, no door opening); perfect depth and an exactly known head-camera pose; the basket check uses
 the sim's overhead camera, which the real robot does not have; items scaled to the SO-101's jaws.
 
+## The real robot (Thenar Walker on a Raspberry Pi)
+
+The body is the Thenar Walker ([nickthelegend/thenar-walker](https://github.com/nickthelegend/thenar-walker)): a
+wheeled base carrying a 6-DoF MG996R arm from the SO-ARM100 family. Its brain moved from an ESP32 to a Raspberry Pi,
+which runs `thenar_pi` (folder `pi/` there): the same phone page and safety rules as before, plus a camera endpoint
+and a **brain channel** for Hasami on port 83.
+
+The phone always outranks Hasami:
+- **Real phone input** takes control for 2 s.
+- **A phone STOP** pauses Hasami until a person resumes it.
+- **Either side going silent** for 300 ms stops the wheels while the arm holds.
+
+```bash
+python -m hasami_walker status                         # config, joints, round trip, camera, who has control
+python -m hasami_walker teach look_shelf               # store the arm's current angles (move it with the phone)
+python -m hasami_walker look "orange juice" --pose look_shelf --out look.png   # find the item in a robot frame
+```
+
+**`look`** finds the item in one robot camera frame: SAM 3.1 from the text when a Meta key is set, otherwise SAM 2.1 at
+your click or at the colour you name. It writes the annotated frame and moves nothing except the optional taught pose.
+`--image photo.jpg` runs it on a photo instead.
+
+**Tested so far:** the brain against the real `thenar_pi` runtime over sockets (`tests/test_walker.py`), and `look`
+with real SAM 2.1 (`tests/test_walker_look.py`). The Pi runtime has 33 tests of its own.
+
+**Untested, because it needs the robot:** everything on the hardware, and reaching for an item, which waits for the
+camera to be mounted and calibrated to the arm.
+
 ## Benchmark
 
 `scripts/bench.py` runs seeded task families and checks each goal against the physics state. Planner:
