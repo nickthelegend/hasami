@@ -1,0 +1,357 @@
+{
+  "id": "D026",
+  "width": 1280,
+  "status": "PASS",
+  "test": "D026 D033 D034 D035 D036 D037 D038 D039 all task families 1280px",
+  "assertions": [],
+  "errors": [],
+  "console": [],
+  "network": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-DFDbRdpT.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-FESE74tm.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035886753",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-FESE74tm.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-DFDbRdpT.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035887125",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/segment",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-FESE74tm.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-DFDbRdpT.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035889109",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035889576",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035890074",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035890419",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035890774",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035891098",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035891463",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035891827",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035892129",
+      "status": 200,
+      "declared": false
+    }
+  ],
+  "notes": [],
+  "screenshots": [
+    "D026-1280-all-task-families.jpg"
+  ]
+}

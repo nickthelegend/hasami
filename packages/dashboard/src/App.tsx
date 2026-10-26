@@ -199,6 +199,9 @@ export default function App() {
             setNotice({ tone: 'error', text: `No graspable object at ${p[0]}, ${p[1]}: ${res.target_error ?? 'mask has no pixels above the table'}` });
           }
         } catch (e) {
+          // A rejected segmentation is not a pick. Otherwise the next click
+          // completes an unvalidated step and enables a run after the error.
+          setPending(null);
           if (e instanceof ApiError && e.kind === 'setup') setNotice({ tone: 'setup', text: `Setup required: ${setupName(e.setup)}` });
           else if (e instanceof ApiError && e.kind === 'unreachable') setReachable(false);
           else setNotice({ tone: 'error', text: `Segment failed: ${errText(e)}` });

@@ -1,0 +1,51 @@
+{
+  "id": "D045",
+  "width": 375,
+  "status": "PASS",
+  "test": "D045 offline plan component states 375px",
+  "assertions": [],
+  "errors": [],
+  "console": [],
+  "network": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/audit-component.html?view=error",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/audit-component.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/audit-component.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/audit-component.html?view=empty",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/audit-component.js",
+      "status": 304,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/audit-component.css",
+      "status": 304,
+      "declared": false
+    }
+  ],
+  "notes": [],
+  "screenshots": [
+    "D045-375-offline-plan-component-states.jpg"
+  ]
+}

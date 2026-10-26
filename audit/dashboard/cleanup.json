@@ -1,0 +1,10 @@
+{
+  "remaining_recorded_pids": [],
+  "slot_released": true,
+  "audit_bytes": 11574045,
+  "largest_image_bytes": 80231,
+  "rows_passed": 48,
+  "full_suite": "30 passed",
+  "supplement": "5 passed",
+  "dashboard_tests": "6 passed"
+}

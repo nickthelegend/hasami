@@ -1,0 +1,12 @@
+
+Running 5 tests using 1 worker
+
+(node:64043) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/dashboard.spec.ts:182:3 › D005 K002 K003 K006 instruction and missing credentials 1280px (1.9s)
+  ✓  2 [chromium] › tests/dashboard.spec.ts:266:3 › D013 D014 D015 D016 D017 D019 real red cube run and trace 1280px (16.4s)
+  ✓  3 [chromium] › tests/dashboard.spec.ts:182:3 › D041 K002 K003 K006 instruction and missing credentials 375px (1.8s)
+  ✓  4 [chromium] › tests/dashboard.spec.ts:266:3 › D042 real red cube run and trace 375px (7.6s)
+  ✓  5 [chromium] › tests/dashboard.spec.ts:346:3 › D044 all task families 375px (5.6s)
+
+  5 passed (35.8s)

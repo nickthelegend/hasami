@@ -1,0 +1,928 @@
+{
+  "id": "D013",
+  "width": 1280,
+  "status": "PASS",
+  "test": "D013 D014 D015 D016 D017 D019 real red cube run and trace 1280px",
+  "assertions": [],
+  "errors": [],
+  "console": [
+    {
+      "type": "warning",
+      "text": "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+      "url": "http://127.0.0.1:8420/assets/index-FESE74tm.js",
+      "declared": false
+    }
+  ],
+  "network": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-DFDbRdpT.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-FESE74tm.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036031629",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/reset",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-FESE74tm.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-DFDbRdpT.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036032173",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/segment",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/events",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/run",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036043057",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036043708",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036044358",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036045008",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036045658",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036046308",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/events",
+      "failure": "net::ERR_ABORTED",
+      "declared": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs/20261026T173402426Z",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs/20261026T173402426Z/steps/0.png?attempt=1&kind=view",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793036046424",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs/20261026T173402426Z/steps/0.png?attempt=1&kind=view_truth",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs/20261026T173402426Z",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    }
+  ],
+  "notes": [
+    {
+      "runId": "20261026T173402426Z",
+      "runs": "/var/folders/tp/gcpvr1451r350sq27v4csrq40000gn/T/hasami-audit-dashboard-T8RE6S/runs"
+    },
+    {
+      "record": {
+        "run_id": "20261026T173402426Z",
+        "started_at": "2026-10-26T17:34:02.427Z",
+        "segmenter": "local",
+        "seed": 1,
+        "simulation": "MuJoCo simulation, official SO-101 model",
+        "scene": "classic",
+        "plan": {
+          "steps": [
+            {
+              "pick": "clicked object",
+              "pick_point": [
+                245,
+                243
+              ],
+              "place": "clicked target",
+              "place_point": [
+                181,
+                287
+              ],
+              "reason": "clicked by the user"
+            }
+          ],
+          "source": "clicks",
+          "model": null,
+          "instruction": null
+        },
+        "initial_poses": {
+          "red_cube": {
+            "label": "red cube",
+            "pos": [
+              0.2261,
+              0.0901,
+              0.0125
+            ],
+            "yaw": 0.354
+          },
+          "green_cube": {
+            "label": "green cube",
+            "pos": [
+              0.2081,
+              -0.0153,
+              0.0125
+            ],
+            "yaw": 0.0533
+          },
+          "blue_cube": {
+            "label": "blue cube",
+            "pos": [
+              0.2295,
+              -0.0945,
+              0.0125
+            ],
+            "yaw": -0.2377
+          },
+          "tray": {
+            "label": "tray",
+            "pos": [
+              0.17,
+              0.17,
+              0
+            ],
+            "yaw": 0
+          }
+        },
+        "steps": [
+          {
+            "step": 0,
+            "pick_label": "clicked object",
+            "place_label": "clicked target",
+            "attempts": [
+              {
+                "attempt": 1,
+                "pick_point": [
+                  245,
+                  243
+                ],
+                "place_point": [
+                  181,
+                  287
+                ],
+                "pick": {
+                  "segmenter": "sam2.1-hiera-tiny (local)",
+                  "latency_ms": 73,
+                  "point": [
+                    245,
+                    243
+                  ],
+                  "text": null,
+                  "mask_pixels": 616,
+                  "target": {
+                    "center": [
+                      0.2261,
+                      0.0898,
+                      0.0125
+                    ],
+                    "top_z": 0.025,
+                    "yaw": 0.3566,
+                    "pixels": 475,
+                    "centroid_px": [
+                      246,
+                      242.6
+                    ]
+                  },
+                  "truth_label": "red cube",
+                  "iou_vs_truth": 0.7893
+                },
+                "target_check": {
+                  "ok": true,
+                  "source": "first",
+                  "tries": [
+                    {
+                      "source": "first",
+                      "point": [
+                        245,
+                        243
+                      ],
+                      "rejected": [],
+                      "pixels": 616,
+                      "extent_mm": [
+                        26.2,
+                        26.2
+                      ],
+                      "top_mm": 25
+                    }
+                  ]
+                },
+                "place": {
+                  "segmenter": "sam2.1-hiera-tiny (local)",
+                  "latency_ms": 72.7,
+                  "point": [
+                    181,
+                    287
+                  ],
+                  "text": null,
+                  "mask_pixels": 7206,
+                  "target": {
+                    "center": [
+                      0.1683,
+                      0.1695,
+                      0.012
+                    ],
+                    "top_z": 0.024,
+                    "yaw": 0.0004,
+                    "pixels": 7126,
+                    "centroid_px": [
+                      180.5,
+                      289
+                    ]
+                  },
+                  "truth_label": "tray",
+                  "iou_vs_truth": 0.9986
+                },
+                "place_xy": [
+                  0.1707,
+                  0.1728
+                ],
+                "place_how": "inside container",
+                "surface_z": 0.006,
+                "grasp": {
+                  "jaw_yaw": 0.3566,
+                  "period": 1.5708,
+                  "width_mm": 26.2
+                },
+                "localisation_error_mm": 0.31,
+                "injected": {},
+                "phases": [
+                  {
+                    "phase": "above object",
+                    "target": [
+                      0.2091,
+                      0.0835,
+                      0.065
+                    ],
+                    "reached": [
+                      0.2091,
+                      0.0834,
+                      0.0649
+                    ],
+                    "error_mm": 0.1,
+                    "ok": true,
+                    "note": ""
+                  },
+                  {
+                    "phase": "descend",
+                    "target": [
+                      0.2091,
+                      0.0835,
+                      0.0085
+                    ],
+                    "reached": [
+                      0.209,
+                      0.0834,
+                      0.0084
+                    ],
+                    "error_mm": 0.2,
+                    "ok": true,
+                    "note": ""
+                  },
+                  {
+                    "phase": "close jaws",
+                    "target": [
+                      0.2091,
+                      0.0835,
+                      0.0085
+                    ],
+                    "reached": [
+                      0.2091,
+                      0.0835,
+                      0.0085
+                    ],
+                    "error_mm": 0,
+                    "ok": true,
+                    "note": ""
+                  },
+                  {
+                    "phase": "lift",
+                    "target": [
+                      0.2091,
+                      0.0835,
+                      0.065
+                    ],
+                    "reached": [
+                      0.209,
+                      0.0834,
+                      0.0649
+                    ],
+                    "error_mm": 0.1,
+                    "ok": true,
+                    "note": ""
+                  },
+                  {
+                    "phase": "above target",
+                    "target": [
+                      0.1707,
+                      0.1547,
+                      0.065
+                    ],
+                    "reached": [
+                      0.1707,
+                      0.1546,
+                      0.0649
+                    ],
+                    "error_mm": 0.2,
+                    "ok": true,
+                    "note": ""
+                  },
+                  {
+                    "phase": "lower",
+                    "target": [
+                      0.1707,
+                      0.1547,
+                      0.0185
+                    ],
+                    "reached": [
+                      0.1706,
+                      0.1546,
+                      0.0183
+                    ],
+                    "error_mm": 0.2,
+                    "ok": true,
+                    "note": ""
+                  },
+                  {
+                    "phase": "open jaws",
+                    "target": [
+                      0.1707,
+                      0.1547,
+                      0.0185
+                    ],
+                    "reached": [
+                      0.1706,
+                      0.1546,
+                      0.0183
+                    ],
+                    "error_mm": 0,
+                    "ok": true,
+                    "note": ""
+                  },
+                  {
+                    "phase": "retreat",
+                    "target": [
+                      0.1707,
+                      0.1547,
+                      0.085
+                    ],
+                    "reached": [
+                      0.1693,
+                      0.153,
+                      0.085
+                    ],
+                    "error_mm": 2.2,
+                    "ok": true,
+                    "note": ""
+                  }
+                ],
+                "grasp_checks": [
+                  {
+                    "after": "close jaws",
+                    "held": true,
+                    "jaw_gap_mm": 19.7,
+                    "object_width_mm": 26.2
+                  },
+                  {
+                    "after": "lift",
+                    "held": true,
+                    "jaw_gap_mm": 19.7,
+                    "object_width_mm": 26.2
+                  },
+                  {
+                    "after": "above target",
+                    "held": true,
+                    "jaw_gap_mm": 19.7,
+                    "object_width_mm": 26.2
+                  }
+                ],
+                "verify": {
+                  "pick_clear": true,
+                  "place_seen": {
+                    "center": [
+                      0.1718,
+                      0.1663,
+                      0.0155
+                    ],
+                    "top_z": 0.031,
+                    "near": true,
+                    "level": true,
+                    "same_colour": true
+                  },
+                  "place_raised": true,
+                  "place_px": [
+                    175.1,
+                    289
+                  ],
+                  "grasp_held": true,
+                  "jaw_gap_mm": 19.7,
+                  "completed": true,
+                  "ok": true,
+                  "physics_ok": true,
+                  "agree": true
+                },
+                "images": {
+                  "frame": "s0a1-frame.png",
+                  "after": "s0a1-after.png",
+                  "pick": "s0a1-pick.png",
+                  "pick_truth": "s0a1-pick_truth.png",
+                  "place": "s0a1-place.png",
+                  "place_truth": "s0a1-place_truth.png"
+                },
+                "timings": {
+                  "observe_ms": 250.9,
+                  "segment_pick_ms": 73,
+                  "segment_place_ms": 72.7,
+                  "pick_place_ms": 1953.1,
+                  "verify_ms": 1070.5
+                }
+              }
+            ],
+            "pick": {
+              "segmenter": "sam2.1-hiera-tiny (local)",
+              "latency_ms": 73,
+              "point": [
+                245,
+                243
+              ],
+              "text": null,
+              "mask_pixels": 616,
+              "target": {
+                "center": [
+                  0.2261,
+                  0.0898,
+                  0.0125
+                ],
+                "top_z": 0.025,
+                "yaw": 0.3566,
+                "pixels": 475,
+                "centroid_px": [
+                  246,
+                  242.6
+                ]
+              },
+              "truth_label": "red cube",
+              "iou_vs_truth": 0.7893
+            },
+            "place": {
+              "segmenter": "sam2.1-hiera-tiny (local)",
+              "latency_ms": 72.7,
+              "point": [
+                181,
+                287
+              ],
+              "text": null,
+              "mask_pixels": 7206,
+              "target": {
+                "center": [
+                  0.1683,
+                  0.1695,
+                  0.012
+                ],
+                "top_z": 0.024,
+                "yaw": 0.0004,
+                "pixels": 7126,
+                "centroid_px": [
+                  180.5,
+                  289
+                ]
+              },
+              "truth_label": "tray",
+              "iou_vs_truth": 0.9986
+            },
+            "place_xy": [
+              0.1707,
+              0.1728
+            ],
+            "place_how": "inside container",
+            "surface_z": 0.006,
+            "phases": [
+              {
+                "phase": "above object",
+                "target": [
+                  0.2091,
+                  0.0835,
+                  0.065
+                ],
+                "reached": [
+                  0.2091,
+                  0.0834,
+                  0.0649
+                ],
+                "error_mm": 0.1,
+                "ok": true,
+                "note": ""
+              },
+              {
+                "phase": "descend",
+                "target": [
+                  0.2091,
+                  0.0835,
+                  0.0085
+                ],
+                "reached": [
+                  0.209,
+                  0.0834,
+                  0.0084
+                ],
+                "error_mm": 0.2,
+                "ok": true,
+                "note": ""
+              },
+              {
+                "phase": "close jaws",
+                "target": [
+                  0.2091,
+                  0.0835,
+                  0.0085
+                ],
+                "reached": [
+                  0.2091,
+                  0.0835,
+                  0.0085
+                ],
+                "error_mm": 0,
+                "ok": true,
+                "note": ""
+              },
+              {
+                "phase": "lift",
+                "target": [
+                  0.2091,
+                  0.0835,
+                  0.065
+                ],
+                "reached": [
+                  0.209,
+                  0.0834,
+                  0.0649
+                ],
+                "error_mm": 0.1,
+                "ok": true,
+                "note": ""
+              },
+              {
+                "phase": "above target",
+                "target": [
+                  0.1707,
+                  0.1547,
+                  0.065
+                ],
+                "reached": [
+                  0.1707,
+                  0.1546,
+                  0.0649
+                ],
+                "error_mm": 0.2,
+                "ok": true,
+                "note": ""
+              },
+              {
+                "phase": "lower",
+                "target": [
+                  0.1707,
+                  0.1547,
+                  0.0185
+                ],
+                "reached": [
+                  0.1706,
+                  0.1546,
+                  0.0183
+                ],
+                "error_mm": 0.2,
+                "ok": true,
+                "note": ""
+              },
+              {
+                "phase": "open jaws",
+                "target": [
+                  0.1707,
+                  0.1547,
+                  0.0185
+                ],
+                "reached": [
+                  0.1706,
+                  0.1546,
+                  0.0183
+                ],
+                "error_mm": 0,
+                "ok": true,
+                "note": ""
+              },
+              {
+                "phase": "retreat",
+                "target": [
+                  0.1707,
+                  0.1547,
+                  0.085
+                ],
+                "reached": [
+                  0.1693,
+                  0.153,
+                  0.085
+                ],
+                "error_mm": 2.2,
+                "ok": true,
+                "note": ""
+              }
+            ],
+            "timings": {
+              "observe_ms": 250.9,
+              "segment_pick_ms": 73,
+              "segment_place_ms": 72.7,
+              "pick_place_ms": 1953.1,
+              "verify_ms": 1070.5
+            },
+            "result": {
+              "step": 0,
+              "object": "red cube",
+              "object_name": "red_cube",
+              "in_tray": true,
+              "error_mm": 5.9,
+              "ok": true,
+              "localisation_error_mm": 0.31,
+              "disturbed": [],
+              "final_pos": [
+                0.1715,
+                0.167,
+                0.0185
+              ],
+              "attempts": 1,
+              "verified": true,
+              "failure": null
+            }
+          }
+        ],
+        "ok": true,
+        "segmenter_name": "sam2.1-hiera-tiny (local)",
+        "placed": 1,
+        "total": 1,
+        "finished_at": "2026-10-26T17:34:06.383Z",
+        "final_poses": {
+          "red_cube": {
+            "label": "red cube",
+            "pos": [
+              0.1715,
+              0.167,
+              0.0185
+            ],
+            "yaw": 1.5416
+          },
+          "green_cube": {
+            "label": "green cube",
+            "pos": [
+              0.2081,
+              -0.0153,
+              0.0125
+            ],
+            "yaw": 0.0533
+          },
+          "blue_cube": {
+            "label": "blue cube",
+            "pos": [
+              0.2295,
+              -0.0945,
+              0.0125
+            ],
+            "yaw": -0.2377
+          },
+          "tray": {
+            "label": "tray",
+            "pos": [
+              0.17,
+              0.17,
+              0
+            ],
+            "yaw": 0
+          }
+        },
+        "timings": {
+          "total_ms": 3956.6
+        },
+        "iou": {
+          "values": [
+            0.7893,
+            0.9986
+          ],
+          "mean": 0.894,
+          "min": 0.7893
+        },
+        "verify": {
+          "checks": 1,
+          "agree": 1,
+          "retries": 0
+        }
+      },
+      "attemptFiles": [
+        "s0a1-after.png",
+        "s0a1-frame.png",
+        "s0a1-pick.png",
+        "s0a1-pick_truth.png",
+        "s0a1-place.png",
+        "s0a1-place_truth.png"
+      ]
+    }
+  ],
+  "screenshots": [
+    "D013-1280-real-red-cube-run-and-trace.jpg"
+  ]
+}
