@@ -1,0 +1,1 @@
+[{"method":"GET","path":"/api/status","status":400,"expected":400,"ms":2.5,"headers":{"content-type":"application/json"},"json":{"error":"unknown Host header 'foreign.example': Hasami answers only on 127.0.0.1, [::1], localhost (HASAMI_ALLOWED_HOSTS adds names)"}}]

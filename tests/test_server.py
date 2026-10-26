@@ -262,6 +262,15 @@ def test_root_serves_dashboard_or_a_note(client):
         assert "Dashboard not built" in r.json()["note"]
 
 
+def test_dashboard_mount_preserves_api_method_and_missing_route_errors(client):
+    """The catch-all static mount must not replace a known API route's 405 with its own 404."""
+    response = client.get("/api/reset")
+    assert response.status_code == 405
+    assert response.json() == {"detail": "Method Not Allowed"}
+    assert response.headers["allow"] == "POST"
+    assert client.get("/api/not-a-route").status_code == 404
+
+
 def test_dashboard_page_is_revalidated_and_hashed_assets_are_immutable(client):
     """After a redeploy a returning browser must load the new index.html (and so the new hashed bundle):
     without Cache-Control it may reuse a heuristically cached page that points at the old bundle."""

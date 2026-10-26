@@ -148,3 +148,27 @@ are kept; the README has the per-sweep failure breakdown. The twin's photos are 
 Command: `pnpm --dir audit exec playwright test tests/landing.spec.ts --project=chromium --workers=1`. The dashboard build also passed (`pnpm --dir packages/dashboard build`); its real local server was used only to verify landing entry links. All benchmark, run and twin comparisons use committed records without rerunning their sweeps.
 
 Fixed local dashboard destinations, live-section anchor containment, sticky-header anchor offsets and the landing’s mobile header notebook link. No mocks, stubs, Meta calls or hardware access; no console, page or network errors in the tested surface. Both servers and Chrome were stopped and the heavy slot released after the run.
+
+## API, MCP and CLI zero-tolerance audit — 2026-10-26
+
+**90 PASS / 0 FAIL / 6 UNTESTED across 96 newly resolved rows**: A001–A079, M001–M008,
+C001–C007 and K001/K008. Evidence and execution details are in `audit/api/`, `audit/cli/` and
+the corresponding AUDIT.md cells. Existing live Meta/hardware UNTESTED rows were retained.
+
+Real uvicorn on 127.0.0.1:8420 was exercised with Playwright's request API and Chrome, including
+the unbuilt-dashboard fallback, all validation branches available without injected implementations,
+SSE replay/keepalive, concurrent busy/reset routes, chunked upload caps, run files/images/video ranges,
+and synthetic-photo twins. A second real server on 8422 verified configured CORS origins/port.
+The official MCP stdio client exercised discovery, status, look, real SAM find and simulated pick/place.
+The single fetch and single one-seed all-to-tray benchmark both exited 0 (benchmark: 1/1 tasks,
+3/3 steps and 3/3 agreeing checks). Setup help/syntax and local walker poses/JPEG look passed.
+
+Fixed the dashboard mount swallowing API method mismatches: GET /api/reset now returns 405 and
+Allow: POST instead of 404. Focused regression command recorded in
+`audit/cli/routing-regression.json`: **4 passed, 42 deselected in 5.02s**. Dashboard build passed.
+The full historical pytest suite was not rerun for this worker task.
+
+A013/A016/A062/A069/A077 remain UNTESTED for their injected exception branches under the no-mocks
+constraint; C007 is an unverifiable historical Phase 1 claim. No fake masks, Meta calls, robot contacts,
+webcam captures or hardware motion were used. No unexpected browser console/network errors remained.
+Temporary stores were removed, all started processes stopped, and the shared heavy slot released.

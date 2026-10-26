@@ -1,0 +1,1 @@
+[{"method":"GET","path":"/api/runs/escape/steps/0.png?kind=pick","status":404,"expected":404,"ms":0.9,"headers":{"content-type":"application/json"},"json":{"error":"step image 'pick' is not a file in the run's folder"}}]

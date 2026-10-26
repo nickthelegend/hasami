@@ -1,0 +1,34 @@
+WARNING: ARB_clip_control unavailable while mjDEPTH_ZEROFAR requested, depth accuracy will be limited
+
+W1026 23:37:13.812000 61687 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+[10/26/26 23:37:14] INFO     HTTP Request: GET                   _client.py:1085
+                             https://huggingface.co/api/models/f                
+                             acebook/sam2.1-hiera-tiny/revision/                
+                             main "HTTP/1.1 200 OK"                             
+                    INFO     HTTP Request: GET                   _client.py:1085
+                             https://huggingface.co/api/models/f                
+                             acebook/sam2.1-hiera-tiny/tree/main                
+                             /additional_chat_templates?recursiv                
+                             e=false&expand=false "HTTP/1.1 404                 
+                             Not Found"                                         
+[10/26/26 23:37:15] INFO     HTTP Request: GET                   _client.py:1085
+                             https://huggingface.co/api/models/f                
+                             acebook/sam2.1-hiera-tiny/revision/                
+                             main "HTTP/1.1 200 OK"                             
+[transformers] You are using a model of type `sam2_video` to instantiate a model of type `sam2`. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+Loading weights:   0%|          | 0/309 [00:00<?, ?it/s]Loading weights: 100%|██████████| 309/309 [00:00<00:00, 24359.36it/s]
+                    INFO     Tool 'find' failed: 'Error executing  server.py:453
+                             tool find: ValueError: give a point                
+                             [u, v] or a label'                                 
+                    INFO     Tool 'find' failed: 'Error executing  server.py:453
+                             tool find: ValueError: point is [u,                
+                             v]'                                                
+[10/26/26 23:37:16] INFO     Tool 'find' failed: 'Error executing  server.py:453
+                             tool find: ValueError: point (640.0,               
+                             480.0) is outside the 640 x 480                    
+                             frame'                                             
+                    INFO     Tool 'find' failed: 'Error executing  server.py:453
+                             tool find: SetupRequired: Setup                    
+                             required: MODEL_API_KEY (Meta Model                
+                             API key from                                       
+                             https://dev.meta.ai/api-keys/)'                    

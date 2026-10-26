@@ -1,0 +1,1 @@
+[{"method":"GET","path":"/api/not-a-route","status":404,"expected":404,"ms":0.7,"headers":{"content-type":"application/json"},"json":{"detail":"Not Found"}},{"method":"GET","path":"/api/reset","status":405,"expected":405,"ms":0.7,"headers":{"allow":"POST","content-type":"application/json"},"json":{"detail":"Method Not Allowed"}}]
