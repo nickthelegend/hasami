@@ -1,0 +1,436 @@
+{
+  "created": "2026-10-26T11:08:16+00:00",
+  "task": "fridge fetch",
+  "simulation": "MuJoCo simulation, official SO-101 model",
+  "segmenter": "sam2.1-hiera-tiny (local)",
+  "planner": "none: the item named directly (Muse: Setup required)",
+  "disturb": {
+    "offset_mm": 0.0,
+    "slip": 0.0,
+    "short_mm": 30.0,
+    "label": "injected disturbance (test)"
+  },
+  "seeds": [
+    0,
+    4
+  ],
+  "summary": {
+    "juice carton": {
+      "ok": 1,
+      "runs": 5,
+      "upright": 1,
+      "retries": 5,
+      "check_agrees": 6,
+      "checks": 6
+    },
+    "can": {
+      "ok": 5,
+      "runs": 5,
+      "upright": 5,
+      "retries": 5,
+      "check_agrees": 10,
+      "checks": 10
+    },
+    "bottle": {
+      "ok": 5,
+      "runs": 5,
+      "upright": 5,
+      "retries": 5,
+      "check_agrees": 10,
+      "checks": 10
+    }
+  },
+  "runs": [
+    {
+      "item": "juice carton",
+      "seed": 0,
+      "ok": false,
+      "attempts": 2,
+      "failure": "segment",
+      "note": "no juice carton on the shelf (thing 1: looks green, the juice carton is orange, 27 mm wide, the juice carton is 32-45 mm; thing 2: looks red, the juice carton is orange, 56 mm tall, the juice carton is 80 mm; thing 3: 80 mm wide, the juice carton is 32-45 mm)",
+      "upright": null,
+      "disturbed": [],
+      "verified": false,
+      "checks": 1,
+      "agree": 1,
+      "iou": 0.9961,
+      "localisation_error_mm": null,
+      "pitch_deg": [
+        15,
+        null
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        null
+      ],
+      "wall_s": 4.2
+    },
+    {
+      "item": "can",
+      "seed": 0,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9915,
+      "localisation_error_mm": 0.32,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 6.9
+    },
+    {
+      "item": "bottle",
+      "seed": 0,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9921,
+      "localisation_error_mm": 0.35,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 7.1
+    },
+    {
+      "item": "juice carton",
+      "seed": 1,
+      "ok": false,
+      "attempts": 2,
+      "failure": "segment",
+      "note": "no juice carton on the shelf (thing 1: 79 mm wide, the juice carton is 32-45 mm; thing 2: looks red, the juice carton is orange, 56 mm tall, the juice carton is 80 mm; thing 3: looks green, the juice carton is orange, 27 mm wide, the juice carton is 32-45 mm)",
+      "upright": null,
+      "disturbed": [],
+      "verified": false,
+      "checks": 1,
+      "agree": 1,
+      "iou": 0.9942,
+      "localisation_error_mm": null,
+      "pitch_deg": [
+        15,
+        null
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        null
+      ],
+      "wall_s": 4.1
+    },
+    {
+      "item": "can",
+      "seed": 1,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9886,
+      "localisation_error_mm": 0.3,
+      "pitch_deg": [
+        20,
+        20
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 7.3
+    },
+    {
+      "item": "bottle",
+      "seed": 1,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9915,
+      "localisation_error_mm": 0.36,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 6.8
+    },
+    {
+      "item": "juice carton",
+      "seed": 2,
+      "ok": false,
+      "attempts": 2,
+      "failure": "segment",
+      "note": "no juice carton on the shelf (thing 1: looks red, the juice carton is orange, 56 mm tall, the juice carton is 80 mm; thing 2: 101 mm wide, the juice carton is 32-45 mm)",
+      "upright": null,
+      "disturbed": [],
+      "verified": false,
+      "checks": 1,
+      "agree": 1,
+      "iou": 0.9859,
+      "localisation_error_mm": null,
+      "pitch_deg": [
+        15,
+        null
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        null
+      ],
+      "wall_s": 4.2
+    },
+    {
+      "item": "can",
+      "seed": 2,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9908,
+      "localisation_error_mm": 0.37,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 6.7
+    },
+    {
+      "item": "bottle",
+      "seed": 2,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9932,
+      "localisation_error_mm": 0.36,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 6.7
+    },
+    {
+      "item": "juice carton",
+      "seed": 3,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9895,
+      "localisation_error_mm": 0.43,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 6.8
+    },
+    {
+      "item": "can",
+      "seed": 3,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9933,
+      "localisation_error_mm": 0.37,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 6.9
+    },
+    {
+      "item": "bottle",
+      "seed": 3,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9894,
+      "localisation_error_mm": 0.27,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 7.2
+    },
+    {
+      "item": "juice carton",
+      "seed": 4,
+      "ok": false,
+      "attempts": 2,
+      "failure": "segment",
+      "note": "no juice carton on the shelf (thing 1: 72 mm tall, the juice carton is 80 mm, 82 mm wide, the juice carton is 32-45 mm; thing 2: looks green, the juice carton is orange, 27 mm wide, the juice carton is 32-45 mm; thing 3: looks red, the juice carton is orange, 56 mm tall, the juice carton is 80 mm)",
+      "upright": null,
+      "disturbed": [],
+      "verified": false,
+      "checks": 1,
+      "agree": 1,
+      "iou": 0.9879,
+      "localisation_error_mm": null,
+      "pitch_deg": [
+        15,
+        null
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        null
+      ],
+      "wall_s": 4.1
+    },
+    {
+      "item": "can",
+      "seed": 4,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9927,
+      "localisation_error_mm": 0.34,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 6.8
+    },
+    {
+      "item": "bottle",
+      "seed": 4,
+      "ok": true,
+      "attempts": 2,
+      "failure": null,
+      "note": null,
+      "upright": true,
+      "disturbed": [],
+      "verified": true,
+      "checks": 2,
+      "agree": 2,
+      "iou": 0.9909,
+      "localisation_error_mm": 0.37,
+      "pitch_deg": [
+        15,
+        15
+      ],
+      "injected": [
+        {
+          "short_mm": 30.0
+        },
+        {}
+      ],
+      "wall_s": 6.8
+    }
+  ],
+  "wall_s": 95.0
+}

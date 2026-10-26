@@ -1,0 +1,1330 @@
+{
+  "run_id": "20261026T111544704Z",
+  "started_at": "2026-10-26T11:15:45.912Z",
+  "segmenter": "local",
+  "seed": 0,
+  "simulation": "MuJoCo simulation, official SO-101 model",
+  "scene": "fridge",
+  "task": "fridge fetch",
+  "plan": {
+    "steps": [
+      {
+        "pick": "juice carton",
+        "pick_point": null,
+        "place": "basket",
+        "place_point": null,
+        "reason": "the item the user named (Muse: Setup required)"
+      }
+    ],
+    "source": "user words",
+    "model": null,
+    "instruction": "bring me the juice from the fridge"
+  },
+  "initial_poses": {
+    "juice_carton": {
+      "label": "orange juice carton",
+      "pos": [
+        0.2999,
+        -0.0729,
+        0.095
+      ],
+      "yaw": -0.1762
+    },
+    "can": {
+      "label": "red can",
+      "pos": [
+        0.2998,
+        -0.0033,
+        0.083
+      ],
+      "yaw": 0.0
+    },
+    "bottle": {
+      "label": "green bottle",
+      "pos": [
+        0.3028,
+        0.0704,
+        0.0975
+      ],
+      "yaw": 0.0
+    },
+    "basket": {
+      "label": "basket",
+      "pos": [
+        0.105,
+        0.235,
+        0.0
+      ],
+      "yaw": 0.0
+    }
+  },
+  "steps": [
+    {
+      "step": 0,
+      "pick_label": "juice carton",
+      "place_label": "basket",
+      "attempts": [
+        {
+          "attempt": 1,
+          "camera": "head",
+          "pick_point": [
+            426.0,
+            228.0
+          ],
+          "place_point": [
+            117.0,
+            349.0
+          ],
+          "shelf": {
+            "z": 0.055,
+            "x": [
+              0.255,
+              0.495
+            ],
+            "y": [
+              -0.1476,
+              0.1477
+            ],
+            "pixels": 38101
+          },
+          "target_check": {
+            "ok": true,
+            "source": "shelf survey",
+            "item": "juice carton",
+            "tries": [
+              {
+                "point": [
+                  217.0,
+                  222.0
+                ],
+                "box": [
+                  187.0,
+                  159.0,
+                  245.0,
+                  289.0
+                ],
+                "pixels": 4466,
+                "center": [
+                  0.3031,
+                  0.0704,
+                  0.0975
+                ],
+                "bottom_z": 0.055,
+                "top_z": 0.14,
+                "colour": "green",
+                "rgb": [
+                  20.3,
+                  90.5,
+                  48.9
+                ],
+                "centroid_px": [
+                  217.0,
+                  223.2
+                ],
+                "view": [
+                  0.9817,
+                  0.1906
+                ],
+                "width_mm": 26.6,
+                "height_mm": 85.0,
+                "rejected": [
+                  "looks green, the juice carton is orange",
+                  "27 mm wide, the juice carton is 32-45 mm"
+                ]
+              },
+              {
+                "point": [
+                  324.0,
+                  245.0
+                ],
+                "box": [
+                  297.0,
+                  198.0,
+                  352.0,
+                  293.0
+                ],
+                "pixels": 3450,
+                "center": [
+                  0.3001,
+                  -0.0033,
+                  0.083
+                ],
+                "bottom_z": 0.055,
+                "top_z": 0.111,
+                "colour": "red",
+                "rgb": [
+                  136.6,
+                  14.8,
+                  19.7
+                ],
+                "centroid_px": [
+                  324.2,
+                  245.5
+                ],
+                "view": [
+                  1.0,
+                  -0.0092
+                ],
+                "width_mm": 30.5,
+                "height_mm": 56.0,
+                "rejected": [
+                  "looks red, the juice carton is orange",
+                  "56 mm tall, the juice carton is 80 mm"
+                ]
+              },
+              {
+                "point": [
+                  426.0,
+                  228.0
+                ],
+                "box": [
+                  392.0,
+                  164.0,
+                  461.0,
+                  296.0
+                ],
+                "pixels": 5805,
+                "center": [
+                  0.3001,
+                  -0.0731,
+                  0.095
+                ],
+                "bottom_z": 0.055,
+                "top_z": 0.135,
+                "colour": "orange",
+                "rgb": [
+                  172.1,
+                  99.8,
+                  22.1
+                ],
+                "centroid_px": [
+                  426.4,
+                  229.5
+                ],
+                "view": [
+                  0.9799,
+                  -0.1997
+                ],
+                "width_mm": 33.3,
+                "height_mm": 80.0,
+                "rejected": []
+              }
+            ],
+            "chosen": 2
+          },
+          "pick": {
+            "segmenter": "sam2.1-hiera-tiny (local)",
+            "latency_ms": 1528.1,
+            "point": [
+              426.0,
+              228.0
+            ],
+            "text": "juice carton",
+            "mask_pixels": 6088,
+            "target": {
+              "center": [
+                0.3001,
+                -0.0731,
+                0.095
+              ],
+              "top_z": 0.135,
+              "yaw": 0.0,
+              "pixels": 5805,
+              "centroid_px": [
+                426.4,
+                229.5
+              ]
+            },
+            "truth_label": "orange juice carton",
+            "iou_vs_truth": 0.9961,
+            "grounding": {
+              "source": "shelf survey (SAM 2.1, boxed point prompt per thing on the shelf)",
+              "tries": [
+                {
+                  "point": [
+                    217.0,
+                    222.0
+                  ],
+                  "box": [
+                    187.0,
+                    159.0,
+                    245.0,
+                    289.0
+                  ],
+                  "pixels": 4466,
+                  "center": [
+                    0.3031,
+                    0.0704,
+                    0.0975
+                  ],
+                  "bottom_z": 0.055,
+                  "top_z": 0.14,
+                  "colour": "green",
+                  "rgb": [
+                    20.3,
+                    90.5,
+                    48.9
+                  ],
+                  "centroid_px": [
+                    217.0,
+                    223.2
+                  ],
+                  "view": [
+                    0.9817,
+                    0.1906
+                  ],
+                  "width_mm": 26.6,
+                  "height_mm": 85.0,
+                  "rejected": [
+                    "looks green, the juice carton is orange",
+                    "27 mm wide, the juice carton is 32-45 mm"
+                  ]
+                },
+                {
+                  "point": [
+                    324.0,
+                    245.0
+                  ],
+                  "box": [
+                    297.0,
+                    198.0,
+                    352.0,
+                    293.0
+                  ],
+                  "pixels": 3450,
+                  "center": [
+                    0.3001,
+                    -0.0033,
+                    0.083
+                  ],
+                  "bottom_z": 0.055,
+                  "top_z": 0.111,
+                  "colour": "red",
+                  "rgb": [
+                    136.6,
+                    14.8,
+                    19.7
+                  ],
+                  "centroid_px": [
+                    324.2,
+                    245.5
+                  ],
+                  "view": [
+                    1.0,
+                    -0.0092
+                  ],
+                  "width_mm": 30.5,
+                  "height_mm": 56.0,
+                  "rejected": [
+                    "looks red, the juice carton is orange",
+                    "56 mm tall, the juice carton is 80 mm"
+                  ]
+                },
+                {
+                  "point": [
+                    426.0,
+                    228.0
+                  ],
+                  "box": [
+                    392.0,
+                    164.0,
+                    461.0,
+                    296.0
+                  ],
+                  "pixels": 5805,
+                  "center": [
+                    0.3001,
+                    -0.0731,
+                    0.095
+                  ],
+                  "bottom_z": 0.055,
+                  "top_z": 0.135,
+                  "colour": "orange",
+                  "rgb": [
+                    172.1,
+                    99.8,
+                    22.1
+                  ],
+                  "centroid_px": [
+                    426.4,
+                    229.5
+                  ],
+                  "view": [
+                    0.9799,
+                    -0.1997
+                  ],
+                  "width_mm": 33.3,
+                  "height_mm": 80.0,
+                  "rejected": []
+                }
+              ]
+            },
+            "measured": {
+              "center": [
+                0.3001,
+                -0.0731,
+                0.095
+              ],
+              "bottom_z": 0.055,
+              "top_z": 0.135,
+              "colour": "orange",
+              "rgb": [
+                172.1,
+                99.8,
+                22.1
+              ],
+              "pixels": 5805,
+              "centroid_px": [
+                426.4,
+                229.5
+              ],
+              "view": [
+                0.9799,
+                -0.1997
+              ],
+              "width_mm": 33.3,
+              "height_mm": 80.0
+            }
+          },
+          "place": {
+            "segmenter": "sam2.1-hiera-tiny (local)",
+            "latency_ms": 521.8,
+            "point": [
+              117.0,
+              349.0
+            ],
+            "text": null,
+            "mask_pixels": 14268,
+            "target": {
+              "center": [
+                0.1034,
+                0.2362,
+                0.0375
+              ],
+              "top_z": 0.075,
+              "yaw": 0.0004,
+              "pixels": 14174,
+              "centroid_px": [
+                116.2,
+                348.9
+              ]
+            },
+            "truth_label": "basket",
+            "iou_vs_truth": 0.9966,
+            "camera": "overhead"
+          },
+          "place_xy": [
+            0.1009,
+            0.2387
+          ],
+          "place_how": "inside container",
+          "surface_z": 0.04,
+          "grasp": {
+            "approach": "front",
+            "pitch_deg": 15,
+            "roll": -1.474,
+            "width_mm": 33.3,
+            "grip_height_mm": 56.0,
+            "poses": {
+              "pre-grasp": [
+                0.2483,
+                -0.0361,
+                0.1291
+              ],
+              "approach": [
+                0.3134,
+                -0.0543,
+                0.111
+              ],
+              "lift": [
+                0.3134,
+                -0.0543,
+                0.123
+              ],
+              "withdraw": [
+                0.2641,
+                -0.0405,
+                0.123
+              ],
+              "rise": [
+                0.2641,
+                -0.0405,
+                0.146
+              ],
+              "carry 1": [
+                0.2708,
+                0.0322,
+                0.146
+              ],
+              "carry 2": [
+                0.2541,
+                0.105,
+                0.146
+              ],
+              "carry 3": [
+                0.2147,
+                0.1704,
+                0.146
+              ],
+              "carry 4": [
+                0.1556,
+                0.2213,
+                0.146
+              ],
+              "above target": [
+                0.082,
+                0.2519,
+                0.146
+              ],
+              "lower": [
+                0.082,
+                0.2519,
+                0.1
+              ]
+            }
+          },
+          "localisation_error_mm": 0.27,
+          "injected": {},
+          "phases": [
+            {
+              "phase": "pre-grasp",
+              "target": [
+                0.2483,
+                -0.0361,
+                0.1291
+              ],
+              "reached": [
+                0.2481,
+                -0.0369,
+                0.1289
+              ],
+              "error_mm": 0.8,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "approach",
+              "target": [
+                0.3134,
+                -0.0543,
+                0.111
+              ],
+              "reached": [
+                0.3132,
+                -0.0547,
+                0.1108
+              ],
+              "error_mm": 0.5,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "close jaws",
+              "target": [
+                0.3134,
+                -0.0543,
+                0.111
+              ],
+              "reached": [
+                0.3133,
+                -0.0548,
+                0.111
+              ],
+              "error_mm": 0.0,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "lift",
+              "target": [
+                0.3134,
+                -0.0543,
+                0.123
+              ],
+              "reached": [
+                0.3132,
+                -0.0547,
+                0.1227
+              ],
+              "error_mm": 0.6,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "withdraw",
+              "target": [
+                0.2641,
+                -0.0405,
+                0.123
+              ],
+              "reached": [
+                0.2639,
+                -0.0411,
+                0.1227
+              ],
+              "error_mm": 0.6,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "rise",
+              "target": [
+                0.2641,
+                -0.0405,
+                0.146
+              ],
+              "reached": [
+                0.2639,
+                -0.0411,
+                0.1457
+              ],
+              "error_mm": 0.6,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "carry 1",
+              "target": [
+                0.2708,
+                0.0322,
+                0.146
+              ],
+              "reached": [
+                0.2708,
+                0.0317,
+                0.1457
+              ],
+              "error_mm": 0.6,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "carry 2",
+              "target": [
+                0.2541,
+                0.105,
+                0.146
+              ],
+              "reached": [
+                0.2543,
+                0.1045,
+                0.1457
+              ],
+              "error_mm": 0.5,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "carry 3",
+              "target": [
+                0.2147,
+                0.1704,
+                0.146
+              ],
+              "reached": [
+                0.215,
+                0.17,
+                0.1457
+              ],
+              "error_mm": 0.5,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "carry 4",
+              "target": [
+                0.1556,
+                0.2213,
+                0.146
+              ],
+              "reached": [
+                0.1559,
+                0.2211,
+                0.1457
+              ],
+              "error_mm": 0.5,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "above target",
+              "target": [
+                0.082,
+                0.2519,
+                0.146
+              ],
+              "reached": [
+                0.0823,
+                0.2518,
+                0.1457
+              ],
+              "error_mm": 0.4,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "lower",
+              "target": [
+                0.082,
+                0.2519,
+                0.1
+              ],
+              "reached": [
+                0.0823,
+                0.2517,
+                0.0997
+              ],
+              "error_mm": 0.4,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "open jaws",
+              "target": [
+                0.082,
+                0.2519,
+                0.1
+              ],
+              "reached": [
+                0.0823,
+                0.2517,
+                0.0998
+              ],
+              "error_mm": 0.0,
+              "ok": true,
+              "note": ""
+            },
+            {
+              "phase": "retreat",
+              "target": [
+                0.082,
+                0.2519,
+                0.139
+              ],
+              "reached": [
+                0.0823,
+                0.2518,
+                0.1388
+              ],
+              "error_mm": 0.4,
+              "ok": true,
+              "note": ""
+            }
+          ],
+          "grasp_checks": [
+            {
+              "after": "close jaws",
+              "held": true,
+              "jaw_gap_mm": 28.5,
+              "object_width_mm": 33.3
+            },
+            {
+              "after": "lift",
+              "held": true,
+              "jaw_gap_mm": 28.5,
+              "object_width_mm": 33.3
+            },
+            {
+              "after": "withdraw",
+              "held": true,
+              "jaw_gap_mm": 28.3,
+              "object_width_mm": 33.3
+            },
+            {
+              "after": "above target",
+              "held": true,
+              "jaw_gap_mm": 28.0,
+              "object_width_mm": 33.3
+            }
+          ],
+          "verify": {
+            "shelf_seen": {
+              "error": "mask has no pixels above the shelf (is it on the item?)"
+            },
+            "shelf_clear": true,
+            "basket_seen": {
+              "center": [
+                0.0998,
+                0.2424,
+                0.06
+              ],
+              "top_z": 0.12,
+              "expected_top_z": 0.12,
+              "near": true,
+              "level": true,
+              "same_colour": true
+            },
+            "in_basket_seen": true,
+            "basket_px": [
+              84.6,
+              366.5
+            ],
+            "pick_clear": true,
+            "place_raised": true,
+            "grasp_held": true,
+            "jaw_gap_mm": 28.0,
+            "completed": true,
+            "ok": true,
+            "physics_ok": true,
+            "agree": true
+          },
+          "images": {
+            "frame": "s0a1-frame.png",
+            "after": "s0a1-after.png",
+            "pick": "s0a1-pick.png",
+            "pick_truth": "s0a1-pick_truth.png",
+            "basket_frame": "s0a1-basket_frame.png",
+            "basket": "s0a1-basket.png",
+            "basket_after": "s0a1-basket_after.png",
+            "scene_after": "s0a1-scene_after.png"
+          },
+          "timings": {
+            "observe_ms": 165.2,
+            "segment_pick_ms": 1528.1,
+            "segment_place_ms": 521.8,
+            "plan_ms": 602.1,
+            "pick_place_ms": 10980.2,
+            "verify_ms": 2540.0
+          }
+        }
+      ],
+      "pick": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 1528.1,
+        "point": [
+          426.0,
+          228.0
+        ],
+        "text": "juice carton",
+        "mask_pixels": 6088,
+        "target": {
+          "center": [
+            0.3001,
+            -0.0731,
+            0.095
+          ],
+          "top_z": 0.135,
+          "yaw": 0.0,
+          "pixels": 5805,
+          "centroid_px": [
+            426.4,
+            229.5
+          ]
+        },
+        "truth_label": "orange juice carton",
+        "iou_vs_truth": 0.9961,
+        "grounding": {
+          "source": "shelf survey (SAM 2.1, boxed point prompt per thing on the shelf)",
+          "tries": [
+            {
+              "point": [
+                217.0,
+                222.0
+              ],
+              "box": [
+                187.0,
+                159.0,
+                245.0,
+                289.0
+              ],
+              "pixels": 4466,
+              "center": [
+                0.3031,
+                0.0704,
+                0.0975
+              ],
+              "bottom_z": 0.055,
+              "top_z": 0.14,
+              "colour": "green",
+              "rgb": [
+                20.3,
+                90.5,
+                48.9
+              ],
+              "centroid_px": [
+                217.0,
+                223.2
+              ],
+              "view": [
+                0.9817,
+                0.1906
+              ],
+              "width_mm": 26.6,
+              "height_mm": 85.0,
+              "rejected": [
+                "looks green, the juice carton is orange",
+                "27 mm wide, the juice carton is 32-45 mm"
+              ]
+            },
+            {
+              "point": [
+                324.0,
+                245.0
+              ],
+              "box": [
+                297.0,
+                198.0,
+                352.0,
+                293.0
+              ],
+              "pixels": 3450,
+              "center": [
+                0.3001,
+                -0.0033,
+                0.083
+              ],
+              "bottom_z": 0.055,
+              "top_z": 0.111,
+              "colour": "red",
+              "rgb": [
+                136.6,
+                14.8,
+                19.7
+              ],
+              "centroid_px": [
+                324.2,
+                245.5
+              ],
+              "view": [
+                1.0,
+                -0.0092
+              ],
+              "width_mm": 30.5,
+              "height_mm": 56.0,
+              "rejected": [
+                "looks red, the juice carton is orange",
+                "56 mm tall, the juice carton is 80 mm"
+              ]
+            },
+            {
+              "point": [
+                426.0,
+                228.0
+              ],
+              "box": [
+                392.0,
+                164.0,
+                461.0,
+                296.0
+              ],
+              "pixels": 5805,
+              "center": [
+                0.3001,
+                -0.0731,
+                0.095
+              ],
+              "bottom_z": 0.055,
+              "top_z": 0.135,
+              "colour": "orange",
+              "rgb": [
+                172.1,
+                99.8,
+                22.1
+              ],
+              "centroid_px": [
+                426.4,
+                229.5
+              ],
+              "view": [
+                0.9799,
+                -0.1997
+              ],
+              "width_mm": 33.3,
+              "height_mm": 80.0,
+              "rejected": []
+            }
+          ]
+        },
+        "measured": {
+          "center": [
+            0.3001,
+            -0.0731,
+            0.095
+          ],
+          "bottom_z": 0.055,
+          "top_z": 0.135,
+          "colour": "orange",
+          "rgb": [
+            172.1,
+            99.8,
+            22.1
+          ],
+          "pixels": 5805,
+          "centroid_px": [
+            426.4,
+            229.5
+          ],
+          "view": [
+            0.9799,
+            -0.1997
+          ],
+          "width_mm": 33.3,
+          "height_mm": 80.0
+        }
+      },
+      "place": {
+        "segmenter": "sam2.1-hiera-tiny (local)",
+        "latency_ms": 521.8,
+        "point": [
+          117.0,
+          349.0
+        ],
+        "text": null,
+        "mask_pixels": 14268,
+        "target": {
+          "center": [
+            0.1034,
+            0.2362,
+            0.0375
+          ],
+          "top_z": 0.075,
+          "yaw": 0.0004,
+          "pixels": 14174,
+          "centroid_px": [
+            116.2,
+            348.9
+          ]
+        },
+        "truth_label": "basket",
+        "iou_vs_truth": 0.9966,
+        "camera": "overhead"
+      },
+      "place_xy": [
+        0.1009,
+        0.2387
+      ],
+      "place_how": "inside container",
+      "surface_z": 0.04,
+      "phases": [
+        {
+          "phase": "pre-grasp",
+          "target": [
+            0.2483,
+            -0.0361,
+            0.1291
+          ],
+          "reached": [
+            0.2481,
+            -0.0369,
+            0.1289
+          ],
+          "error_mm": 0.8,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "approach",
+          "target": [
+            0.3134,
+            -0.0543,
+            0.111
+          ],
+          "reached": [
+            0.3132,
+            -0.0547,
+            0.1108
+          ],
+          "error_mm": 0.5,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "close jaws",
+          "target": [
+            0.3134,
+            -0.0543,
+            0.111
+          ],
+          "reached": [
+            0.3133,
+            -0.0548,
+            0.111
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lift",
+          "target": [
+            0.3134,
+            -0.0543,
+            0.123
+          ],
+          "reached": [
+            0.3132,
+            -0.0547,
+            0.1227
+          ],
+          "error_mm": 0.6,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "withdraw",
+          "target": [
+            0.2641,
+            -0.0405,
+            0.123
+          ],
+          "reached": [
+            0.2639,
+            -0.0411,
+            0.1227
+          ],
+          "error_mm": 0.6,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "rise",
+          "target": [
+            0.2641,
+            -0.0405,
+            0.146
+          ],
+          "reached": [
+            0.2639,
+            -0.0411,
+            0.1457
+          ],
+          "error_mm": 0.6,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "carry 1",
+          "target": [
+            0.2708,
+            0.0322,
+            0.146
+          ],
+          "reached": [
+            0.2708,
+            0.0317,
+            0.1457
+          ],
+          "error_mm": 0.6,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "carry 2",
+          "target": [
+            0.2541,
+            0.105,
+            0.146
+          ],
+          "reached": [
+            0.2543,
+            0.1045,
+            0.1457
+          ],
+          "error_mm": 0.5,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "carry 3",
+          "target": [
+            0.2147,
+            0.1704,
+            0.146
+          ],
+          "reached": [
+            0.215,
+            0.17,
+            0.1457
+          ],
+          "error_mm": 0.5,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "carry 4",
+          "target": [
+            0.1556,
+            0.2213,
+            0.146
+          ],
+          "reached": [
+            0.1559,
+            0.2211,
+            0.1457
+          ],
+          "error_mm": 0.5,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "above target",
+          "target": [
+            0.082,
+            0.2519,
+            0.146
+          ],
+          "reached": [
+            0.0823,
+            0.2518,
+            0.1457
+          ],
+          "error_mm": 0.4,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "lower",
+          "target": [
+            0.082,
+            0.2519,
+            0.1
+          ],
+          "reached": [
+            0.0823,
+            0.2517,
+            0.0997
+          ],
+          "error_mm": 0.4,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "open jaws",
+          "target": [
+            0.082,
+            0.2519,
+            0.1
+          ],
+          "reached": [
+            0.0823,
+            0.2517,
+            0.0998
+          ],
+          "error_mm": 0.0,
+          "ok": true,
+          "note": ""
+        },
+        {
+          "phase": "retreat",
+          "target": [
+            0.082,
+            0.2519,
+            0.139
+          ],
+          "reached": [
+            0.0823,
+            0.2518,
+            0.1388
+          ],
+          "error_mm": 0.4,
+          "ok": true,
+          "note": ""
+        }
+      ],
+      "timings": {
+        "observe_ms": 165.2,
+        "segment_pick_ms": 1528.1,
+        "segment_place_ms": 521.8,
+        "plan_ms": 602.1,
+        "pick_place_ms": 10980.2,
+        "verify_ms": 2540.0
+      },
+      "result": {
+        "step": 0,
+        "object": "orange juice carton",
+        "object_name": "juice_carton",
+        "in_tray": true,
+        "in_basket": true,
+        "upright": true,
+        "error_mm": 4.1,
+        "ok": true,
+        "localisation_error_mm": 0.27,
+        "disturbed": [],
+        "final_pos": [
+          0.0999,
+          0.2426,
+          0.08
+        ],
+        "attempts": 1,
+        "verified": true,
+        "failure": null
+      }
+    }
+  ],
+  "ok": true,
+  "planner": {
+    "sentence": "bring me the juice from the fridge",
+    "source": "user words",
+    "muse": "Setup required: MODEL_API_KEY (Meta Model API key from https://dev.meta.ai/api-keys/)",
+    "item": "juice carton"
+  },
+  "segmenter_name": "sam2.1-hiera-tiny (local)",
+  "placed": 1,
+  "total": 1,
+  "finished_at": "2026-10-26T11:16:03.941Z",
+  "final_poses": {
+    "juice_carton": {
+      "label": "orange juice carton",
+      "pos": [
+        0.0999,
+        0.2426,
+        0.08
+      ],
+      "yaw": 1.3951
+    },
+    "can": {
+      "label": "red can",
+      "pos": [
+        0.2998,
+        -0.0032,
+        0.083
+      ],
+      "yaw": -0.0025
+    },
+    "bottle": {
+      "label": "green bottle",
+      "pos": [
+        0.3028,
+        0.0704,
+        0.0975
+      ],
+      "yaw": 0.0
+    },
+    "basket": {
+      "label": "basket",
+      "pos": [
+        0.105,
+        0.235,
+        0.0
+      ],
+      "yaw": 0.0
+    }
+  },
+  "timings": {
+    "total_ms": 18029.6
+  },
+  "iou": {
+    "values": [
+      0.9961
+    ],
+    "mean": 0.9961,
+    "min": 0.9961
+  },
+  "verify": {
+    "checks": 1,
+    "agree": 1,
+    "retries": 0
+  },
+  "video": {
+    "file": "20261026T111544704Z-fetch.mp4",
+    "camera": "fetch_demo",
+    "fps": 30,
+    "size": [
+      960,
+      720
+    ],
+    "frames": 1058,
+    "seconds": 35.3,
+    "caption": "MuJoCo simulation \u00b7 official SO-101 model"
+  }
+}

@@ -1177,7 +1177,8 @@ def load_run_record(path: Path) -> dict:
 
 
 # The committed evidence runs (named in .gitignore): pruning never deletes them.
-EVIDENCE_RUNS = frozenset({"20261020T221547959Z", "20261020T221658918Z", "20261021T053112874Z", "20261021T053203432Z"})
+EVIDENCE_RUNS = frozenset({"20261020T221547959Z", "20261020T221658918Z", "20261021T053112874Z", "20261021T053203432Z",
+                           "20261026T111544704Z"})  # the last: the fridge fetch (scripts/run_fetch.py)
 DEFAULT_MAX_RUNS = 200
 _RUN_FILE = re.compile(r"[0-9A-Za-z_-]{1,64}\.json")
 _summaries: dict[str, tuple[int, int, dict]] = {}  # record path -> (mtime_ns, size, summary)

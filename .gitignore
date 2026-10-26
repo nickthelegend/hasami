@@ -39,6 +39,8 @@ deployments/runs/*
 !deployments/runs/20261021T053112874Z/
 !deployments/runs/20261021T053203432Z.json
 !deployments/runs/20261021T053203432Z/
+!deployments/runs/20261026T111544704Z.json
+!deployments/runs/20261026T111544704Z/
 deployments/twins/*/
 packages/dashboard/.test-out/
 
