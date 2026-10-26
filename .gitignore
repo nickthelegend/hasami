@@ -9,7 +9,6 @@ dist/
 .env
 .env.*
 !.env.example
-CLAUDE.md
 .DS_Store
 hasami.egg-info/
 MUJOCO_LOG.TXT
