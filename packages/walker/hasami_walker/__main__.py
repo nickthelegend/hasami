@@ -8,6 +8,10 @@
     python -m hasami_walker drive 40 0 1.0         stick 40 % forward for 1 s, then stop (wheels off the ground first!)
     python -m hasami_walker limp                   every joint limp
     python -m hasami_walker resume                 after a phone STOP: only when a person has decided it may move again
+    python -m hasami_walker look "orange juice" [--pose look_shelf] [--point 410,260] [--image photo.jpg] [--out look.png]
+                                                   find the item in a camera frame (SAM 3.1 text with MODEL_API_KEY,
+                                                   else SAM 2.1 at your click or at the colour you named); moves
+                                                   nothing except the optional taught pose
 """
 from __future__ import annotations
 
@@ -27,6 +31,10 @@ async def run(a: argparse.Namespace) -> int:
             print(f"{name:16s} " + "  ".join(f"{x:7.1f}" for x in q))
         print(f"({poses.store()})")
         return 0
+    if a.cmd == "look" and a.image:   # a photo instead of the robot's camera: no robot needed
+        from .look import decode_jpeg
+        rgb = decode_jpeg(open(a.image, "rb").read())
+        return _look(rgb, a)
     if a.cmd == "snap":
         try:
             jpg = w.snapshot()
@@ -70,6 +78,22 @@ async def run(a: argparse.Namespace) -> int:
         elif a.cmd == "drive":
             thr, turn, secs = int(a.args[0]), int(a.args[1]), float(a.args[2])
             await w.drive_for(thr, turn, min(secs, 5.0))
+        elif a.cmd == "look":
+            from .look import decode_jpeg
+            if a.pose:
+                if w.tele.on_mask == 0:
+                    print("the arm is limp: press Arm ON on the phone first (or leave out --pose)")
+                    return 1
+                if not await w.go(poses.get(a.pose)):
+                    print(f"could not reach pose {a.pose}")
+                    return 1
+                await asyncio.sleep(0.4)   # let the arm settle before the frame
+            try:
+                jpg = await asyncio.get_running_loop().run_in_executor(None, w.snapshot)
+            except SetupRequired as e:
+                print(e)
+                return 2
+            return _look(decode_jpeg(jpg), a)
         elif a.cmd == "limp":
             await w.limp()
         elif a.cmd == "resume":
@@ -82,6 +106,27 @@ async def run(a: argparse.Namespace) -> int:
     return 0
 
 
+def _look(rgb, a) -> int:
+    import json
+
+    from .look import FindError, annotate, find
+    if not a.args:
+        print('look needs what to find, e.g.  look "orange juice"')
+        return 1
+    label = " ".join(a.args)
+    point = tuple(float(x) for x in a.point.split(",")) if a.point else None
+    try:
+        f = find(rgb, label, point=point)
+    except FindError as e:
+        print(f"not found: {e}")
+        return 3
+    with open(a.out, "wb") as fh:
+        fh.write(annotate(rgb, f, label))
+    print(json.dumps({"label": label, **f.summary(), "frame_px": [rgb.shape[1], rgb.shape[0]], "annotated": a.out}))
+    print("next: reaching it needs the camera-to-arm calibration (CLAUDE.md open item 3); nothing moved")
+    return 0
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="python -m hasami_walker", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -90,6 +135,10 @@ def main() -> None:
     ap.add_argument("--robot", default=os.environ.get("HASAMI_ROBOT", "192.168.4.1"))
     ap.add_argument("--brain-port", type=int, default=83)
     ap.add_argument("--http-port", type=int, default=80)
+    ap.add_argument("--pose", help="look: taught pose to move to before the frame")
+    ap.add_argument("--point", help="look: the item's pixel x,y (an operator's click)")
+    ap.add_argument("--image", help="look: use this photo instead of the robot's camera")
+    ap.add_argument("--out", default="look.png", help="look: where to write the annotated frame")
     a = ap.parse_args()
     try:
         sys.exit(asyncio.run(run(a)))
