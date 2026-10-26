@@ -9,6 +9,9 @@ each frame): SAM 2.1's masks (pick mint, place lilac), then the frame after the 
 A camera frame becomes masks, metric 3D grasps and a verified pick-and-place on the official SO-101 model in
 MuJoCo. A photo of your desk with an A4 sheet becomes a digital twin the simulated arm can work in.
 
+**Live landing:** [hasami-landing.vercel.app](https://hasami-landing.vercel.app) (static, built from recorded
+runs) · lab notebook: [evidence.html](https://hasami-landing.vercel.app/evidence.html)
+
 | Running now, no key needed | Waiting |
 |---|---|
 | SAM 2.1 hiera-tiny on this Mac · the SO-101 in MuJoCo (simulated) · the fridge fetch (simulated) · the 8-family benchmark · the digital twin (on rendered photos) · dashboard, HTTP API, MCP | Muse planner and SAM 3.1: `MODEL_API_KEY` (Setup required, never called yet) · a real SO-101 (no arm attached) · a real desk photo with a ruler check |
