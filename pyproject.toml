@@ -26,6 +26,8 @@ dependencies = [
   "mcp>=2.0",
   "imageio>=2.34",
   "imageio-ffmpeg>=0.5",
+  # the real robot: hasami_walker talks to the Thenar Walker's Raspberry Pi over a WebSocket
+  "websockets>=12",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +48,7 @@ packages = [
   "hasami_robot",
   "hasami_server",
   "hasami_mcp",
+  "hasami_walker",
 ]
 
 [tool.setuptools.package-dir]
@@ -56,6 +59,7 @@ hasami_core = "packages/core/hasami_core"
 hasami_robot = "packages/robot/hasami_robot"
 hasami_server = "packages/server/hasami_server"
 hasami_mcp = "packages/mcp/hasami_mcp"
+hasami_walker = "packages/walker/hasami_walker"
 
 [tool.setuptools.package-data]
 hasami_sim = ["assets/so101/*.xml", "assets/so101/LICENSE", "assets/so101/assets/*.stl"]
