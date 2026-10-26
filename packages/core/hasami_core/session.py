@@ -72,13 +72,16 @@ class Disturb:
     cam_mm: camera calibration error: the pipeline believes the camera is this far (horizontally, a random
       direction fixed per scene) from where it is, so every located point is off by about that much.
     light: lighting jitter per scene: the lights' brightness scaled by 1 +- light and tinted (per channel
-      +- light / 3)."""
+      +- light / 3).
+    short_mm: front grasps only (the fridge fetch): on each step's first attempt the jaws stop this far short
+      of the item along the approach (a depth error), so they close in front of it."""
 
     offset_mm: float = 0.0
     slip: float = 0.0
     depth_mm: float = 0.0
     cam_mm: float = 0.0
     light: float = 0.0
+    short_mm: float = 0.0
 
     @classmethod
     def parse(cls, text: str | None) -> "Disturb | None":
@@ -90,17 +93,17 @@ class Disturb:
             key = key.strip()
             if key not in DISTURB_KEYS or not val.strip():
                 raise ValueError(f"{DISTURB_ENV}: expected offset_mm:<mm>,slip:<0-1>,depth_mm:<mm>,cam_mm:<mm>,"
-                                 f"light:<0-1>, got {part!r}")
+                                 f"light:<0-1>,short_mm:<mm>, got {part!r}")
             setattr(out, key, float(val))
         if not 0 <= out.slip <= 1:
             raise ValueError(f"{DISTURB_ENV}: slip is a probability in [0, 1]")
-        if not 0 <= out.light < 1 or out.depth_mm < 0 or out.cam_mm < 0:
-            raise ValueError(f"{DISTURB_ENV}: light is in [0, 1), depth_mm and cam_mm are >= 0")
+        if not 0 <= out.light < 1 or out.depth_mm < 0 or out.cam_mm < 0 or out.short_mm < 0:
+            raise ValueError(f"{DISTURB_ENV}: light is in [0, 1), depth_mm, cam_mm and short_mm are >= 0")
         return out if out.active else None
 
     @property
     def active(self) -> bool:
-        return bool(self.offset_mm or self.slip or self.depth_mm or self.cam_mm or self.light)
+        return bool(self.offset_mm or self.slip or self.depth_mm or self.cam_mm or self.light or self.short_mm)
 
     @property
     def perception(self) -> bool:
@@ -111,7 +114,7 @@ class Disturb:
         return out | {"label": "injected disturbance (test)"}
 
 
-DISTURB_KEYS = ("offset_mm", "slip", "depth_mm", "cam_mm", "light")
+DISTURB_KEYS = ("offset_mm", "slip", "depth_mm", "cam_mm", "light", "short_mm")
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -316,20 +319,20 @@ class Session:
                     break
             return self._after_reset(seed)
 
-    def load_scene(self, spec: SceneSpec) -> dict:
-        """Build a procedural scene (hasami_sim.scene) and park the arm in it. Raises ValueError if an
-        object is hidden from the overhead camera."""
+    def load_scene(self, spec: SceneSpec, camera: str = "overhead", park_q: np.ndarray = PARK_Q) -> dict:
+        """Build a procedural scene (hasami_sim.scene) and park the arm in it (at park_q). Raises ValueError
+        if an object is hidden from `camera` (the fridge's items are seen by the head camera, not from above)."""
         with self.lock:
             model = build(spec)
             self._swap_arm(Arm(model, mujoco.MjData(model)))
             self.scene = spec
             m, d = self.arm.model, self.arm.data
             mujoco.mj_resetData(m, d)
-            self._set_arm(PARK_Q)
+            self._set_arm(park_q)
             mujoco.mj_forward(m, d)
             self.arm.settle(300)
-            if not self._all_visible(min_pixels=120):
-                raise ValueError(f"an object in scene {spec.name!r} (seed {spec.seed}) is hidden from the overhead camera")
+            if not self._all_visible(min_pixels=120, camera=camera):
+                raise ValueError(f"an object in scene {spec.name!r} (seed {spec.seed}) is hidden from the {camera} camera")
             return self._after_reset(spec.seed if spec.seed is not None else 0)
 
     def _swap_arm(self, arm: Arm) -> None:
@@ -366,8 +369,8 @@ class Session:
         m.vis.headlight.ambient[:] = np.clip(base[2] * k * tint, 0, 1)
         self._light = {"scale": round(float(k), 3), "tint": [round(float(t), 3) for t in tint]}
 
-    def _all_visible(self, min_pixels: int = 300) -> bool:
-        f = capture(self.arm.model, self.arm.data)
+    def _all_visible(self, min_pixels: int = 300, camera: str = "overhead") -> bool:
+        f = capture(self.arm.model, self.arm.data, camera)
         return all(self._truth_mask(f, n).sum() >= min_pixels for n in self.movables)
 
     def poses(self) -> dict:
@@ -449,6 +452,8 @@ class Session:
         body = self._body_of_geom(int(frame.seg_geom[v, u]))
         if body in self.objects:
             return body
+        if body == "fridge":
+            return "fridge"
         return "table" if body == "world" else ("arm" if body else None)
 
     def _score(self, seg: Segmentation, frame: Frame) -> None:
