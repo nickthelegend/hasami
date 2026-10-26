@@ -1,0 +1,78 @@
+{
+  "id": "L011",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "started": "2026-10-26T17:06:57.654Z",
+  "navigations": [
+    "http://127.0.0.1:8421/index.html"
+  ],
+  "console": [],
+  "pageErrors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:8421/index.html",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/frame-hero.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-cutline.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-fridge.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/fridge-fetch.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-rover.webp",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "failedRequests": [],
+  "checks": [],
+  "expected": "`#run pre` contains `uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e '.[dev]' -c constraints.txt`, `(cd packages/dashboard && pnpm install && pnpm build)`, and `python -m hasami_server`; note says `Then open http://127.0.0.1:8420/.` and mentions about 150 MB of weights. Any other console error, page error, or unexpected 4xx/5xx fails this row.",
+  "screenshots": [
+    "L011-1280.jpg"
+  ],
+  "headings": [
+    "SAM cuts it out. The arm picks it up.",
+    "Three cuts from a frame to a closed gripper",
+    "Scored against the simulator’s truth",
+    "Next: bring me the juice from the fridge"
+  ],
+  "url": "http://127.0.0.1:8421/index.html",
+  "documentWidth": 1280,
+  "status": "PASS",
+  "assertions": [],
+  "finished": "2026-10-26T17:06:58.670Z"
+}

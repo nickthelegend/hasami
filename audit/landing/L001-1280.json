@@ -1,0 +1,68 @@
+{
+  "id": "L001",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "started": "2026-10-26T17:06:41.907Z",
+  "navigations": [
+    "http://127.0.0.1:8421/index.html"
+  ],
+  "console": [],
+  "pageErrors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:8421/index.html",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/frame-hero.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-cutline.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-fridge.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "failedRequests": [],
+  "checks": [],
+  "expected": "At http://127.0.0.1:8421/index.html, h1 is `SAM cuts it out. The arm picks it up.`; the viewfinder shows the recorded overhead frame, red-cube IoU `0.953`, tray `0.999`, and target `203.6 mm`, `−40.2 mm`, `0.14 mm`. Any other console error, page error, or unexpected 4xx/5xx fails this row.",
+  "screenshots": [
+    "L001-1280.jpg"
+  ],
+  "headings": [
+    "SAM cuts it out. The arm picks it up.",
+    "Three cuts from a frame to a closed gripper",
+    "Scored against the simulator’s truth",
+    "Next: bring me the juice from the fridge"
+  ],
+  "url": "http://127.0.0.1:8421/index.html",
+  "documentWidth": 1280,
+  "status": "PASS",
+  "assertions": [],
+  "finished": "2026-10-26T17:06:43.032Z"
+}

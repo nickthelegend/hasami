@@ -1,0 +1,109 @@
+{
+  "id": "L015",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "started": "2026-10-26T17:07:06.829Z",
+  "navigations": [
+    "http://127.0.0.1:8421/index.html",
+    "http://127.0.0.1:8421/index.html"
+  ],
+  "console": [],
+  "pageErrors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:8421/index.html",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/frame-hero.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-cutline.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-fridge.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/index.html",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/frame-hero.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-cutline.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/illo-fridge.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "failedRequests": [],
+  "checks": [],
+  "expected": "With reduced motion, `#reveal-p` has stroke-dashoffset `0`, `#blade` has a fixed final transform across samples, and computed root scroll behavior is `auto`. Any other console error, page error, or unexpected 4xx/5xx fails this row.",
+  "motion": {
+    "reduced": true,
+    "initial": "translate(346.9527587890625 248.0708770751953) rotate(-56.31562589870592)",
+    "final": "translate(346.9527587890625 248.0708770751953) rotate(-56.31562589870592)"
+  },
+  "screenshots": [
+    "L015-1280.jpg"
+  ],
+  "headings": [
+    "SAM cuts it out. The arm picks it up.",
+    "Three cuts from a frame to a closed gripper",
+    "Scored against the simulator’s truth",
+    "Next: bring me the juice from the fridge"
+  ],
+  "url": "http://127.0.0.1:8421/index.html",
+  "documentWidth": 1280,
+  "status": "PASS",
+  "assertions": [],
+  "finished": "2026-10-26T17:07:11.630Z"
+}

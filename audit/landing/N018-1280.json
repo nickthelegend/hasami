@@ -1,0 +1,136 @@
+{
+  "id": "N018",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "started": "2026-10-26T17:07:55.912Z",
+  "navigations": [
+    "http://127.0.0.1:8421/evidence.html"
+  ],
+  "console": [],
+  "pageErrors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:8421/evidence.html",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s0a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s0a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s2a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s1a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s2a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s1a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/frame-hero.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "failedRequests": [],
+  "checks": [],
+  "expected": "Four first-table sweep rows match the committed before→after files `165535Z→173703Z`, `170448Z→174610Z`, `170928Z→175048Z`, `171443Z→175539Z` (all `20261021T…json`): task totals, retries, failures, skipped implausible steps, agreement counts and seed ranges; aggregate before agreement is `1172/1175`. Any other console error, page error, or unexpected 4xx/5xx fails this row.",
+  "comparisonRows": [
+    [
+      "clean",
+      "0-19 × 8 families",
+      "146/160",
+      "146/160",
+      "25 → 23",
+      "implausible 2, grasp 5, goal 7",
+      "2 steps",
+      "402/402",
+      "165535Z → 173703Z"
+    ],
+    [
+      "scripted, hints 20 px off",
+      "0-9 × 8 families",
+      "76/80",
+      "76/80",
+      "9 → 8",
+      "implausible 1, grasp 2, goal 1",
+      "1 step",
+      "196/196",
+      "170448Z → 174610Z"
+    ],
+    [
+      "noisy camera",
+      "0-9 × 8 families",
+      "63/80",
+      "64/80",
+      "51 → 35",
+      "segment 3, implausible 11, grasp 2 (was segment 12, grasp 5)",
+      "18 steps",
+      "201/206",
+      "170928Z → 175048Z"
+    ],
+    [
+      "grasp faults",
+      "0-7 × 8 families",
+      "41/64",
+      "41/64",
+      "184 → 172",
+      "implausible 10, grasp 9, goal 2, segment 1, place 1",
+      "13 steps",
+      "307/307",
+      "171443Z → 175539Z"
+    ]
+  ],
+  "screenshots": [
+    "N018-1280.jpg"
+  ],
+  "headings": [
+    "The lab notebook: every run, every number.",
+    "From a sentence to a closed gripper",
+    "Measured in the sim, scored against the sim's truth",
+    "Missed on purpose, found again",
+    "One photo with an A4 sheet in it becomes a scene the arm can work in",
+    "What runs, what waits for a key"
+  ],
+  "url": "http://127.0.0.1:8421/evidence.html",
+  "documentWidth": 1280,
+  "status": "PASS",
+  "assertions": [],
+  "finished": "2026-10-26T17:07:57.034Z"
+}
