@@ -39,6 +39,27 @@ can reuse it. Each section names the file in this repo that does it for real —
 - **Serial line protocol** for tools: one command per line, one reply line starting `OK` or `ERR`. Easy to drive from
   Web Serial, Python (pyserial) or a terminal, and easy to test.
 
+## 2b. Moving the brain to a Raspberry Pi (`pi/thenar_pi/`)
+- **Port the rules, keep the protocol.** The Pi runtime is a line-for-line port of the ESP32 firmware (`robot.py`
+  mirrors `thenar_phone.ino` function by function) and speaks the same WebSocket and calibrator protocols, so the
+  phone page, the calibrator and any brain work with either board. Generate the Pi's pages from the same sources
+  (`pi/tools/extract_page.py`) instead of keeping copies.
+- **Prove shared data formats byte for byte**: a test compiles `tw_armcal.h` with the local C++ compiler and checks
+  the Python record's size and CRC match it (`tests/test_armcal.py`). Store floats rounded to float32 so the CRC
+  survives a JSON round trip; write the file atomically (temp file + `os.replace`).
+- **Servos**: same PCA9685 sequence over `smbus2`; OE on a GPIO held HIGH until a joint is switched on.
+- **Motors**: MDD10A wants up to 20 kHz; use the Pi's **hardware PWM** (`dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,
+  func2=4`, driven through `/sys/class/pwm`). gpiozero's software PWM is the audible 1 kHz fallback only.
+- **GPIO**: gpiozero works on both Pi 4 and Pi 5 (lgpio backend on the Pi 5, whose GPIO is on the RP1 chip).
+- **No ADC on the Pi**: battery sense needs an ADS1115 on I2C; without it report "no reading", never a number.
+- **Power**: the Pi gets its own 5 V 5 A buck; never feed servos from the Pi's 5 V pin (an MG996R stall resets it).
+- **Timing**: an asyncio loop at 100 Hz (absolute deadlines, no catch-up after a stall), telemetry at 10 Hz, slow
+  reads (the ADC) in a worker thread. TCP_NODELAY on every WebSocket, one message per frame.
+- **Access point**: NetworkManager (`nmcli`, Bookworm) with `802-11-wireless.powersave 2` (off) and a static
+  192.168.4.1, same SSID rule as the firmware (`tw::device_name`). Ports 80-82 need root (systemd unit runs as root).
+- **Test it like the ESP32**: recording stand-ins for the I2C bus and pins (`pi/tests/fakes.py`), the real robot
+  logic and server on top, end-to-end over real sockets, and `--dry-run` to load the real page in a browser.
+
 ## 3. Low-latency phone control (no app needed)
 - Robot = Wi-Fi access point (WPA2, max 1 station) + a web page compiled into the firmware (raw string literal).
 - After load, use **one WebSocket** (here a ~120-line RFC 6455 server on `WiFiServer` port 81: SHA1Builder +
