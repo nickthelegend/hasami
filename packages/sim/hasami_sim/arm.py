@@ -137,15 +137,18 @@ class Arm:
 
     # ---- kinematics ------------------------------------------------------------------
     def ik(self, target: np.ndarray, approach: np.ndarray = DOWN, roll: float | None = None,
-           iters: int = 400, tol: float = 1e-4) -> tuple[np.ndarray, float]:
+           iters: int = 400, tol: float = 1e-4, q0: np.ndarray | None = None) -> tuple[np.ndarray, float]:
         """Damped least squares on the gripper site: position plus the approach axis (site x).
 
-        Works on a scratch copy of the state, so the live simulation is untouched.
+        Works on a scratch copy of the state, so the live simulation is untouched. Starts from the live arm
+        angles, or from `q0` if given.
         Returns (arm joint angles, final position error in metres).
         """
         m, d = self.model, mujoco.MjData(self.model)
         d.qpos[:] = self.data.qpos
         qadr, dadr = self.arm_qadr, self.arm_dadr
+        if q0 is not None:
+            d.qpos[qadr] = q0
         lo = np.array([m.jnt_range[self._jid(j)][0] for j in ARM_JOINTS])
         hi = np.array([m.jnt_range[self._jid(j)][1] for j in ARM_JOINTS])
         if roll is not None:
@@ -301,23 +304,24 @@ class Arm:
 
     # ---- skills ----------------------------------------------------------------------
     def go(self, phase: str, target: np.ndarray, roll: float | None, log: list[StepLog], steps: int = 600,
-           tol_mm: float = 4.0, segments: int = 1) -> bool:
+           tol_mm: float = 4.0, segments: int = 1, approach: np.ndarray = DOWN) -> bool:
         """Move the gripper site to target, closing the loop on the measured position.
 
         The STS3215 position servos are force-limited, so the arm sags under gravity and lands a few
         millimetres off. After each move the measured error is added to the aim point and the IK is
-        solved again, up to three times.
+        solved again, up to three times. `approach` is the gripper's pointing direction (straight down for
+        the tabletop; a front grasp points it forward).
         """
         target = np.asarray(target, float)
         if segments > 1:  # straight vertical-ish lines: pass through intermediate IK waypoints first
             start = self.gripper_pos()
             for k in range(1, segments):
-                q, _ = self.ik(start + (target - start) * k / segments, roll=roll)
+                q, _ = self.ik(start + (target - start) * k / segments, approach=approach, roll=roll)
                 self.move_to(q, max(120, steps // segments))
         aim = target.copy()
         ik_err = 0.0
         for attempt in range(4):
-            q, ik_err = self.ik(aim, roll=roll)
+            q, ik_err = self.ik(aim, approach=approach, roll=roll)
             self.move_to(q, steps if attempt == 0 else 300)
             reached = self.gripper_pos()
             err = target - reached
@@ -443,14 +447,242 @@ class Arm:
         out.released = True
         self.settle(400)
 
-    def _let_go(self, log: list[StepLog], open_to: float, roll: float | None) -> None:
+    # ---- front grasps (a fridge shelf: in from the front, never from above) ----------------------------
+    @property
+    def pan_axis(self) -> np.ndarray:
+        """(x, y) of the shoulder-pan axis: the arm's plane always contains it, so a straight-in approach
+        is radial from here."""
+        d = mujoco.MjData(self.model)
+        mujoco.mj_kinematics(self.model, d)
+        return d.xanchor[self._jid("shoulder_pan")][:2].copy()
+
+    def _solve(self, target: np.ndarray, pitch: float, azimuth: float, roll: float, q0: np.ndarray | None,
+               seeds: list[np.ndarray] = ()) -> tuple[np.ndarray, float, float, np.ndarray]:
+        """IK for a front pose: the site at `target`, the gripper pointing `pitch` rad below level. Its heading is
+        `azimuth` to start with, then whatever the arm's plane allows: the site sits a few millimetres off the
+        roll axis, so with the jaws level the plane through the pan axis is turned a little. Tries q0, then each
+        seed. Returns (angles, position error m, tilt error deg, approach used)."""
+        best = None
+        for s in ([q0] if q0 is not None else []) + list(seeds):
+            az, q = azimuth, s
+            for _ in range(5):
+                a = np.array([np.cos(az) * np.cos(pitch), np.sin(az) * np.cos(pitch), -np.sin(pitch)])
+                q, err = self.ik(target, approach=a, roll=roll, q0=q, iters=400)
+                d = mujoco.MjData(self.model)
+                d.qpos[:] = self.data.qpos
+                d.qpos[self.arm_qadr] = q
+                mujoco.mj_kinematics(self.model, d)
+                ax = d.site_xmat[self.site].reshape(3, 3)[:, 0]
+                tilt = abs(float(np.degrees(np.arcsin(np.clip(-ax[2], -1.0, 1.0)) - pitch)))
+                if err < 5e-4 and tilt < 1.0:
+                    break
+                az = float(np.arctan2(ax[1], ax[0]))
+            if best is None or err * 1000 + tilt < best[1] * 1000 + best[2]:
+                best = (q, err, tilt, a)
+            if err < 1e-3 and tilt < 1.0:
+                break
+        return best  # type: ignore[return-value]
+
+    def _level_roll(self, q: np.ndarray, side: np.ndarray) -> tuple[float, float]:
+        """Wrist roll that turns the jaw axis (site z) level and along `side` (or against it), at arm angles q:
+        (roll, alignment). The roll joint turns site z about the approach axis without moving the site."""
+        lo, hi = self.model.jnt_range[self._jid("wrist_roll")]
+        best = (0.0, -2.0, -2.0)
+        for r in np.arange(lo, hi, 0.01):
+            qq = q.copy()
+            qq[4] = r
+            z = self.jaw_axis(qq)
+            for sign in (1.0, -1.0):
+                align = float(sign * z @ side)
+                score = align - 0.05 * abs(r)  # of the two level rolls, the one nearer zero
+                if score > best[2]:
+                    best = (float(r), align, score)
+        return best[0], best[1]
+
+    def plan_front(self, center: np.ndarray, width: float, height: float, bottom_z: float, place_xy, place_floor_z: float,
+                   clear_radius: float, pitches=(15, 20, 25, 30, 35, 40), standoff: float = 0.07,
+                   lift: float = 0.012, carry_bottom_z: float = 0.09) -> dict | None:
+        """Plan a front fetch: the flattest downward tilt of the gripper (degrees, from level) at which every
+        pose of the fetch has an IK solution: in front of the item, at it, lifted, withdrawn until the item is
+        within `clear_radius` of the pan axis (out past the cabinet's corners), raised so its bottom is at
+        `carry_bottom_z`, carried round the pan axis on an arc, over the place point, and lowered until its
+        bottom is 4 mm above `place_floor_z`. The jaw axis is level (the jaws close on the item's sides) and the
+        tilt stays fixed through the whole fetch, so the item stays upright in the jaws.
+        Returns None if no tilt reaches every pose (the item is out of reach)."""
+        axis = self.pan_axis
+        c = np.asarray(center, float)
+        r_item = c[:2] - axis
+        a_h = r_item / np.linalg.norm(r_item)
+        # How high on the item the jaws close: above its middle, so it hangs below the jaw axis and swings back
+        # upright instead of tipping over in the jaws (gripped at its middle it balances on that axis).
+        grasp_h = float(np.clip(0.7 * height, 0.025, height - 0.012))
+        half = width / 2
+        p_place = np.asarray(place_xy, float)
+        b_h = (p_place - axis) / np.linalg.norm(p_place - axis)
+        seeds = [np.array(s) for s in ([0.0, -0.4, 0.6, 0.9, 0.0], [0.0, -1.0, 1.3, 0.6, 0.0], [0.0, 0.0, 0.0, 1.2, 0.0],
+                                       [0.0, -1.6, 1.5, 0.9, 0.0], [0.0, 0.3, -0.3, 1.0, 0.0])]
+        az_item, az_place = float(np.arctan2(a_h[1], a_h[0])), float(np.arctan2(b_h[1], b_h[0]))
+        for deg in pitches:
+            p = np.radians(deg)
+            tip = np.array([c[0], c[1], bottom_z + grasp_h]) + np.r_[a_h, 0.0] * 0.008  # tips just past the centre line
+            q_g, err, tilt, a = self._solve(tip, p, az_item, 0.0, None, [np.r_[az_item, s[1:]] for s in seeds])
+            if err > 0.0015 or tilt > 2.0:
+                continue
+            side = np.array([-a_h[1], a_h[0], 0.0])
+            roll, align = self._level_roll(q_g, side)
+            if align < 0.98:
+                continue
+            q_g[4] = roll
+            z = self.jaw_axis(q_g)
+            z[2] = 0.0
+            z /= np.linalg.norm(z)
+            grasp = tip - z * (half + self.clearance)
+            pre = grasp - a * standoff
+            lifted = grasp + np.array([0.0, 0.0, lift])
+            back = max(0.0, float(np.linalg.norm(r_item)) - clear_radius)
+            withdrawn = lifted - np.r_[a_h, 0.0] * back
+            raised = withdrawn.copy()
+            raised[2] = max(withdrawn[2], carry_bottom_z + grasp_h)
+            # over the place point the jaw axis is level again, on the same side of the item (same roll)
+            zb = np.array([-b_h[1], b_h[0], 0.0]) * float(np.sign(z @ side) or 1.0)
+            place_tip = np.array([p_place[0], p_place[1], 0.0]) + np.r_[b_h, 0.0] * 0.008 - zb * (half + self.clearance)
+            above = place_tip.copy()
+            above[2] = carry_bottom_z + grasp_h
+            lowered = place_tip.copy()
+            lowered[2] = place_floor_z + 0.004 + grasp_h
+            # the carry swings round the pan axis on an arc (radius and height blended), not along the chord,
+            # which passes inside the radius a tilted gripper can reach
+            r0, r1 = float(np.linalg.norm(raised[:2] - axis)), float(np.linalg.norm(above[:2] - axis))
+            a0 = float(np.arctan2(*(raised[:2] - axis)[::-1]))
+            a1 = float(np.arctan2(*(above[:2] - axis)[::-1]))
+            arc = []
+            for k in range(1, CARRY_STEPS):
+                f = k / CARRY_STEPS
+                ang, rad = a0 + f * float(np.angle(np.exp(1j * (a1 - a0)))), r0 + f * (r1 - r0)
+                arc.append((f"carry {k}", np.array([axis[0] + rad * np.cos(ang), axis[1] + rad * np.sin(ang), above[2]]),
+                            az_item + f * float(np.angle(np.exp(1j * (az_place - az_item))))))
+            poses = [("pre-grasp", pre, az_item), ("approach", grasp, az_item), ("lift", lifted, az_item),
+                     ("withdraw", withdrawn, az_item), ("rise", raised, az_item), *arc, ("above target", above, az_place),
+                     ("lower", lowered, az_place)]
+            q_prev, ok, sol, appr = q_g, True, {}, {}
+            for name, target, az in poses:
+                q, err, tilt, ax = self._solve(target, p, az, roll, q_prev, [q_g])
+                if err > 0.0015 or tilt > 2.0:
+                    ok = False
+                    break
+                sol[name], appr[name] = q, ax
+                q_prev = q
+            if not ok:
+                continue
+            return {"pitch_deg": deg, "roll": roll, "approach": appr, "grasp_h": grasp_h,
+                    "poses": {n: t for n, t, _ in poses}, "q": sol, "jaw_axis": z, "a_h": a_h, "b_h": b_h,
+                    "release_z": place_floor_z + 0.004 + height + 0.015}
+        return None
+
+    def fetch_front(self, plan: dict, width: float, height: float, on_log: Callable[[StepLog], None] | None = None,
+                    short: float = 0.0, slip: bool = False) -> "PickPlaceLog":
+        """Carry out a plan_front() plan with the physics: open the jaws a little wider than the item, go to the
+        pose in front of it, move straight in, close, check the gripper reading, lift, slide straight back
+        out, raise, carry over the place point, lower, open just past the item, rise clear of its top.
+
+        The gripper's own position says whether the item is still held after closing, after the withdrawal
+        and over the place point; an empty grasp stops the fetch. `short` and `slip` are injected
+        disturbances (HASAMI_DISTURB): the grasp stops `short` metres before the item along the approach
+        (a depth error: the jaws close in front of it), and the jaws let go for a moment after the lift."""
+        log: list[StepLog] = _NotifyList(on_log) if on_log else []
+        out = PickPlaceLog()
+        try:
+            self._fetch_front(log, out, plan, width, height, short, slip)
+        finally:
+            if isinstance(log, _NotifyList):
+                log.flush()
+        out.extend(log)
+        return out
+
+    def _fetch_front(self, log, out: "PickPlaceLog", plan: dict, width: float, height: float, short: float,
+                     slip: bool) -> None:
+        poses, roll, ax = plan["poses"], plan["roll"], plan["approach"]  # ax: each pose's own pointing direction
+
+        def go(name: str, target=None, **kw) -> bool:
+            return self.go(kw.pop("phase", name), poses[name] if target is None else target, roll, log,
+                           approach=ax[name], **kw)
+
+        open_to = min(GRIPPER_OPEN, self.angle_for_gap(width + 0.018))
+        grasp = poses["approach"] - ax["approach"] * short
+        if short:
+            out.injected.append("short")
+        # Turn to the item with the jaws open while still folded, then unfold to the pose in front of it.
+        self.set_gripper(open_to, 200)
+        q_pre = plan["q"]["pre-grasp"]
+        turn = self.data.ctrl[[self._aid(j) for j in ARM_JOINTS]].copy()
+        turn[0], turn[4] = q_pre[0], roll
+        self.move_to(turn, 500)
+        self.move_to(q_pre, 700)
+        if not go("pre-grasp"):
+            return
+        if not go("approach", grasp, steps=500, segments=4):
+            go("pre-grasp", phase="back off", segments=3)
+            return
+        self.set_gripper(GRIPPER_CLOSED)
+        log.append(StepLog("close jaws", [round(float(v), 4) for v in grasp], [round(float(v), 4) for v in self.gripper_pos()],
+                           0.0, True))
+        if not self._check_grip(log, out, "close jaws", width):
+            self.set_gripper(open_to, 200)
+            go("pre-grasp", poses["pre-grasp"] - ax["pre-grasp"] * short, phase="back off", segments=3)
+            return
+        if not go("lift", steps=400):
+            self._let_go(log, open_to, roll, ax["lift"])
+            return
+        if slip:
+            out.injected.append("slip")
+            self.set_gripper(min(open_to, self.angle_for_gap(width + 0.01)), 60)
+            self.set_gripper(GRIPPER_CLOSED, 200)
+        if not self._check_grip(log, out, "lift", width):
+            self.set_gripper(open_to, 200)
+            go("pre-grasp", phase="back off", segments=3)
+            return
+        for name, steps, seg in (("withdraw", 700, 3), ("rise", 500, 1)):
+            if not go(name, steps=steps, segments=seg):
+                self._let_go(log, open_to, roll, ax[name])
+                return
+        if not self._check_grip(log, out, "withdraw", width):
+            self.set_gripper(open_to, 200)
+            return
+        for name in [n for n in poses if n.startswith("carry ")]:
+            if not go(name, steps=300):
+                self._let_go(log, open_to, roll, ax[name])
+                return
+        if not go("above target", steps=300):
+            self._let_go(log, open_to, roll, ax["above target"])
+            return
+        if not self._check_grip(log, out, "above target", width):
+            self.set_gripper(open_to, 200)
+            return
+        lowered = go("lower", steps=700, segments=3)
+        release = min(open_to, self.angle_for_gap(max((out.jaw_gap_mm or 0) / 1000, width) + 0.010))
+        self.set_gripper(release)
+        log.append(StepLog("open jaws", [round(float(v), 4) for v in poses["lower"]],
+                           [round(float(v), 4) for v in self.gripper_pos()], 0.0, lowered,
+                           "" if lowered else "released where the lowering stopped"))
+        top = poses["lower"].copy()
+        top[2] = plan["release_z"]
+        go("lower", top, phase="retreat", segments=3)
+        log[-1].ok = True  # the item is already released; a sloppy retreat is logged but does not fail the fetch
+        out.completed = lowered
+        out.released = True
+        self.settle(400)
+
+    def _let_go(self, log: list[StepLog], open_to: float, roll: float | None, approach: np.ndarray = DOWN) -> None:
         """A move failed while holding the object: put it down where it is rather than carry it away."""
         self.set_gripper(open_to, 300)
         here = self.gripper_pos()
         log.append(StepLog("open jaws", [round(float(v), 4) for v in here], [round(float(v), 4) for v in here], 0.0, False,
                            "released after a failed move"))
-        self.go("back off", here + np.array([0, 0, 0.03]), roll, log)
+        self.go("back off", here + np.array([0, 0, 0.03]), roll, log, approach=approach)
         self.settle(300)
+
+
+CARRY_STEPS = 5  # the carry's arc in this many legs
 
 
 class PickPlaceLog(list):
