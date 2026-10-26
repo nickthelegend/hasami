@@ -1,0 +1,10 @@
+{
+  "id": "R016",
+  "width": 375,
+  "status": "PASS",
+  "log": "375-camera-failures-375px.json",
+  "screenshots": [
+    "R016-375-camera-failures-375px-degenerate.jpg",
+    "R016-375-camera-failures-375px-outage.jpg"
+  ]
+}

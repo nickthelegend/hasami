@@ -1,0 +1,358 @@
+{
+  "ids": [
+    "R001",
+    "R002",
+    "R003",
+    "R004",
+    "R005",
+    "R006",
+    "R007",
+    "R008",
+    "R010",
+    "R011",
+    "R015"
+  ],
+  "width": 1280,
+  "status": "PASS",
+  "test": "R001 R002 R003 R004 R005 R006 R007 R008 R010 R011 R015 | camera-main 1280px",
+  "assertions": [],
+  "errors": [],
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "url": "http://127.0.0.1:8420/api/realcam/grab",
+      "declared": true
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+      "url": "http://127.0.0.1:8420/api/realcam/upload",
+      "declared": true
+    }
+  ],
+  "network": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-DFDbRdpT.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-B-jadLiG.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/clear",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/realcam",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/realcam",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793037282495",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/grab",
+      "status": 503,
+      "declared": true,
+      "body": {
+        "setup_required": "HASAMI_REALCAM",
+        "message": "Setup required: HASAMI_REALCAM (camera index, e.g. 0) and `pip install opencv-python` (the camera is opened only when you ask)"
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/twin/sample.png?seed=3",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/upload",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/realcam/frame.png?frame_id=6ea43b08fc204561",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/upload",
+      "status": 400,
+      "declared": true,
+      "body": {
+        "error": "not an image"
+      }
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/realcam",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/calibrate",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/segment",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/calibrate",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/segment",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/calibrate",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/segment",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/calibrate",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/segment",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/calibrate",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/realcam/segment",
+      "status": 200,
+      "declared": false
+    }
+  ],
+  "notes": [
+    {
+      "grab": {
+        "setup_required": "HASAMI_REALCAM",
+        "message": "Setup required: HASAMI_REALCAM (camera index, e.g. 0) and `pip install opencv-python` (the camera is opened only when you ask)"
+      },
+      "cameraOpened": false,
+      "sourceReview": "grab_frame rejects absent HASAMI_REALCAM before importing/opening cv2"
+    },
+    {
+      "uploadedFrame": {
+        "frame_id": "6ea43b08fc204561",
+        "width": 960,
+        "height": 720,
+        "source": "upload",
+        "calibration": null,
+        "note": "real camera: segment and locate only; the arm is simulated and not connected to this camera"
+      },
+      "fixture": "seed=3 MuJoCo render; never a webcam frame"
+    },
+    {
+      "calibration": {
+        "ok": true,
+        "frame_id": "6ea43b08fc204561",
+        "sheet": "a4-landscape",
+        "requested": "auto",
+        "corners": [
+          [
+            328.5333333333333,
+            203.31666666666666
+          ],
+          [
+            729.6,
+            285.45000000000005
+          ],
+          [
+            695.4666666666667,
+            574.5166666666667
+          ],
+          [
+            192,
+            439.04999999999995
+          ]
+        ],
+        "orientation": "landscape",
+        "orientation_source": "detected from the clicked corners",
+        "size_mm": [
+          297,
+          210
+        ],
+        "hfov_deg": 70,
+        "parallax": "corrected with an assumed field of view"
+      }
+    },
+    {
+      "target": {
+        "x_mm": 186.29958848547432,
+        "y_mm": 140.0703915575121,
+        "yaw": 0.4773475504204492,
+        "extent_mm": [
+          33.76532335062391,
+          46.61923061224235
+        ],
+        "round": false,
+        "height_mm": 25,
+        "parallax_corrected": true
+      },
+      "segmenter": "sam2.1-hiera-tiny (local)"
+    },
+    {
+      "lastPixel": {
+        "frame_id": "6ea43b08fc204561",
+        "point": [
+          958,
+          360
+        ],
+        "height_mm": 25
+      }
+    },
+    {
+      "topLeft": {
+        "x_mm": 184.82719440714948,
+        "y_mm": 129.4550234473486,
+        "yaw": 0.4729842272904632,
+        "extent_mm": [
+          36.4699340542511,
+          50.463843062090874
+        ],
+        "round": false,
+        "height_mm": 0,
+        "parallax_corrected": false
+      },
+      "topRight": {
+        "x_mm": 129.45502344734876,
+        "y_mm": 112.17280559285042,
+        "yaw": 0.4729842272904632,
+        "extent_mm": [
+          50.46384306209079,
+          36.46993405425105
+        ],
+        "round": false,
+        "height_mm": 0,
+        "parallax_corrected": false
+      }
+    }
+  ],
+  "screenshots": {
+    "R001": [
+      "R001-1280-camera-main-1280px.jpg"
+    ],
+    "R002": [
+      "R002-1280-camera-main-1280px.jpg"
+    ],
+    "R003": [
+      "R003-1280-camera-main-1280px.jpg"
+    ],
+    "R015": [
+      "R015-1280-camera-main-1280px.jpg"
+    ],
+    "R004": [
+      "R004-1280-camera-main-1280px.jpg"
+    ],
+    "R007": [
+      "R007-1280-camera-main-1280px.jpg"
+    ],
+    "R008": [
+      "R008-1280-camera-main-1280px.jpg"
+    ],
+    "R005": [
+      "R005-1280-camera-main-1280px.jpg"
+    ],
+    "R010": [
+      "R010-1280-camera-main-1280px.jpg"
+    ],
+    "R011": [
+      "R011-1280-camera-main-1280px.jpg"
+    ],
+    "R006": [
+      "R006-1280-camera-main-1280px.jpg"
+    ]
+  }
+}

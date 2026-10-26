@@ -1,0 +1,9 @@
+{
+  "id": "R020",
+  "width": 375,
+  "status": "PASS",
+  "log": "375-camera-failures-375px.json",
+  "screenshots": [
+    "R020-375-camera-failures-375px.jpg"
+  ]
+}
