@@ -1,0 +1,350 @@
+{
+  "D001": {
+    "status": "PASS",
+    "evidence": [
+      "D001-1280-initial-keyboard-and-camera.json"
+    ],
+    "fix": ""
+  },
+  "D002": {
+    "status": "PASS",
+    "evidence": [
+      "D002-1280-initial-keyboard-and-camera.json"
+    ],
+    "fix": "Keep the camera skip target below the sticky header with scroll margin."
+  },
+  "D003": {
+    "status": "PASS",
+    "evidence": [
+      "D003-1280-initial-keyboard-and-camera.json"
+    ],
+    "fix": ""
+  },
+  "D004": {
+    "status": "PASS",
+    "evidence": [
+      "D004-1280-initial-keyboard-and-camera.json"
+    ],
+    "fix": ""
+  },
+  "D005": {
+    "status": "PASS",
+    "evidence": [
+      "D005-1280-instruction-and-missing-credentials.json"
+    ],
+    "fix": ""
+  },
+  "D006": {
+    "status": "PASS",
+    "evidence": [
+      "D006-1280-click-editor.json"
+    ],
+    "fix": ""
+  },
+  "D007": {
+    "status": "PASS",
+    "evidence": [
+      "D007-1280-click-editor.json"
+    ],
+    "fix": ""
+  },
+  "D008": {
+    "status": "PASS",
+    "evidence": [
+      "D008-1280-click-editor.json"
+    ],
+    "fix": ""
+  },
+  "D009": {
+    "status": "PASS",
+    "evidence": [
+      "D009-1280-click-editor.json"
+    ],
+    "fix": ""
+  },
+  "D010": {
+    "status": "PASS",
+    "evidence": [
+      "D010-1280-click-editor.json"
+    ],
+    "fix": ""
+  },
+  "D011": {
+    "status": "PASS",
+    "evidence": [
+      "D011-1280-click-editor.json"
+    ],
+    "fix": ""
+  },
+  "D012": {
+    "status": "PASS",
+    "evidence": [
+      "D012-1280-click-editor.json"
+    ],
+    "fix": ""
+  },
+  "D013": {
+    "status": "PASS",
+    "evidence": [
+      "D013-1280-real-red-cube-run-and-trace.json"
+    ],
+    "fix": ""
+  },
+  "D014": {
+    "status": "PASS",
+    "evidence": [
+      "D014-1280-real-red-cube-run-and-trace.json"
+    ],
+    "fix": ""
+  },
+  "D015": {
+    "status": "PASS",
+    "evidence": [
+      "D015-1280-real-red-cube-run-and-trace.json"
+    ],
+    "fix": ""
+  },
+  "D016": {
+    "status": "PASS",
+    "evidence": [
+      "D016-1280-real-red-cube-run-and-trace.json"
+    ],
+    "fix": ""
+  },
+  "D017": {
+    "status": "PASS",
+    "evidence": [
+      "D017-1280-real-red-cube-run-and-trace.json"
+    ],
+    "fix": ""
+  },
+  "D018": {
+    "status": "PASS",
+    "evidence": [
+      "D018-1280-committed-retry-replay.json"
+    ],
+    "fix": ""
+  },
+  "D019": {
+    "status": "PASS",
+    "evidence": [
+      "D019-1280-real-red-cube-run-and-trace.json"
+    ],
+    "fix": ""
+  },
+  "D020": {
+    "status": "PASS",
+    "evidence": [
+      "D020-1280-existing-recorded-video.json"
+    ],
+    "fix": ""
+  },
+  "D021": {
+    "status": "PASS",
+    "evidence": [
+      "D021-1280-empty-register.json"
+    ],
+    "fix": ""
+  },
+  "D022": {
+    "status": "PASS",
+    "evidence": [
+      "D022-1280-rejected-register-request.json"
+    ],
+    "fix": ""
+  },
+  "D023": {
+    "status": "PASS",
+    "evidence": [
+      "D023-1280-api-rejects-click-and-reset.json"
+    ],
+    "fix": "Discard the pending pick when segmentation is rejected, so a later click cannot complete it."
+  },
+  "D024": {
+    "status": "PASS",
+    "evidence": [
+      "D024-1280-unknown-trace.json"
+    ],
+    "fix": ""
+  },
+  "D025": {
+    "status": "PASS",
+    "evidence": [
+      "D025-1280-offline-plan-component-states.json"
+    ],
+    "fix": ""
+  },
+  "D026": {
+    "status": "PASS",
+    "evidence": [
+      "D026-1280-all-task-families.json"
+    ],
+    "fix": ""
+  },
+  "D027": {
+    "status": "PASS",
+    "evidence": [
+      "D027-1280-initial-keyboard-and-camera.json"
+    ],
+    "fix": ""
+  },
+  "D028": {
+    "status": "PASS",
+    "evidence": [
+      "D028-1280-reload-active-run.json"
+    ],
+    "fix": ""
+  },
+  "D029": {
+    "status": "PASS",
+    "evidence": [
+      "D029-1280-server-killed-mid-run-and-retry.json"
+    ],
+    "fix": ""
+  },
+  "D030": {
+    "status": "PASS",
+    "evidence": [
+      "D030-1280-server-killed-mid-run-and-retry.json"
+    ],
+    "fix": ""
+  },
+  "D031": {
+    "status": "PASS",
+    "evidence": [
+      "D031-1280-frame-api-rejects-camera.json"
+    ],
+    "fix": ""
+  },
+  "D032": {
+    "status": "PASS",
+    "evidence": [
+      "D032-1280-initial-keyboard-and-camera.json"
+    ],
+    "fix": ""
+  },
+  "D033": {
+    "status": "PASS",
+    "evidence": [
+      "D033-1280-all-task-families.json"
+    ],
+    "fix": ""
+  },
+  "D034": {
+    "status": "PASS",
+    "evidence": [
+      "D034-1280-all-task-families.json"
+    ],
+    "fix": ""
+  },
+  "D035": {
+    "status": "PASS",
+    "evidence": [
+      "D035-1280-all-task-families.json"
+    ],
+    "fix": ""
+  },
+  "D036": {
+    "status": "PASS",
+    "evidence": [
+      "D036-1280-all-task-families.json"
+    ],
+    "fix": ""
+  },
+  "D037": {
+    "status": "PASS",
+    "evidence": [
+      "D037-1280-all-task-families.json"
+    ],
+    "fix": ""
+  },
+  "D038": {
+    "status": "PASS",
+    "evidence": [
+      "D038-1280-all-task-families.json"
+    ],
+    "fix": ""
+  },
+  "D039": {
+    "status": "PASS",
+    "evidence": [
+      "D039-1280-all-task-families.json"
+    ],
+    "fix": ""
+  },
+  "D040": {
+    "status": "PASS",
+    "evidence": [
+      "D040-375-initial-keyboard-and-camera.json"
+    ],
+    "fix": ""
+  },
+  "D041": {
+    "status": "PASS",
+    "evidence": [
+      "D041-375-click-editor.json",
+      "D041-375-instruction-and-missing-credentials.json"
+    ],
+    "fix": "Discard rejected pending picks; name the planner setup key once."
+  },
+  "D042": {
+    "status": "PASS",
+    "evidence": [
+      "D042-375-real-red-cube-run-and-trace.json"
+    ],
+    "fix": ""
+  },
+  "D043": {
+    "status": "PASS",
+    "evidence": [
+      "D043-375-committed-retry-replay.json",
+      "D043-375-empty-register.json",
+      "D043-375-existing-recorded-video.json",
+      "D043-375-rejected-register-request.json"
+    ],
+    "fix": ""
+  },
+  "D044": {
+    "status": "PASS",
+    "evidence": [
+      "D044-375-all-task-families.json",
+      "D044-375-reload-active-run.json"
+    ],
+    "fix": ""
+  },
+  "D045": {
+    "status": "PASS",
+    "evidence": [
+      "D045-375-api-rejects-click-and-reset.json",
+      "D045-375-frame-api-rejects-camera.json",
+      "D045-375-offline-plan-component-states.json",
+      "D045-375-server-killed-mid-run-and-retry.json",
+      "D045-375-unknown-trace.json"
+    ],
+    "fix": "Clear the pending pick on segmentation errors and setup replies."
+  },
+  "K002": {
+    "status": "PASS",
+    "evidence": [
+      "K002-1280-instruction-and-missing-credentials.json",
+      "K002-375-instruction-and-missing-credentials.json"
+    ],
+    "fix": "Name MODEL_API_KEY once in the setup notice while retaining the key-creation link."
+  },
+  "K003": {
+    "status": "PASS",
+    "evidence": [
+      "K003-1280-instruction-and-missing-credentials.json",
+      "K003-375-instruction-and-missing-credentials.json"
+    ],
+    "fix": "Discard the pending pick after the setup response."
+  },
+  "K006": {
+    "status": "PASS",
+    "evidence": [
+      "K006-1280-instruction-and-missing-credentials.json",
+      "K006-375-instruction-and-missing-credentials.json"
+    ],
+    "fix": ""
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "D001",
+  "width": 1280,
+  "status": "PASS",
+  "test": "D001 D002 D003 D004 D027 D032 initial, keyboard and camera 1280px",
+  "assertions": [],
+  "errors": [],
+  "console": [],
+  "network": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-DFDbRdpT.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-FESE74tm.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793035843816",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=demo&t=1793035843816",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/twin",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/realcam",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/realcam",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/realcam",
+      "status": 200,
+      "declared": false
+    }
+  ],
+  "notes": [],
+  "screenshots": [
+    "D001-1280-initial-keyboard-and-camera.jpg"
+  ]
+}

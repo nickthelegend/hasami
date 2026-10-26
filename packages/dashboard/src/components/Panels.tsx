@@ -130,7 +130,7 @@ function PlanBody({ plan }: { plan: PlanView }) {
           <a href="https://dev.meta.ai/api-keys/" target="_blank" rel="noreferrer">
             dev.meta.ai
           </a>
-          , put it in <code>.env</code> as <code>{plan.name}=</code> and restart the server.
+          , set that environment variable and restart the server.
         </p>
         <p className="setup-alt">No plan is shown without it. You can still click an object, then a target, on the overhead camera: that path runs without a key.</p>
       </div>
