@@ -1,0 +1,12 @@
+{
+  "id": "T008",
+  "width": 375,
+  "status": "PASS",
+  "log": "375-twin-main-375px.json",
+  "screenshots": [
+    "T008-375-twin-main-375px-far.jpg",
+    "T008-375-twin-main-375px-near.jpg",
+    "T008-375-twin-main-375px-left.jpg",
+    "T008-375-twin-main-375px-right.jpg"
+  ]
+}

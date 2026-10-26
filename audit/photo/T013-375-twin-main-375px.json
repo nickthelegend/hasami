@@ -1,0 +1,10 @@
+{
+  "id": "T013",
+  "width": 375,
+  "status": "PASS",
+  "log": "375-twin-main-375px.json",
+  "screenshots": [
+    "T013-375-twin-main-375px-busy.jpg",
+    "T013-375-twin-main-375px-failed-build.jpg"
+  ]
+}

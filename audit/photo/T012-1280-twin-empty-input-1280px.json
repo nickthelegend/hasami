@@ -1,0 +1,10 @@
+{
+  "id": "T012",
+  "width": 1280,
+  "status": "PASS",
+  "log": "1280-twin-empty-input-1280px.json",
+  "screenshots": [
+    "T012-1280-twin-empty-input-1280px-no-sheet.jpg",
+    "T012-1280-twin-empty-input-1280px-no-objects.jpg"
+  ]
+}

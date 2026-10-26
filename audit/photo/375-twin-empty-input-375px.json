@@ -1,0 +1,290 @@
+{
+  "ids": [
+    "T012",
+    "T015",
+    "T016"
+  ],
+  "width": 375,
+  "status": "PASS",
+  "test": "T012 T015 T016 | twin-empty-input 375px",
+  "assertions": [],
+  "errors": [],
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)",
+      "url": "http://127.0.0.1:8420/api/twin?hfov_deg=73.712&side=right&source=upload",
+      "declared": true
+    }
+  ],
+  "network": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-DFDbRdpT.css",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/assets/index-B-jadLiG.js",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/status",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/runs",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/twin",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/twin/sample.png?seed=0",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/twin/20261026T175803660f/side_by_side.png?t=1793037484634",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/frame.png?camera=overhead&t=1793037484517",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/twin?hfov_deg=73.712&side=right&source=upload",
+      "status": 422,
+      "declared": true,
+      "body": {
+        "error": "no sheet of paper found (no large bright, unsaturated region); click its corners"
+      }
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/twin/sample.png?seed=0&empty=true",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:8420/api/twin?hfov_deg=62.946&side=right&source=upload",
+      "status": 200,
+      "declared": false
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:8420/api/twin/20261026T175804f112/side_by_side.png?t=1793037485077",
+      "status": 200,
+      "declared": false
+    }
+  ],
+  "notes": [
+    {
+      "input": "GET /api/twin/sample.png?seed=0&empty=true; genuine full-resolution MuJoCo render of the desk and A4 sheet without objects",
+      "twin": {
+        "twin_id": "20261026T175804f112",
+        "label": "digital twin from one photo · simulated arm",
+        "created_at": "2026-10-26T17:58:04Z",
+        "photo": {
+          "width": 960,
+          "height": 720,
+          "source": "upload"
+        },
+        "sheet": {
+          "corners_px": [
+            [
+              221.84,
+              322.01
+            ],
+            [
+              573.35,
+              206.82
+            ],
+            [
+              711.06,
+              406.63
+            ],
+            [
+              301.35,
+              573.86
+            ]
+          ],
+          "landscape": true,
+          "size_mm": [
+            297,
+            210
+          ],
+          "hfov_deg": 62.946,
+          "orthogonality": 0.0003,
+          "camera_mm": [
+            38.8,
+            396.3,
+            477.1
+          ],
+          "corners_source": "detected"
+        },
+        "arm": {
+          "side": "right",
+          "offset_mm": 215,
+          "note": "simulated SO-101; base placed relative to the sheet"
+        },
+        "objects": [],
+        "scene": {
+          "objects": [],
+          "containers": [
+            {
+              "name": "tray",
+              "label": "tray",
+              "x": 0.1,
+              "y": 0.21,
+              "half": 0.065,
+              "wall_h": 0.024,
+              "floor_h": 0.006,
+              "rgba": [
+                0.18,
+                0.2,
+                0.24,
+                1
+              ]
+            },
+            {
+              "name": "bin",
+              "label": "grey bin",
+              "x": 0.1,
+              "y": -0.21,
+              "half": 0.065,
+              "wall_h": 0.024,
+              "floor_h": 0.006,
+              "rgba": [
+                0.55,
+                0.57,
+                0.6,
+                1
+              ]
+            }
+          ],
+          "seed": 0,
+          "name": "twin",
+          "cameras": [
+            {
+              "name": "photo",
+              "pos": [
+                0.3246526925596272,
+                0.29130046838011886,
+                0.4771368223455929
+              ],
+              "quat": [
+                0.19573506661296208,
+                0.05832520146881428,
+                0.28085288171840095,
+                0.9377673556922907
+              ],
+              "fovy": 49.32109051094445
+            }
+          ],
+          "visuals": [
+            {
+              "name": "a4_sheet",
+              "size": [
+                0.1485,
+                0.105,
+                0.0002
+              ],
+              "pos": [
+                0.215,
+                0,
+                0.0002
+              ],
+              "quat": [
+                6.123233995736766e-17,
+                0,
+                0,
+                1
+              ],
+              "rgba": [
+                0.94,
+                0.94,
+                0.92,
+                1
+              ]
+            }
+          ],
+          "fridge": null
+        },
+        "stats": {
+          "masks": 0,
+          "dropped_shadow": 0,
+          "dropped_flat": 0,
+          "dropped_loose": 0,
+          "sam_ms": 26,
+          "fit_ms": 21.3,
+          "total_ms": 96.4,
+          "in_twin": 0
+        },
+        "tasks": [],
+        "images": {
+          "side_by_side": "/api/twin/20261026T175804f112/side_by_side.png",
+          "photo": "/api/twin/20261026T175804f112/photo.png"
+        }
+      }
+    }
+  ],
+  "screenshots": {
+    "T012": [
+      "T012-375-twin-empty-input-375px-no-sheet.jpg",
+      "T012-375-twin-empty-input-375px-no-objects.jpg"
+    ],
+    "T015": [
+      "T015-375-twin-empty-input-375px.jpg"
+    ],
+    "T016": [
+      "T016-375-twin-empty-input-375px.jpg"
+    ]
+  }
+}
