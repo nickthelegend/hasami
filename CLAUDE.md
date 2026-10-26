@@ -59,6 +59,10 @@ Known issue carried over: J2, J4, J6 jumped/oscillated on small steps; do the se
   (`D thr turn`, `S`, `X`, `A`, `M`, `Q joint deg`, `V joint dps`, `P n`, `G`; robot sends `C{json}`, `T ...` at
   10 Hz, `P n`), calibrator line protocol on a WebSocket on port 82, camera snapshot `GET /snap.jpg`.
   Safety is unchanged: 300 ms without a message → wheels stop, arm holds with PWM on.
+- **The brain's own channel** is port 83: the same messages at lower priority than the phone. Real phone input takes
+  control for 2 s (`E manual`); a phone STOP pauses the brain (`E paused`) until a human says resume (`R`); the
+  brain can always STOP; each side has its own 300 ms timeout. `hasami_walker.Walker` is the client (40 ms heartbeat,
+  forgets its stick when the operator takes over, so it never resumes an old motion by itself).
 - **Brain (this repo)**: planner (Muse) → perception (SAM) → skills (drive, look, reach, grasp, verify) → the robot
   over that WebSocket. In simulation the same skills run on the MuJoCo SO-101 scene.
 
@@ -70,6 +74,7 @@ Known issue carried over: J2, J4, J6 jumped/oscillated on small steps; do the se
 | `packages/planner` | active | Muse client (forced `submit_plan` tool call, strict validation), `plan_from_clicks()` |
 | `packages/core` | active | `Session` (observe, segment, ground, run with verify + retry), benchmark task families, twin |
 | `packages/robot` | active | LeRobot SO-101 follower adapter (bus servos); the MG996R walker is driven through `thenar_pi` instead |
+| `packages/walker` | active | `hasami_walker`: the real robot. `Walker` client (port 83), taught poses, `look` (find the item in a robot frame: SAM 3.1 text / SAM 2.1 at a click or a named colour), CLI `python -m hasami_walker status|teach|go|look|snap|drive|limp|resume` |
 | `packages/server` | active | FastAPI on :8420, REST + SSE, serves the dashboard |
 | `packages/mcp` | active | MCP stdio server: `status`, `look`, `find`, `pick_place` |
 | `packages/dashboard` | active | Vite + React viewfinder + lab notebook |
@@ -114,6 +119,8 @@ git-ignored; never paste them into tracked files or chat.
 ## Open items
 1. Confirm the Pi model, camera and pin wiring; flash Raspberry Pi OS Bookworm 64-bit; enable I2C and `pwm-2chan`.
 2. Bring up `thenar_pi` on the real robot with the wheels off the ground; confirm wheel directions.
-3. Fridge task: mount the camera, calibrate camera-to-arm, record the reach envelope against a real fridge shelf.
+3. Fridge task: mount the camera (on the wrist is simplest for a shelf), teach `look_shelf` / `carry` poses with the
+   phone + `python -m hasami_walker teach`, run `look` on real frames, then calibrate camera-to-arm and write the reach
+   step (nothing moves the arm toward an item yet).
 4. Get `MODEL_API_KEY` (dev.meta.ai) for Muse Spark + SAM 3.1; until then SAM 2.1 on device.
 5. Demo video of a real fetch before Nov 4.
