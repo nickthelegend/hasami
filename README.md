@@ -116,6 +116,11 @@ the sim's overhead camera, which the real robot does not have; items scaled to t
 
 ## The real robot (Thenar Walker on a Raspberry Pi)
 
+![Illustration, not a run: a small graphite four-wheel rover at an open fridge, its arm holding a juice carton outlined by a mint dashed mask](packages/landing/assets/illo-fridge.webp)
+
+*Illustration (a generated image) of the goal. It is not a recorded run: the real rover has not fetched anything
+yet. The simulated fetch above is what runs today.*
+
 The body is the Thenar Walker ([nickthelegend/thenar-walker](https://github.com/nickthelegend/thenar-walker)): a
 wheeled base carrying a 6-DoF MG996R arm from the SO-ARM100 family. Its brain moved from an ESP32 to a Raspberry Pi,
 which runs `thenar_pi` (folder `pi/` there): the same phone page and safety rules as before, plus a camera endpoint
