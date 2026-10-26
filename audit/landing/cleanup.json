@@ -1,0 +1,18 @@
+{
+  "server_pids_stopped": [
+    27580,
+    27581,
+    37234,
+    37240
+  ],
+  "playwright_launcher_stopped": 21679,
+  "owned_chrome_processes_remaining": [],
+  "ports_closed": [
+    8420,
+    8421
+  ],
+  "heavy_slot_released": true,
+  "audit_bytes": 6950404,
+  "screenshots": 171,
+  "largest_screenshot_bytes": 88683
+}

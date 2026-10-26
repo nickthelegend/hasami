@@ -139,3 +139,12 @@ are kept; the README has the per-sweep failure breakdown. The twin's photos are 
   `scripts/bench.py --planner muse`.
 - **Real SO-101 (mirror mode):** needs an arm on `HASAMI_SO101_PORT` and `pip install lerobot[feetech]`;
   check each joint's direction at low torque first.
+
+
+## Landing and notebook zero-tolerance audit — 2026-10-26
+
+**51/51 audit rows PASS; 102/102 Chromium browser checks passed** at 1280×800 and 375×812. The final run is in `audit/landing/playwright.txt`, with per-row console/network JSON and JPEG evidence linked from L001–L021 and N001–N030 in `AUDIT.md`. Other audit rows were not changed.
+
+Command: `pnpm --dir audit exec playwright test tests/landing.spec.ts --project=chromium --workers=1`. The dashboard build also passed (`pnpm --dir packages/dashboard build`); its real local server was used only to verify landing entry links. All benchmark, run and twin comparisons use committed records without rerunning their sweeps.
+
+Fixed local dashboard destinations, live-section anchor containment, sticky-header anchor offsets and the landing’s mobile header notebook link. No mocks, stubs, Meta calls or hardware access; no console, page or network errors in the tested surface. Both servers and Chrome were stopped and the heavy slot released after the run.

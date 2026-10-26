@@ -1,0 +1,109 @@
+{
+  "id": "N009",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "started": "2026-10-26T17:09:53.305Z",
+  "navigations": [
+    "http://127.0.0.1:8421/evidence.html"
+  ],
+  "console": [],
+  "pageErrors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:8421/evidence.html",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s0a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s0a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s2a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s1a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s1a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s2a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/frame-hero.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/twin-sbs.webp",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "failedRequests": [],
+  "checks": [],
+  "expected": "`assets/replay-s0a1.webp` returns 200 and decodes at 300×150; its alt text identifies step 1, attempt 1; verdict is `missed` and the frame matches the corresponding attempt of committed run `20261021T053203432Z`. Any other console error, page error, or unexpected 4xx/5xx fails this row.",
+  "provenance": [
+    {
+      "asset": "packages/landing/assets/replay-s0a1.webp",
+      "source": "deployments/runs/20261021T053203432Z/s0a1-after.png",
+      "crop": [
+        120,
+        190,
+        420,
+        340
+      ],
+      "sha256": "57327768606d4ee27db18e1854bcf91669731f4cd3fe2227598f8bd60e7b2bf1",
+      "reencoded_source_sha256": "57327768606d4ee27db18e1854bcf91669731f4cd3fe2227598f8bd60e7b2bf1"
+    }
+  ],
+  "screenshots": [
+    "N009-375.jpg"
+  ],
+  "headings": [
+    "The lab notebook: every run, every number.",
+    "From a sentence to a closed gripper",
+    "Measured in the sim, scored against the sim's truth",
+    "Missed on purpose, found again",
+    "One photo with an A4 sheet in it becomes a scene the arm can work in",
+    "What runs, what waits for a key"
+  ],
+  "url": "http://127.0.0.1:8421/evidence.html",
+  "documentWidth": 375,
+  "status": "PASS",
+  "assertions": [],
+  "finished": "2026-10-26T17:09:54.508Z"
+}

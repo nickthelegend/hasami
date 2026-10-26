@@ -1,0 +1,444 @@
+{
+  "id": "N017",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "started": "2026-10-26T17:07:54.617Z",
+  "navigations": [
+    "http://127.0.0.1:8421/evidence.html"
+  ],
+  "console": [],
+  "pageErrors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:8421/evidence.html",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s0a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s0a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s1a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s1a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s2a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s2a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/frame-hero.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "failedRequests": [],
+  "checks": [],
+  "expected": "All 32 family rows in the second results table match `deployments/bench/20261021T173703Z.json`, `174610Z.json`, `175048Z.json`, `175539Z.json` (full date prefix on each): family, planner, tasks, steps, retries, failure classes, check agree/count, IoU rounded to 3 decimals and seconds rounded as displayed; aggregates are `146/160`, `76/80`, `1106/1111`; no sweep is rerun. Any other console error, page error, or unexpected 4xx/5xx fails this row.",
+  "familyRows": [
+    [
+      "all-to-tray",
+      "simulated-click planner",
+      "20/20",
+      "60/60",
+      "0",
+      "—",
+      "60/60",
+      "0.845",
+      "70 s"
+    ],
+    [
+      "sort-by-colour",
+      "simulated-click planner",
+      "20/20",
+      "62/62",
+      "0",
+      "—",
+      "62/62",
+      "0.892",
+      "87 s"
+    ],
+    [
+      "stack-two",
+      "simulated-click planner",
+      "20/20",
+      "20/20",
+      "0",
+      "—",
+      "20/20",
+      "0.801",
+      "33 s"
+    ],
+    [
+      "clear-except-X",
+      "simulated-click planner",
+      "20/20",
+      "60/60",
+      "0",
+      "—",
+      "60/60",
+      "0.880",
+      "78 s"
+    ],
+    [
+      "tower-of-3",
+      "simulated-click planner",
+      "12/20",
+      "37/40",
+      "14",
+      "implausible 2, grasp 1, goal 5",
+      "52/52",
+      "0.779",
+      "70 s"
+    ],
+    [
+      "sort-by-shape",
+      "simulated-click planner",
+      "20/20",
+      "59/59",
+      "0",
+      "—",
+      "59/59",
+      "0.910",
+      "93 s"
+    ],
+    [
+      "line-up",
+      "simulated-click planner",
+      "20/20",
+      "60/60",
+      "0",
+      "—",
+      "60/60",
+      "0.806",
+      "71 s"
+    ],
+    [
+      "pick-from-bin",
+      "simulated-click planner",
+      "14/20",
+      "16/20",
+      "9",
+      "grasp 4, goal 2",
+      "29/29",
+      "0.943",
+      "40 s"
+    ],
+    [
+      "all-to-tray",
+      "scripted plan, hints 20 px off (no model)",
+      "10/10",
+      "30/30",
+      "0",
+      "—",
+      "30/30",
+      "0.849",
+      "37 s"
+    ],
+    [
+      "sort-by-colour",
+      "scripted plan, hints 20 px off (no model)",
+      "10/10",
+      "29/29",
+      "0",
+      "—",
+      "29/29",
+      "0.895",
+      "43 s"
+    ],
+    [
+      "stack-two",
+      "scripted plan, hints 20 px off (no model)",
+      "10/10",
+      "10/10",
+      "0",
+      "—",
+      "10/10",
+      "0.804",
+      "17 s"
+    ],
+    [
+      "clear-except-X",
+      "scripted plan, hints 20 px off (no model)",
+      "10/10",
+      "30/30",
+      "0",
+      "—",
+      "30/30",
+      "0.875",
+      "40 s"
+    ],
+    [
+      "tower-of-3",
+      "scripted plan, hints 20 px off (no model)",
+      "9/10",
+      "19/20",
+      "3",
+      "implausible 1",
+      "22/22",
+      "0.772",
+      "32 s"
+    ],
+    [
+      "sort-by-shape",
+      "scripted plan, hints 20 px off (no model)",
+      "10/10",
+      "30/30",
+      "0",
+      "—",
+      "30/30",
+      "0.914",
+      "49 s"
+    ],
+    [
+      "line-up",
+      "scripted plan, hints 20 px off (no model)",
+      "10/10",
+      "30/30",
+      "0",
+      "—",
+      "30/30",
+      "0.809",
+      "37 s"
+    ],
+    [
+      "pick-from-bin",
+      "scripted plan, hints 20 px off (no model)",
+      "7/10",
+      "8/10",
+      "5",
+      "grasp 2, goal 1",
+      "15/15",
+      "0.952",
+      "21 s"
+    ],
+    [
+      "all-to-tray",
+      "simulated-click planner",
+      "10/10",
+      "30/30",
+      "1",
+      "—",
+      "31/31",
+      "0.839",
+      "36 s"
+    ],
+    [
+      "sort-by-colour",
+      "simulated-click planner",
+      "6/10",
+      "25/29",
+      "5",
+      "segment 1, implausible 3",
+      "29/30",
+      "0.900",
+      "44 s"
+    ],
+    [
+      "stack-two",
+      "simulated-click planner",
+      "9/10",
+      "9/10",
+      "2",
+      "grasp 1",
+      "11/12",
+      "0.793",
+      "20 s"
+    ],
+    [
+      "clear-except-X",
+      "simulated-click planner",
+      "6/10",
+      "25/30",
+      "6",
+      "implausible 4",
+      "31/31",
+      "0.867",
+      "39 s"
+    ],
+    [
+      "tower-of-3",
+      "simulated-click planner",
+      "8/10",
+      "18/20",
+      "2",
+      "implausible 2",
+      "20/20",
+      "0.764",
+      "29 s"
+    ],
+    [
+      "sort-by-shape",
+      "simulated-click planner",
+      "6/10",
+      "23/30",
+      "13",
+      "segment 2, implausible 2",
+      "33/36",
+      "0.894",
+      "60 s"
+    ],
+    [
+      "line-up",
+      "simulated-click planner",
+      "10/10",
+      "30/30",
+      "1",
+      "—",
+      "31/31",
+      "0.796",
+      "38 s"
+    ],
+    [
+      "pick-from-bin",
+      "simulated-click planner",
+      "9/10",
+      "9/10",
+      "5",
+      "grasp 1",
+      "15/15",
+      "0.962",
+      "22 s"
+    ],
+    [
+      "all-to-tray",
+      "simulated-click planner",
+      "7/8",
+      "23/24",
+      "27",
+      "implausible 1",
+      "50/50",
+      "0.859",
+      "52 s"
+    ],
+    [
+      "sort-by-colour",
+      "simulated-click planner",
+      "6/8",
+      "22/24",
+      "25",
+      "implausible 1, grasp 1",
+      "48/48",
+      "0.890",
+      "60 s"
+    ],
+    [
+      "stack-two",
+      "simulated-click planner",
+      "7/8",
+      "8/8",
+      "9",
+      "goal 1",
+      "17/17",
+      "0.801",
+      "22 s"
+    ],
+    [
+      "clear-except-X",
+      "simulated-click planner",
+      "4/8",
+      "20/24",
+      "27",
+      "segment 1, implausible 1, grasp 2",
+      "49/49",
+      "0.881",
+      "51 s"
+    ],
+    [
+      "tower-of-3",
+      "simulated-click planner",
+      "5/8",
+      "14/16",
+      "18",
+      "implausible 1, grasp 1, goal 1",
+      "33/33",
+      "0.753",
+      "39 s"
+    ],
+    [
+      "sort-by-shape",
+      "simulated-click planner",
+      "0/8",
+      "12/23",
+      "27",
+      "implausible 6, grasp 1, place 1",
+      "40/40",
+      "0.911",
+      "62 s"
+    ],
+    [
+      "line-up",
+      "simulated-click planner",
+      "7/8",
+      "22/24",
+      "26",
+      "grasp 1",
+      "49/49",
+      "0.804",
+      "52 s"
+    ],
+    [
+      "pick-from-bin",
+      "simulated-click planner",
+      "5/8",
+      "5/8",
+      "13",
+      "grasp 3",
+      "21/21",
+      "0.952",
+      "25 s"
+    ]
+  ],
+  "screenshots": [
+    "N017-1280.jpg"
+  ],
+  "headings": [
+    "The lab notebook: every run, every number.",
+    "From a sentence to a closed gripper",
+    "Measured in the sim, scored against the sim's truth",
+    "Missed on purpose, found again",
+    "One photo with an A4 sheet in it becomes a scene the arm can work in",
+    "What runs, what waits for a key"
+  ],
+  "url": "http://127.0.0.1:8421/evidence.html",
+  "documentWidth": 1280,
+  "status": "PASS",
+  "assertions": [],
+  "finished": "2026-10-26T17:07:55.826Z"
+}

@@ -1,0 +1,95 @@
+{
+  "id": "N020",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "started": "2026-10-26T17:10:07.264Z",
+  "navigations": [
+    "http://127.0.0.1:8421/evidence.html"
+  ],
+  "console": [],
+  "pageErrors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:8421/evidence.html",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s0a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s0a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s2a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s1a1.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s2a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/replay-s1a2.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/frame-hero.webp",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inconsolata/v37/QlddNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLyya15.woff2",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:8421/assets/twin-sbs.webp",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "failedRequests": [],
+  "checks": [],
+  "expected": "`#twin` agrees with committed `deployments/twins/accuracy-20261021T164701Z.json`: `86/86`, centre mean `1.2 mm`, height mean `1.6 mm`, `16/20`, 0 false positives, shape `83/86`, colour `86/86`, centre max `4.9 mm`, and default-FOV `83/86` with centre mean `3.3 mm`; rendered-photo qualification stays visible. Any other console error, page error, or unexpected 4xx/5xx fails this row.",
+  "screenshots": [
+    "N020-375.jpg"
+  ],
+  "headings": [
+    "The lab notebook: every run, every number.",
+    "From a sentence to a closed gripper",
+    "Measured in the sim, scored against the sim's truth",
+    "Missed on purpose, found again",
+    "One photo with an A4 sheet in it becomes a scene the arm can work in",
+    "What runs, what waits for a key"
+  ],
+  "url": "http://127.0.0.1:8421/evidence.html",
+  "documentWidth": 375,
+  "status": "PASS",
+  "assertions": [],
+  "finished": "2026-10-26T17:10:08.531Z"
+}

@@ -1,0 +1,61 @@
+{
+  "scope": "L001\u2013L021 and N001\u2013N030 only",
+  "rows": 51,
+  "PASS": 51,
+  "FAIL": 0,
+  "UNTESTED": 0,
+  "browser_checks": 102,
+  "browser_versions": [
+    "153.0.8010.12"
+  ],
+  "viewports": [
+    {
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "width": 375,
+      "height": 812
+    }
+  ],
+  "screenshots": 171,
+  "largest_screenshot_bytes": 88683,
+  "console_errors": 0,
+  "page_errors": 0,
+  "failed_requests": 0,
+  "unexpected_http_errors": 0,
+  "first_check": "2026-10-26T17:06:41.907Z",
+  "last_check": "2026-10-26T17:11:05.911Z",
+  "source_fixes": {
+    "L008": "Made #live contain its heading and both status panels.",
+    "L009": "Pointed both dashboard entries at the local judge URL; verified the real dashboard opens.",
+    "L010": "Kept the header notebook link visible and usable at 375px.",
+    "L013": "Added sticky-header scroll padding on the landing.",
+    "L020": "Grouped the live section under its anchor and routed dashboard entries to localhost.",
+    "L021": "Kept mobile notebook navigation visible and added sticky-header scroll padding.",
+    "N002": "Added sticky-header scroll padding on the notebook.",
+    "N003": "Added sticky-header scroll padding on the notebook.",
+    "N004": "Added sticky-header scroll padding on the notebook.",
+    "N005": "Added sticky-header scroll padding on the notebook.",
+    "N006": "Added sticky-header scroll padding on the notebook.",
+    "N007": "Added sticky-header scroll padding on the notebook.",
+    "N022": "Added sticky-header scroll padding on the notebook.",
+    "N023": "Added sticky-header scroll padding for notebook section links.",
+    "N026": "Added sticky-header scroll padding for mobile notebook section links."
+  },
+  "record_sources": {
+    "deployments/bench/20261021T165535Z.json": "acf7a8f13dcd0d16cb5e54587f6022456420864db3fec51bcb04d9a956211fcb",
+    "deployments/bench/20261021T170448Z.json": "a6b2ddc8ddfe2d4fc06ac78adbe2733ee8150b61c085e3adb587649a6c072f8a",
+    "deployments/bench/20261021T170928Z.json": "4b90dd1835dc25699912bc38c6fccc6b9ed6e84bda42590a08ef94772f559282",
+    "deployments/bench/20261021T171443Z.json": "a5036804747eb786e9adc04d954b70d4b028ac2396b323cea234068702898423",
+    "deployments/bench/20261021T173703Z.json": "57e00bf37c693d586d5b69e06fd1e8c79dc8b8a55006b8b567eb9f6e43c7b5fd",
+    "deployments/bench/20261021T174610Z.json": "064513ca5666b18078f4d3e5b8389c4913a8c63d563886bbce12abea917048c2",
+    "deployments/bench/20261021T175048Z.json": "0d15e1b13ab1d9bc4a02fca18a5b83ff63ab4753b7e26041dc61de5bb2271441",
+    "deployments/bench/20261021T175539Z.json": "07b2fc00ecdc9e8a3e1618608d87b895539ddc881f91517a04701b1229aec727",
+    "deployments/fetch/20261026T110634Z.json": "95cc202e3560ca264bfed6738b5ffb7b83ed93b63e1f509f7b0fa77326cfcf26",
+    "deployments/runs/20261021T053112874Z.json": "9cee1580e56b845ed7f450afec74ef9dff0e949eba5cbe3b162a535819bba9ac",
+    "deployments/runs/20261021T053203432Z.json": "6bddf8ed06c9d561f837a75c0d4d465681f450da031b1efd67e89b6dc65958f0",
+    "deployments/runs/20261026T111544704Z.json": "801d254d0e5f002ffca5cc9f0a0839845cc9239675318d1745ee59770f3d0b11",
+    "deployments/twins/accuracy-20261021T164701Z.json": "e39f955c1cffd9316339ec7587a805b24210ae06deb193462279adcf9040b8c4"
+  }
+}
