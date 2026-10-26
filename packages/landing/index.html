@@ -365,6 +365,28 @@
         .hud .simlabel { display: none; }
         .hero-short .lede { font-size: 17px; }
       }
+      /* ---- the grip band: generated art of the gripper closing on a cube (assets/illo-grip.webp) ---- */
+      .grip { position: relative; isolation: isolate; overflow: hidden; background: #121016; border-top: 1px solid var(--line-dark); }
+      .grip-art { position: absolute; inset: 0 0 0 30%; z-index: -1; margin: 0; }
+      .grip-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 50%; }
+      .grip-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #121016 0%, rgba(18, 16, 22, .55) 22%, rgba(18, 16, 22, 0) 48%); }
+      .grip-art::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: screen; background: linear-gradient(105deg, transparent 38%, rgba(56, 242, 196, .14) 50%, transparent 62%) no-repeat; background-size: 260% 100%; background-position: 150% 0; }
+      .grip-art figcaption { position: absolute; right: var(--pad); bottom: 16px; z-index: 2; font: 500 12px/1 var(--mono); color: var(--on-dark-2); background: rgba(27, 22, 34, .8); padding: 5px 8px; }
+      .grip-copy { min-height: clamp(380px, 40vw, 580px); display: flex; flex-direction: column; justify-content: center; padding-block: 72px; }
+      .grip h2 { font-weight: 500; font-size: clamp(36px, 4.8vw, 64px); line-height: 1; letter-spacing: -.04em; margin: 0; max-width: 9.5em; }
+      .grip h2 em { font-style: normal; color: var(--mint); }
+      @media (prefers-reduced-motion: no-preference) {
+        .grip-art { animation: grip-drift 24s ease-in-out infinite alternate; }
+        .grip-art::before { animation: grip-sweep 9s cubic-bezier(.45, 0, .25, 1) 2.6s infinite; }
+        @keyframes grip-drift { from { transform: scale(1); } to { transform: scale(1.05) translate3d(-1.2%, -.8%, 0); } }
+        @keyframes grip-sweep { 0% { background-position: 150% 0; } 55%, 100% { background-position: -50% 0; } }
+      }
+      @media (max-width: 760px) {
+        .grip-art { left: 0; bottom: auto; height: 60vw; }
+        .grip-art::after { background: linear-gradient(0deg, #121016 0%, rgba(18, 16, 22, .2) 60%, rgba(18, 16, 22, 0) 100%); }
+        .grip-art figcaption { bottom: auto; top: 12px; }
+        .grip-copy { min-height: 0; padding-top: 56vw; padding-bottom: 56px; }
+      }
     </style>
   </head>
   <body>
@@ -455,6 +477,16 @@
             </div>
             <figcaption class="vf-cap" id="vf-cap">A recorded run’s overhead frame. The mint lines are the exact edges of SAM 2.1’s masks.</figcaption>
           </figure>
+        </div>
+      </section>
+
+      <section class="grip" aria-labelledby="grip-h">
+        <figure class="grip-art">
+          <img src="assets/illo-grip.webp" width="1600" height="901" loading="lazy" decoding="async" alt="Illustration: a white and mint robot arm closes its gripper on an orange cube marked by a dashed mint outline inside viewfinder crop marks" />
+          <figcaption>Illustration (AI-generated)</figcaption>
+        </figure>
+        <div class="wrap grip-copy">
+          <h2 id="grip-h">Click the thing. <em>The jaws close on the cut.</em></h2>
         </div>
       </section>
 
