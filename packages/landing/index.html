@@ -6,6 +6,11 @@
     <title>Hasami — SAM cuts it out, the arm picks it up</title>
     <meta name="description" content="Muse plans from the overhead camera once a Meta Model API key is set (Setup required, never called yet); today SAM 2.1 cuts each clicked object out of the frame, depth turns the cut into a 3D grasp, and a simulated SO-101 arm closes its jaws on it. MuJoCo simulation of the official SO-101 model." />
     <meta name="theme-color" content="#1b1622" />
+    <meta property="og:title" content="Hasami — SAM cuts it out, the arm picks it up" />
+    <meta property="og:description" content="Bring me the juice from the fridge: Meta's SAM and Muse as the brain of a printed rover with a six-joint arm. Runs end to end in MuJoCo today." />
+    <meta property="og:image" content="https://raw.githubusercontent.com/nickthelegend/hasami/main/packages/landing/assets/social-card.jpg" />
+    <meta property="og:image:alt" content="Illustration of a small rover at an open fridge holding a juice carton outlined by a mint mask, beside the line: SAM cuts it out. The arm picks it up." />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b1622'/%3E%3Cg fill='none' stroke='%2338f2c4' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='9' cy='9' r='4'/%3E%3Ccircle cx='9' cy='23' r='4'/%3E%3Cpath d='M12.4 11.2 27 21M12.4 20.8 27 11'/%3E%3C/g%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -307,15 +312,47 @@
       .nums span { display: block; margin-top: 14px; font: 600 14px/1 var(--mono); color: var(--mint); letter-spacing: .06em; text-transform: uppercase; }
       .more { display: inline-flex; gap: 10px; align-items: center; margin-top: 56px; font: 500 17px/1 var(--mono); text-decoration: underline; text-decoration-color: var(--mint); text-underline-offset: 6px; }
       .status { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; margin-top: 48px; border-top: 1px solid var(--rule); padding-top: 24px; }
-      .status h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font: 600 14px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
-      .status h3 i { width: 9px; height: 9px; border-radius: 50%; background: var(--mint-deep); }
-      .status .wait h3 i { background: var(--fail-paper); }
+      .status h4 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font: 600 14px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+      .status h4 i { width: 9px; height: 9px; border-radius: 50%; background: var(--mint-deep); }
+      .status .wait h4 i { background: var(--fail-paper); }
       .status p { margin: 0; font-size: 17px; color: var(--ink-2); max-width: 42ch; }
       .status code { font-size: .92em; background: rgba(27, 22, 34, .07); padding: 1px 5px; }
       .status a { text-decoration-color: var(--mint-deep); text-underline-offset: 3px; }
       .hud .toplinks { display: flex; gap: 18px; margin-left: auto; align-items: center; }
       .hud .toplinks a:not(.code-link) { font: 500 14px/1 var(--mono); color: var(--on-dark-2); text-decoration: none; }
       .hud .toplinks a:not(.code-link):hover { color: var(--on-dark); }
+      /* ---- the fridge goal: illustrations beside the real run --------------------------- */
+      .goal-figs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 56px; }
+      .gfig { margin: 0; background: #fbfafc; border: 1px solid var(--rule); }
+      .gfig img { display: block; width: 100%; height: auto; }
+      .gfig figcaption { padding: 12px 16px 14px; font: 400 14px/1.55 var(--mono); color: var(--ink-2); }
+      .gfig figcaption b { color: var(--ink); font-weight: 600; }
+      .gfig .stamp { margin-right: 8px; }
+      .stamp-illo { color: #6a3d9a; background: #efe6f8; }
+      .rover { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; align-items: center; margin-top: 28px; }
+      .rover .gfig img { aspect-ratio: 1; object-fit: cover; }
+      .parts { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+      .parts li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 6px 20px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+      .parts b { font: 600 14px/1.5 var(--mono); color: var(--ink-2); }
+      .parts code { font-size: .92em; background: rgba(27, 22, 34, .07); padding: 1px 5px; }
+      .goal .today { margin: 72px 0 0; font-weight: 500; font-size: 28px; letter-spacing: -.03em; }
+      .goal .status { margin-top: 20px; }
+      .parts span { font-size: 16px; }
+      .parts .stamp { grid-column: 2; justify-self: start; margin-top: 4px; }
+      .how-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 40px; align-items: end; }
+      .how-illo { margin: 0; }
+      .how-illo img { display: block; width: 100%; height: auto; }
+      .how-illo figcaption { margin-top: 8px; font: 400 13px/1.4 var(--mono); color: var(--ink-2); }
+      @media (max-width: 900px) {
+        .rover, .how-head { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+        .how-illo { max-width: 420px; }
+      }
+      @media (max-width: 560px) {
+        .parts li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+        .parts .stamp { grid-column: auto; }
+        .gfig figcaption { font-size: 13px; padding: 10px 12px 12px; }
+      }
+
       @media (max-width: 900px) {
         .steps3, .status { grid-template-columns: minmax(0, 1fr); gap: 32px; }
         .hero-short { padding: 40px 0 72px; }
@@ -423,7 +460,13 @@
 
       <section class="paper band" id="how" aria-labelledby="how-h">
         <div class="wrap">
-          <h2 class="h" id="how-h">Three cuts from a frame to a closed gripper</h2>
+          <div class="how-head">
+            <h2 class="h" id="how-h">Three cuts from a frame to a closed gripper</h2>
+            <figure class="how-illo">
+              <img src="assets/illo-cutline.webp" width="1200" height="675" loading="lazy" alt="Drawing of a juice carton with a mint dashed cut line around it and a pair of scissors on the line, inside camera corner brackets" />
+              <figcaption>Illustration: a mask is a cut line around the thing you asked for.</figcaption>
+            </figure>
+          </div>
           <ol class="steps3">
             <li><span class="no">01</span><h3>Cut it out</h3><p>SAM 2.1 segments each object from one point prompt.</p></li>
             <li><span class="no">02</span><h3>Locate it</h3><p>Metric depth turns the mask into a 3D grasp target.</p></li>
@@ -445,15 +488,41 @@
         </div>
       </section>
 
-      <section class="paper band" id="live" aria-labelledby="live-h">
+      <section class="paper band goal" id="fridge" aria-labelledby="fridge-h">
         <div class="wrap">
-          <h2 class="h" id="live-h">What runs today</h2>
+          <h2 class="h" id="fridge-h">Next: bring me the juice from the fridge</h2>
+          <p class="band-lede">The same cut on a robot that drives. Hasami is the brain of the Thenar Walker, a printed four-wheel rover with a six-joint arm and a Raspberry Pi. The fetch runs end to end in simulation today; on the real rover it waits for a camera.</p>
+          <div class="goal-figs">
+            <figure class="gfig">
+              <img src="assets/illo-fridge.webp" width="1600" height="900" loading="lazy" alt="Illustration: a small graphite four-wheel rover at an open fridge at night, its arm holding an orange juice carton outlined by a mint dashed mask" />
+              <figcaption><span class="stamp stamp-illo">Illustration</span>A generated image of the goal. It is not a run, and the real rover has not done this yet.</figcaption>
+            </figure>
+            <figure class="gfig">
+              <img src="assets/fridge-fetch.webp" width="1936" height="520" loading="lazy" alt="Recorded simulated run: the head camera's view into the fridge with SAM 2.1's mask on the juice carton, the scene after the simulated SO-101 put the carton in its basket, and the overhead frame the check used" />
+              <figcaption><span class="stamp stamp-ok">Recorded run</span><b>Simulated today:</b> the MuJoCo SO-101 takes the carton off the shelf and checks it landed in the basket. 30 of 30 fetches: carton, can and bottle on 10 shelf layouts.</figcaption>
+            </figure>
+          </div>
+          <div class="rover">
+            <figure class="gfig">
+              <img src="assets/illo-rover.webp" width="1000" height="1000" loading="lazy" alt="Illustration: a printed graphite rover with chunky wheels, a Raspberry Pi and a camera on its deck, and a white and black six-joint arm" />
+              <figcaption><span class="stamp stamp-illo">Illustration</span>The kind of rover it runs on, not a photo of it.</figcaption>
+            </figure>
+            <ul class="parts">
+              <li><b>Base</b><span>Printed PETG tub, four 370 gear motors, MDD10A driver</span></li>
+              <li><b>Arm</b><span>Six MG996R servos on a PCA9685, SO-ARM100 family</span></li>
+              <li><b>Runtime</b><span>The Pi runs the phone page, the safety rules and a channel for Hasami. The phone always outranks it.</span><span class="stamp stamp-ok">Tested over sockets, not on hardware</span></li>
+              <li><b>Find</b><span><code>hasami_walker look</code> cuts the item out of a robot frame with SAM.</span><span class="stamp stamp-ok">Tested with real SAM 2.1</span></li>
+              <li><b>Reach</b><span>Moving the arm to the item needs the camera mounted and calibrated to the arm.</span><span class="stamp stamp-pend">Not built yet</span></li>
+            </ul>
+          </div>
+          <h3 class="today" id="live">What runs today</h3>
           <div class="status">
-            <div><h3><i></i>Live</h3><p>SAM 2.1 and the MuJoCo arm on the <a href="https://hasami-api.201-18-198-162.sslip.io/">hosted dashboard</a>.</p></div>
-            <div class="wait"><h3><i></i>Setup required</h3><p>Muse planning and SAM 3.1 need <code>MODEL_API_KEY</code>; the real SO-101 arm needs <code>HASAMI_SO101_PORT</code>.</p></div>
+            <div><h4><i></i>Live</h4><p>SAM 2.1 and the MuJoCo arm on the <a href="https://hasami-api.201-18-198-162.sslip.io/">hosted dashboard</a>.</p></div>
+            <div class="wait"><h4><i></i>Setup required</h4><p>Muse planning and SAM 3.1 need <code>MODEL_API_KEY</code>; the real SO-101 arm needs <code>HASAMI_SO101_PORT</code>.</p></div>
           </div>
         </div>
       </section>
+
     </main>
 
     <footer class="foot" id="run">
