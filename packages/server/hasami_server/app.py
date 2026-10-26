@@ -24,6 +24,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
+from starlette.routing import Match, Mount
 
 from hasami_core import (Session, SetupRequired, count_runs, list_runs, new_run_id, prune_runs, runs_dir, setup_name,
                          status)
@@ -42,6 +43,18 @@ class DashboardFiles(StaticFiles):
         hashed = Path(full_path).parent.name == "assets"
         resp.headers["Cache-Control"] = "public, max-age=31536000, immutable" if hashed else "no-cache"
         return resp
+
+
+class DashboardMount(Mount):
+    """Leave API paths to the router, including its 404 and method-not-allowed responses."""
+
+    def matches(self, scope):
+        path = scope.get("path", "")
+        if path == "/api" or path.startswith("/api/"):
+            return Match.NONE, {}
+        return super().matches(scope)
+
+
 TERMINAL = {"done", "error"}
 
 # ---- local only: DNS rebinding and cross-site writes ---------------------------------------------------
@@ -1109,7 +1122,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                 "planner": ORACLE_LABEL}
 
     if DASHBOARD_DIST.is_dir():
-        app.mount("/", DashboardFiles(directory=DASHBOARD_DIST, html=True), name="dashboard")
+        app.router.routes.append(DashboardMount("/", DashboardFiles(directory=DASHBOARD_DIST, html=True),
+                                                name="dashboard"))
     else:
         @app.get("/")
         def root() -> dict:

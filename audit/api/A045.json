@@ -1,0 +1,1 @@
+[{"method":"POST","path":"/api/realcam/grab","status":503,"expected":503,"ms":2.7,"headers":{"content-type":"application/json"},"json":{"setup_required":"HASAMI_REALCAM","message":"Setup required: HASAMI_REALCAM (camera index, e.g. 0) and `pip install opencv-python` (the camera is opened only when you ask)"}}]
