@@ -40,6 +40,7 @@ async function call(path: string, init?: RequestInit) {
 
 export function RealCam() {
   const [frameId, setFrameId] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [corners, setCorners] = useState<Pt[]>([]);
   const [calibrated, setCalibrated] = useState(false);
@@ -60,6 +61,7 @@ export function RealCam() {
   const show = useCallback((f: Frame) => {
     const c = f.frame_id ? f.calibration ?? null : null;
     setFrameId(f.frame_id);
+    setSource(f.frame_id ? f.source ?? null : null);
     setSize(f.frame_id && f.width && f.height ? { w: f.width, h: f.height } : null);
     setCursor(null);
     setCorners(c?.corners ?? []);
@@ -271,7 +273,7 @@ export function RealCam() {
           type="button"
           className="btn btn-ghost btn-sm"
           style={corners.length > 0 || calibrated ? undefined : { visibility: 'hidden' }}
-          onClick={() => { setCorners([]); setCalibrated(false); setCal(null); setRes(null); }}
+          onClick={() => { setCorners([]); setCalibrated(false); setCal(null); setRes(null); setClick(null); setCursor(null); }}
           disabled={!!busy || !(corners.length > 0 || calibrated)}
         >
           Re-click sheet
@@ -281,9 +283,9 @@ export function RealCam() {
       {setup && <div className="notice notice-setup" role="status">{setup}</div>}
       {err && <div className="notice notice-error" role="alert">{err}</div>}
       {size && frameId ? (
-        <div className="rc-view" role="button" tabIndex={0} aria-label={photoLabel} aria-disabled={!!busy || undefined}
+        <div className="rc-view" style={{ overflow: 'hidden' }} role="button" tabIndex={0} aria-label={photoLabel} aria-disabled={!!busy || undefined}
           onClick={onClick} onKeyDown={onKey}>
-          <img ref={imgRef} src={`/api/realcam/frame.png?frame_id=${frameId}`} alt="Real camera frame" width={size.w} height={size.h} draggable={false} />
+          <img ref={imgRef} src={`/api/realcam/frame.png?frame_id=${frameId}`} alt={source === 'webcam' ? 'Webcam snapshot' : 'Uploaded photo'} width={size.w} height={size.h} draggable={false} />
           {res?.mask_png && <img className="rc-mask" src={`data:image/png;base64,${res.mask_png}`} alt="" aria-hidden="true" />}
           {corners.map((c, i) => (
             <span key={i} className="rc-dot" style={pct(c)} aria-hidden="true">{i + 1}</span>
@@ -297,6 +299,7 @@ export function RealCam() {
           <span>The webcam is opened only when you press Grab (needs HASAMI_REALCAM on the server). A photo works too. The server keeps one frame, shared by every tab, until you press Forget photo or it stops.</span>
         </div>
       )}
+      {size && <p className="muted small rc-source">{source === 'webcam' ? 'Webcam snapshot' : 'Uploaded photo'} · single frame</p>}
       {cal && (
         <p className="muted small rc-sheet">
           Sheet: A4 {cal.orientation} ({cal.size_mm.map((v) => v.toFixed(0)).join(' × ')} mm across × down), {cal.orientation_source}.

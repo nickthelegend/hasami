@@ -24,6 +24,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
+from starlette.routing import Match, Mount
 
 from hasami_core import (Session, SetupRequired, count_runs, list_runs, new_run_id, prune_runs, runs_dir, setup_name,
                          status)
@@ -42,6 +43,18 @@ class DashboardFiles(StaticFiles):
         hashed = Path(full_path).parent.name == "assets"
         resp.headers["Cache-Control"] = "public, max-age=31536000, immutable" if hashed else "no-cache"
         return resp
+
+
+class DashboardMount(Mount):
+    """Leave API paths to the router, including its 404 and method-not-allowed responses."""
+
+    def matches(self, scope):
+        path = scope.get("path", "")
+        if path == "/api" or path.startswith("/api/"):
+            return Match.NONE, {}
+        return super().matches(scope)
+
+
 TERMINAL = {"done", "error"}
 
 # ---- local only: DNS rebinding and cross-site writes ---------------------------------------------------
@@ -275,19 +288,19 @@ class Runner:
                 labels = [o["label"] for o in self.session.scene_objects()]
                 plan, latency_ms = planner.plan(instruction, png, labels)
                 emit("planned", {"model": plan.model, "latency_ms": round(latency_ms, 1)})
-            if finish is None:
-                rec = self.session.run(plan, on_event=emit, segmenter=segmenter, run_id=run_id)
-            else:  # hold `done` back until the finish hook has emitted its own events (clients stop at done)
-                held: list[dict] = []
+            # Clients read the record as soon as `done` arrives. Hold completion until the record is
+            # durably visible, including the finish hook's goal, so that read cannot race a missing file.
+            held: list[dict] = []
 
-                def emit_hold(kind: str, data: dict) -> None:
-                    held.append(data) if kind == "done" else emit(kind, data)
+            def emit_hold(kind: str, data: dict) -> None:
+                held.append(data) if kind == "done" else emit(kind, data)
 
-                rec = self.session.run(plan, on_event=emit_hold, segmenter=segmenter, run_id=run_id)
+            rec = self.session.run(plan, on_event=emit_hold, segmenter=segmenter, run_id=run_id)
+            if finish is not None:
                 finish(rec, emit)
-                for data in held:
-                    emit("done", data | {k: rec[k] for k in ("goal",) if k in rec})
             path = self.session.record(rec)
+            for data in held:
+                emit("done", data | {k: rec[k] for k in ("goal",) if k in rec})
             emit("recorded", {"file": path.name})
         except PlanError as e:
             emit("error", {"run_id": run_id, "message": str(e), "raw": e.raw})
@@ -958,14 +971,16 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
         return _twin_view(twin)
 
     @app.get("/api/twin/sample.png")
-    def twin_sample(seed: int = Query(0, ge=0, le=10_000)):
+    def twin_sample(seed: int = Query(0, ge=0, le=10_000),
+                    empty: bool = Query(False, description="Render only the desk and A4 sheet, without objects")):
         """A synthetic desk photo rendered by MuJoCo (A4 sheet, 3-5 objects, a random tilted camera; no arm) to
-        try the twin without a camera. Its field of view is in X-Hasami-Hfov. Labelled synthetic wherever used."""
+        try the twin without a camera; empty=true renders the sheet alone. Its field of view is in
+        X-Hasami-Hfov. Labelled synthetic wherever used."""
         from hasami_core import png_bytes
         from hasami_sim.photo import SheetPose, random_desk, render_photo
 
         objs, cam = random_desk(seed)
-        return Response(png_bytes(render_photo(objs, SheetPose(), cam)), media_type="image/png",
+        return Response(png_bytes(render_photo([] if empty else objs, SheetPose(), cam)), media_type="image/png",
                         headers={"Cache-Control": "no-store", "X-Hasami-Hfov": f"{cam.hfov_deg:.3f}",
                                  "X-Hasami-Photo": "synthetic (MuJoCo render)",
                                  "Access-Control-Expose-Headers": "X-Hasami-Hfov, X-Hasami-Photo"})
@@ -1107,7 +1122,8 @@ def create_app(session: Session | None = None, allowed_hosts: list[str] | None =
                 "planner": ORACLE_LABEL}
 
     if DASHBOARD_DIST.is_dir():
-        app.mount("/", DashboardFiles(directory=DASHBOARD_DIST, html=True), name="dashboard")
+        app.router.routes.append(DashboardMount("/", DashboardFiles(directory=DASHBOARD_DIST, html=True),
+                                                name="dashboard"))
     else:
         @app.get("/")
         def root() -> dict:

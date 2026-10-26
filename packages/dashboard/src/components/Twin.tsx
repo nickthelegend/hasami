@@ -26,6 +26,7 @@ interface TwinRes {
   twin_id: string;
   label: string;
   photo: { width: number; height: number; source: string };
+  arm: { side: string; offset_mm: number };
   sheet: { corners_source: string; landscape: boolean; hfov_deg: number; camera_mm: number[] };
   objects: TwinObj[];
   stats: { masks: number; dropped_shadow: number; dropped_flat: number; dropped_loose: number; total_ms: number; in_twin: number };
@@ -86,6 +87,8 @@ export function Twin({
     if (!fromServer) built.current = true;
     setRestored(fromServer);
     setTwin(t);
+    setSide(t.arm.side);
+    setHfov(String(t.sheet.hfov_deg));
     setHeights({});
     setGoal(null);
     setMyRun(null);

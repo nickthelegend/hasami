@@ -1,0 +1,1 @@
+{"command":["git","show","--stat","--oneline","bf4dcce"],"exit_code":0,"stdout":"bf4dcce audit: plan every Hasami surface before testing\n AUDIT.md | 259 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n 1 file changed, 259 insertions(+)\n","stderr":""}

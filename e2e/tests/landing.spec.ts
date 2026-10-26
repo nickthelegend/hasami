@@ -7,7 +7,7 @@ import { test, expect, expectNoHScroll, shot, isMobile, LANDING } from './fixtur
 
 const BENCH = fileURLToPath(new URL('../../deployments/bench/', import.meta.url));
 const REPO = 'https://github.com/nickthelegend/hasami';
-const DASHBOARD = 'https://hasami-api.201-18-198-162.sslip.io/';
+const DASHBOARD = 'http://127.0.0.1:8420/';
 const EVIDENCE = `${LANDING}/evidence.html`;
 const SECTIONS = [
   ['01', 'Frame', 'top'],

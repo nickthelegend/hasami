@@ -139,3 +139,25 @@ are kept; the README has the per-sweep failure breakdown. The twin's photos are 
   `scripts/bench.py --planner muse`.
 - **Real SO-101 (mirror mode):** needs an arm on `HASAMI_SO101_PORT` and `pip install lerobot[feetech]`;
   check each joint's direction at low torque first.
+
+## Audit — 2026-10-26
+
+Final zero-tolerance re-verification in this worktree: **235 PASS / 0 FAIL / 20 UNTESTED**, counted from `AUDIT.md` by `python3 audit/final-report.py`. There are no PENDING rows. Every PASS links to this run's evidence in [audit/final/index.md](audit/final/index.md); the ordered row manifest is [audit/final/rows.json](audit/final/rows.json).
+
+Commands actually run here:
+
+- `pnpm --dir packages/dashboard build`: TypeScript check and Vite production build passed; output in `audit/final/build.txt`.
+- `pnpm --dir packages/dashboard test`: **6 passed, 0 failed**; output in `audit/final/dashboard-unit.txt`.
+- `pnpm --dir audit exec playwright test tests/landing.spec.ts --project=chromium --workers=1 --trace=off --reporter=list`: **106 passed** (landing/notebook plus K004/K005 at 1280×800 and 375×812).
+- The same Playwright command for `tests/dashboard.spec.ts`: **30 passed**; for `tests/photo.spec.ts`: **16 passed**, including K007 at both widths.
+- Landing setup-only command with `-g 'K004|K005'`: **4 passed**, with the setup notices in the final screenshots. Thus the browser commands executed **156 checks, all passed**; these are audit scenarios, not a new total for `e2e/tests`.
+- `HASAMI_AUDIT_PART=<part> .venv/bin/python audit/cli/execute.py` for `api`, `mcp`, `cli`, `setup`, and `twin-adjust`: **96 independently recorded PASS rows**, including all six rewritten checks. API uses real uvicorn and Playwright HTTP/Chromium; MCP uses the official stdio client. The additional twin adjustment changed FOV, corners, side and typed height. The first API preflight and transport-expectation attempts are retained as harness diagnostics; the complete corrected API run passed.
+- The CLI stage's actual fetch command was `.venv/bin/python scripts/run_fetch.py 'the juice carton' --seed 0 --no-video`: exit 0, upright carton in basket, one attempt, IoU 0.9961. The actual benchmark command was `.venv/bin/python scripts/bench.py --family all-to-tray --seeds 1 --start 0 --planner clicks --out <temporary file>`: exit 0, **1/1 task, 3/3 steps, 3/3 agreeing checks**.
+
+The full pytest suite was **not re-run**: the existing **278 passed / 1 skipped** figures above remain historical. The historical **49 passed / 1 skipped** E2E figures above were also not re-run or replaced. No new pytest total is claimed.
+
+A013 observed 502 `URLError` with no mask from the real segmenter pointed at a bound, non-listening loopback port. A016 observed 502 `APITimeoutError: Request timed out.` with no plan from the same transport, then 502 error/raw from a deliberately invalid local chat-completions peer. That peer is not Muse. No Hasami segmenter, planner, reset or twin loader was replaced. A062's real invalid inputs left the latest twin unchanged; A069's real twin load updated status/frame/latest; A077 observed real busy 409s, never 500. `git show --stat --oneline bf4dcce` and its exact file list proved C007: only AUDIT.md changed. No product fix was required during this final pass.
+
+The 20 UNTESTED rows name their exact dependencies in [audit/final/dependencies.json](audit/final/dependencies.json): live Muse/SAM 3.1 need `MODEL_API_KEY`; webcam capture needs `HASAMI_REALCAM` and a connected camera; physical arm motion needs `HASAMI_SO101_PORT`; real-desk measurements need a person, a ruler and a real photo; walker operations need the Thenar Walker at `HASAMI_ROBOT`. K015/K016 retain their explicit user-approved exclusion of the historical 20-seed benchmark and 10-seed fetch sweep. Setup states passed independently.
+
+The run held `hasami-audit-final` with release in an EXIT trap. The four excluded runtime settings were unset, apart from the explicitly authorized unprinted placeholder in the isolated loopback-failure server processes. No `.env`, secrets, Meta service, webcam, serial device or Thenar Walker was accessed. No Hasami mocks, stubs, fabricated success data, or unexpected console/page/network errors remained on the tested surface. Expected validation/setup failures and deliberate outage errors are logged. Screenshots are JPEG ≤200,000 bytes; earlier attempt screenshots were removed and the final evidence is kept below 15 MB. No deployment was made.

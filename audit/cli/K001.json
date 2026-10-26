@@ -1,0 +1,1 @@
+{"exception":"SetupRequired","message":"Setup required: MODEL_API_KEY (Meta Model API key from https://dev.meta.ai/api-keys/)","planner_status":{"ready":false,"model":"muse-spark-1.3","setup":"Setup required: MODEL_API_KEY (Meta Model API key from https://dev.meta.ai/api-keys/)"}}

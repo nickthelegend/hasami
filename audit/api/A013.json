@@ -1,0 +1,1 @@
+[{"method":"POST","path":"/api/segment","status":502,"expected":502,"ms":7928.6,"headers":{"content-type":"application/json"},"json":{"error":"URLError: <urlopen error [Errno 60] Operation timed out>"}}]

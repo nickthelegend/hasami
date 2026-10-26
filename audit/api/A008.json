@@ -1,0 +1,1 @@
+[{"method":"POST","path":"/api/segment","status":400,"expected":400,"ms":1.1,"headers":{"content-type":"application/json"},"json":{"error":"the meta segmenter (SAM 3.1) needs a text prompt, e.g. 'red cube'"}}]
