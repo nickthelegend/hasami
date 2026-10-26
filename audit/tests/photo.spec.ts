@@ -42,7 +42,7 @@ const test = base.extend<{ audit: Audit }>({
   audit: async ({ page }, use, info) => {
     const width = info.title.includes('375px') ? 375 : 1280;
     await page.setViewportSize({ width, height: width === 375 ? 812 : 800 });
-    const ids = [...new Set(info.title.match(/[RT]\d{3}/g) ?? [])];
+    const ids = [...new Set(info.title.match(/[RTK]\d{3}/g) ?? [])];
     const scenario = info.title.split(' | ')[1].replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     const allowed: { status: number; path: RegExp }[] = [], errors: string[] = [], network: unknown[] = [], consoleLog: unknown[] = [], notes: unknown[] = [];
     const screenshots: Record<string, string[]> = {}; let inOutage = false;
@@ -75,7 +75,7 @@ const test = base.extend<{ audit: Audit }>({
     const checkpoint = async (id: string, stage = '') => {
       const focus: Record<string, string> = { R002: '.realcam .notice-setup', R003: '.realcam .rc-step', R004: '.rc-sheet', R005: '.rc-sheet', R006: '.rc-out', R007: '.rc-out', R008: '.realcam .notice-error', R009: '.rc-out', R011: '.realcam .rc-step', R012: '.realcam .notice-error', R015: '.realcam .notice-error', R016: '.realcam .notice-error', R017: '.rc-out', T002: '.twin .notice-error', T003: '.tw-sbs', T004: '.tw-sbs', T005: '.twin .notice-error', T006: '.tw-table', T007: '.twin .notice-error', T008: '.tw-sbs', T010: '.twin [role=status]', T011: '.twin .rc-step', T013: '.twin .notice-error' };
       const specific = focus[id] ? page.locator(focus[id]) : null;
-      const region = specific && await specific.count() ? specific : page.locator(id.startsWith('R') ? 'section.realcam' : 'section.twin');
+      const region = specific && await specific.count() ? specific : page.locator((id.startsWith('R') || id === 'K007') ? 'section.realcam' : 'section.twin');
       await region.scrollIntoViewIfNeeded({ timeout: 10_000 });
       const name = `${id}-${width}-${scenario}${stage ? `-${stage}` : ''}.jpg`;
       await page.screenshot({ path: `${OUT}/${name}`, type: 'jpeg', quality: 28 });
@@ -166,7 +166,7 @@ async function decoded(page: Page) { await expect.poll(() => page.locator('.tw-s
 for (const width of [1280, 375]) {
   const mobile = width === 375;
   const tags = (desktop: string, narrow: string) => mobile ? `${desktop} ${narrow}` : desktop;
-  test(`${tags('R001 R002 R003 R004 R005 R006 R007 R008 R010 R011 R015', 'R018 R019')} | camera-main ${width}px`, async ({ page, audit }) => {
+  test(`${tags('R001 R002 K007 R003 R004 R005 R006 R007 R008 R010 R011 R015', 'R018 R019')} | camera-main ${width}px`, async ({ page, audit }) => {
     test.setTimeout(300_000);
     audit.allow(503, /^\/api\/realcam\/grab$/); audit.allow(400, /^\/api\/realcam\/upload$/);
     await page.goto(`${BASE}/`); await post(page, '/api/realcam/clear'); await page.getByRole('tab', { name: 'Real camera', exact: true }).click();
@@ -179,7 +179,7 @@ for (const width of [1280, 375]) {
     expect(grab.status()).toBe(503); const setup = await grab.json(); expect(setup.setup_required).toBe('HASAMI_REALCAM');
     const notice = page.locator('.realcam [role=status].notice-setup'); await expect(notice).toContainText('Setup required: HASAMI_REALCAM');
     expect((await notice.innerText()).match(/Setup required:/g)).toHaveLength(1); await expect(page.locator('.realcam .notice-error')).toHaveCount(0);
-    audit.note({ grab: setup, cameraOpened: false, sourceReview: 'grab_frame rejects absent HASAMI_REALCAM before importing/opening cv2' }); await audit.checkpoint('R002');
+    audit.note({ grab: setup, cameraOpened: false, sourceReview: 'grab_frame rejects absent HASAMI_REALCAM before importing/opening cv2' }); await audit.checkpoint('R002'); expect((await notice.innerText()).match(/HASAMI_REALCAM/g)).toHaveLength(1); await audit.checkpoint('K007');
     const photo = await sample(page); expect(photo.provenance).toBe('synthetic (MuJoCo render)');
     const frame = await upload(page, 'realcam', photo); expect(frame.source).toBe('upload'); expect(frame.frame_id).toBeTruthy(); expect(frame.calibration).toBeNull();
     await expect(page.locator('.realcam .rc-step')).toHaveText("Click the sheet's top-left corner (1 of 4, as you look at it).");

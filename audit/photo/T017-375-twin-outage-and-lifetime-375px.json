@@ -1,9 +1,1 @@
-{
-  "id": "T017",
-  "width": 375,
-  "status": "PASS",
-  "log": "375-twin-outage-and-lifetime-375px.json",
-  "screenshots": [
-    "T017-375-twin-outage-and-lifetime-375px.jpg"
-  ]
-}
+{"id":"T017","width":375,"status":"PASS","log":"375-twin-outage-and-lifetime-375px.json","screenshots":["T017-375-twin-outage-and-lifetime-375px.jpg"]}

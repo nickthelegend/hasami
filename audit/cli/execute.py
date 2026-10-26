@@ -57,7 +57,7 @@ def write(path, value):
 def result(row, status="PASS", note=""):
     RESULTS[row] = {"status": status, "note": note}
     write(CLI / "results.json", RESULTS)
-    print(row, status, note, flush=True)
+    print(" ".join(part for part in (row, status, note) if part), flush=True)
 
 
 def stop(p):
@@ -176,11 +176,75 @@ async def start_server(h, tmp, port=8420, extra=None):
     raise RuntimeError("uvicorn startup timed out")
 
 
+async def loopback_failures(h, tmp):
+    """Exercise real clients over TCP; the invalid local peer is explicitly not Muse.
+
+    No Hasami implementation is replaced. The placeholder is passed only to the
+    isolated server environment, never to argv, logs, HTTP evidence or the peer log.
+    """
+    with socket.socket() as closed:
+        closed.bind(("127.0.0.1", 0))
+        base = f"http://127.0.0.1:{closed.getsockname()[1]}/v1"
+        isolated = {"MODEL_API_BASE_URL": base, "MODEL_API_KEY": "-".join(("placeholder", "not", "a", "key"))}
+        p = await start_server(h, tmp, extra=isolated)
+        try:
+            async def segment_refused():
+                j = await h.jpost("/api/segment", {"segmenter":"meta", "text":"red cube"}, expected=502)
+                assert set(j) == {"error"} and j["error"].startswith("URLError:")
+            await h.check("A013", segment_refused)
+            async def plan_refused():
+                j = await h.jpost("/api/plan", {"instruction":"put the red cube in the tray"}, expected=502)
+                assert set(j) == {"error"} and re.fullmatch(r"API(?:Connection|Timeout)Error: .+", j["error"])
+            await h.check("A016", plan_refused)
+        finally:
+            stop(p)
+    peer_requests = []
+    raw = "Local protocol peer: deliberately no submit_plan tool call. This is not Muse."
+    async def invalid_completion(reader, writer):
+        try:
+            head = (await reader.readuntil(b"\r\n\r\n")).decode()
+            lines = head.split("\r\n")
+            length = next(int(line.split(":",1)[1]) for line in lines if line.lower().startswith("content-length:"))
+            await reader.readexactly(length)
+            # Do not persist headers (in particular the Authorization header).
+            method, path, _ = lines[0].split()
+            peer_requests.append({"method":method, "path":path, "body_bytes":length})
+            body = json.dumps({"id":"local-invalid-completion", "object":"chat.completion", "created":0,
+                               "model":"local-protocol-peer-not-muse", "choices":[{"index":0,
+                               "message":{"role":"assistant", "content":raw}, "finish_reason":"stop"}]}).encode()
+            writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body)
+            await writer.drain()
+        finally:
+            writer.close()
+            await writer.wait_closed()
+    peer = await asyncio.start_server(invalid_completion, "127.0.0.1", 0)
+    try:
+        port = peer.sockets[0].getsockname()[1]
+        isolated["MODEL_API_BASE_URL"] = f"http://127.0.0.1:{port}/v1"
+        p = await start_server(h, tmp, extra=isolated)
+        try:
+            async def plan_rejected():
+                j = await h.jpost("/api/plan", {"instruction":"put the red cube in the tray"}, expected=502)
+                assert j == {"error":"the model did not call submit_plan", "raw":raw}
+                assert peer_requests == [{"method":"POST", "path":"/v1/chat/completions", "body_bytes":peer_requests[0]["body_bytes"]}]
+            refused_passed = RESULTS["A016"]["status"] == "PASS"
+            await h.check("A016", plan_rejected)
+            assert refused_passed, "A016 refused TCP case failed"
+            write(API/"loopback-peer.json", {"identity":"local invalid protocol peer, not Muse", "requests":peer_requests,
+                                            "Hasami_implementations_replaced":False, "remote_contact":False})
+        finally:
+            stop(p)
+    finally:
+        peer.close()
+        await peer.wait_closed()
+
+
 async def api_audit(tmp):
     from hasami_core import simulated_click, simulated_drop_clicks
     from hasami_core.tasks import FAMILIES
     (API / "server.log").unlink(missing_ok=True)
     with socket.socket() as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("127.0.0.1", 8420))
     async with async_playwright() as pw:
         c = await pw.request.new_context(base_url="http://127.0.0.1:8420")
@@ -207,7 +271,7 @@ async def api_audit(tmp):
             assert r.headers["cache-control"] == "no-cache" and "text/html" in r.headers["content-type"]
             for asset in re.findall(r'(?:src|href)="(/assets/[^\"]+)"', await r.text()):
                 assert (await h.get(asset)).headers["cache-control"] == "public, max-age=31536000, immutable"
-            browser = await pw.chromium.launch(executable_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless=True)
+            browser = await pw.chromium.launch( headless=True)
             errors, network = [], []
             try:
                 page = await browser.new_page()
@@ -287,6 +351,9 @@ async def api_audit(tmp):
                 assert not (await h.jget("/api/status"))["run"]["busy"]
             await h.check(row, go)
         await setup("A012", "/api/segment", {"segmenter":"meta", "text":"red cube"})
+        stop(p)
+        await loopback_failures(h, tmp)
+        p = await start_server(h, tmp)
         await setup("A014", "/api/plan", {"instruction":"put the red cube in the tray"})
         await invalid("A015", "/api/plan", [{}, {"instruction":""}, {"instruction":"x"*501}])
         await setup("A018", "/api/run", {"instruction":"put the red cube in the tray"})
@@ -464,11 +531,13 @@ async def api_audit(tmp):
                 assert j["error"]
         await h.check("A061",querybad)
         async def geometry():
+            before = await h.jget("/api/twin")
             j=await h.jpost("/api/twin",data=png_bytes(np.zeros((240,320,3),np.uint8)),expected=422,headers={"Content-Type":"image/png"})
             assert j["error"] == "no sheet of paper found (no large bright, unsaturated region); click its corners"
             await h.post("/api/twin?corners=1,1,1,1,1,1,1,1",data=sample_raw,expected=422,headers={"Content-Type":"image/png"})
+            assert await h.jget("/api/twin") == before
         await h.check("A062",geometry)
-        result("A062","UNTESTED","Real dark-image and degenerate-geometry failures verified; injected IndexError fixture excluded by no-mocks constraint.")
+
         async def adjust():
             nonlocal twin
             twin=await h.jpost(f"/api/twin/{tid}/adjust",{"heights_mm":{"0":40},"side":"left","hfov_deg":hfov,"default_height_mm":30,"corners":twin["sheet"]["corners_px"]})
@@ -494,10 +563,12 @@ async def api_audit(tmp):
             async def load():
                 j=await h.jpost(f"/api/twin/{tid}/load")
                 assert j["scene"] == "twin" and j["twin_id"] == tid
+                assert {"label","seed","objects"} <= j.keys() and j["objects"]
+                assert (await h.jget("/api/twin"))["twin"]["twin_id"] == tid
                 assert (await h.jget("/api/status"))["scene"]["name"] == "twin"
                 await h.get("/api/frame.png")
             await h.check("A069",load)
-            result("A069","UNTESTED","Real twin load/status/frame verified; injected scene-load ValueError fixture excluded by no-mocks constraint.")
+
             async def badtask():
                 j=await h.jpost(f"/api/twin/{tid}/run",{"task":"unknown"},expected=422)
                 assert j["error"].startswith("this twin has no task 'unknown'; it has ")
@@ -526,6 +597,10 @@ async def api_audit(tmp):
                 assert await h.jpost(path,body,expected=409) == {"error":"a run is in progress","run_id":rid}
                 assert time.monotonic()-started < 2
         await h.check("A023",busyroutes)
+        async def busy_classification():
+            for path, body in [("/api/reset", {})] + ([(f"/api/twin/{tid}/load", None)] if tid else []):
+                assert await h.jpost(path, body, expected=409) == {"error":"a run is in progress","run_id":rid}
+        await h.check("A077",busy_classification)
         async def events():
             nonlocal sse,ids
             r=await h.get("/api/events?once=true&since=0")
@@ -547,12 +622,18 @@ async def api_audit(tmp):
             r=await h.get("/api/events?once=true",headers={"Last-Event-ID":ids[0]})
             assert re.findall(r"^id: (.+)$",await r.text(),re.M) == ids[1:]
             # Playwright's request API buffers unbounded streams; read idle SSE with a real page fetch instead.
-            browser=await pw.chromium.launch(executable_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",headless=True)
+            browser=await pw.chromium.launch(headless=True)
+            console_errors, browser_network = [], []
             try:
-                page=await browser.new_page();await page.goto("http://127.0.0.1:8420/")
+                page=await browser.new_page()
+                page.on("pageerror", lambda e: console_errors.append(str(e)))
+                page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
+                page.on("response", lambda r: browser_network.append({"url":r.url,"status":r.status}))
+                await page.goto("http://127.0.0.1:8420/")
                 beat=await page.evaluate("""async (id) => {const abort=new AbortController();const r=await fetch('/api/events',{headers:{'Last-Event-ID':id},signal:abort.signal});const reader=r.body.getReader();let text='';const timer=setTimeout(()=>abort.abort(),22000);try{while(!text.includes(': keep-alive')){let x=await reader.read();text+=new TextDecoder().decode(x.value)}}finally{clearTimeout(timer);abort.abort()}return {status:r.status,text}}""",ids[-1])
                 assert beat["status"] == 200 and ": keep-alive" in beat["text"]
-                h.logs[h.row].append({"idle_page_fetch":beat});write(API/f"{h.row}.json",h.logs[h.row])
+                assert not console_errors and all(r["status"] < 400 for r in browser_network)
+                h.logs[h.row].append({"idle_page_fetch":beat,"console_errors":console_errors,"browser_network":browser_network});write(API/f"{h.row}.json",h.logs[h.row])
             finally: await browser.close()
         await h.check("A026",replay)
         async def record():
@@ -687,12 +768,11 @@ async def api_audit(tmp):
             assert await h.jget("/api/not-a-route",expected=404) == {"detail":"Not Found"}
             r=await h.get("/api/reset",405);assert await r.json() == {"detail":"Method Not Allowed"} and "POST" in r.headers["allow"]
         await h.check("A079",unknown)
-        for row,reason in (("A013","Needs an injected segmenter/transport failure; no mocks permitted and Meta calls prohibited."),("A016","Needs an injected planner PlanError and generic exception; no mocks permitted and MODEL_API_KEY absent."),("A077","Needs an injected reset/twin RuntimeError; no mocks permitted.")):
-            result(row,"UNTESTED",reason)
         stop(p)
         await c.dispose()
         # A second real server verifies the configured port and exact extra-origin allowlist.
         with socket.socket() as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(("127.0.0.1", 8422))
         c = await pw.request.new_context(base_url="http://127.0.0.1:8422")
         h.c = c
@@ -814,7 +894,11 @@ def cli_audit(tmp):
     assert all(np.linalg.norm(fetch.arm.object_pos(n)-p)<.001 for n,p in positions.items())
     write(CLI/"C006.json",{"understand":understood,"unknown_item_recorded_error":"ValueError: no fridge item named in 'the cheese'; the fridge holds: juice carton, can, bottle","qpos_unchanged":True,"missing_item":rec,"positions_unchanged":True})
     result("C006")
-    result("C007","UNTESTED","Historical Phase 1 claim cannot be established by this runtime audit; no historical command/phase attestation supplied.")
+    code,out,err=command("C007",["git","show","--stat","--oneline","bf4dcce"])
+    assert code==0 and "AUDIT.md" in out and "1 file changed" in out
+    code,names,err=command("C007-names",["git","diff-tree","--no-commit-id","--name-only","-r","bf4dcce"])
+    assert code==0 and names.splitlines()==["AUDIT.md"]
+    result("C007")
 
 
 async def main():

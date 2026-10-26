@@ -1,0 +1,23 @@
+
+Running 16 tests using 1 worker
+
+(node:63494) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/photo.spec.ts:169:3 › R001 R002 K007 R003 R004 R005 R006 R007 R008 R010 R011 R015 | camera-main 1280px (6.3s)
+  ✓   2 [chromium] › tests/photo.spec.ts:229:3 › R009 | camera-keyboard 1280px (722ms)
+  ✓   3 [chromium] › tests/photo.spec.ts:251:3 › R012 R013 R014 | camera-replacement 1280px (2.2s)
+  ✓   4 [chromium] › tests/photo.spec.ts:270:3 › R016 | camera-failures 1280px (2.3s)
+  ✓   5 [chromium] › tests/photo.spec.ts:279:3 › R017 | camera-small-mask 1280px (4.4s)
+  ✓   6 [chromium] › tests/photo.spec.ts:287:3 › T001 T002 T003 T004 T005 T006 T007 T008 T009 T010 T011 T013 | twin-main 1280px (1.2m)
+  ✓   7 [chromium] › tests/photo.spec.ts:365:3 › T012 | twin-empty-input 1280px (894ms)
+  ✓   8 [chromium] › tests/photo.spec.ts:373:3 › T013 T014 | twin-outage-and-lifetime 1280px (7.4s)
+  ✓   9 [chromium] › tests/photo.spec.ts:169:3 › R001 R002 K007 R003 R004 R005 R006 R007 R008 R010 R011 R015 R018 R019 | camera-main 375px (7.3s)
+  ✓  10 [chromium] › tests/photo.spec.ts:229:3 › R009 R019 | camera-keyboard 375px (802ms)
+  ✓  11 [chromium] › tests/photo.spec.ts:251:3 › R012 R013 R014 R020 | camera-replacement 375px (2.3s)
+  ✓  12 [chromium] › tests/photo.spec.ts:270:3 › R016 R020 | camera-failures 375px (2.4s)
+  ✓  13 [chromium] › tests/photo.spec.ts:279:3 › R017 R020 | camera-small-mask 375px (4.9s)
+  ✓  14 [chromium] › tests/photo.spec.ts:287:3 › T001 T002 T003 T004 T005 T006 T007 T008 T009 T010 T011 T013 T015 T016 T017 | twin-main 375px (1.2m)
+  ✓  15 [chromium] › tests/photo.spec.ts:365:3 › T012 T015 T016 | twin-empty-input 375px (1.0s)
+  ✓  16 [chromium] › tests/photo.spec.ts:373:3 › T013 T014 T017 | twin-outage-and-lifetime 375px (7.3s)
+
+  16 passed (3.3m)

@@ -1,0 +1,1 @@
+{"identity":"local invalid protocol peer, not Muse","requests":[{"method":"POST","path":"/v1/chat/completions","body_bytes":59531}],"Hasami_implementations_replaced":false,"remote_contact":false}

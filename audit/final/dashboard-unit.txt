@@ -1,0 +1,18 @@
+
+> @hasami/dashboard@0.1.0 test /Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/packages/dashboard
+> vite build --ssr src/runState.test.ts --outDir .test-out --emptyOutDir --logLevel warn && node --test .test-out/runState.test.js devserver.test.mjs
+
+✔ events from the previous run, replayed before 'started', never reach the new run (1.132ms)
+✔ the new run's own events that arrive before 'started' are kept, in order (0.206875ms)
+✔ a run the server no longer has ends instead of staying on running (0.439875ms)
+✔ vite is a release with the dev-server CORS, Host and fs.deny fixes (0.309166ms)
+✔ config: dev and preview servers bind 127.0.0.1 with CORS off (12.693458ms)
+✔ a foreign origin gets no Access-Control-Allow-Origin, on source files and on proxied /api (340.72925ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 489.290375

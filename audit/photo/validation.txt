@@ -1,9 +1,0 @@
-pnpm build in packages/dashboard: PASS (tsc --noEmit and Vite production build)
-Python compile of packages/server/hasami_server/app.py: PASS
-bash -n audit/run-photo.sh: PASS
-git diff --check: PASS
-Final full Playwright run: 16 passed
-Supplemental fresh-context width checks: 2 passed
-R/T audit rows: 37 PASS, 0 FAIL
-No unexpected browser console/page/network errors; no mocks, Meta API calls, or webcam device access.
-Only R/T rows in AUDIT.md changed. Live webcam and real desk-photo rows remain UNTESTED.

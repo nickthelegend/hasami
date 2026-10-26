@@ -1,9 +1,1 @@
-{
-  "id": "T011",
-  "width": 1280,
-  "status": "PASS",
-  "log": "1280-twin-main-1280px.json",
-  "screenshots": [
-    "T011-1280-twin-main-1280px.jpg"
-  ]
-}
+{"id":"T011","width":1280,"status":"PASS","log":"1280-twin-main-1280px.json","screenshots":["T011-1280-twin-main-1280px.jpg"]}

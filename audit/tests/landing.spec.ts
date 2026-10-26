@@ -1,7 +1,9 @@
 import { test, expect, Page, Locator } from '@playwright/test';
 import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { mkdtempSync, openSync, closeSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 const root = resolve(import.meta.dirname, '../..');
 const out = resolve(root, 'audit/landing');
@@ -14,8 +16,34 @@ const after = ['173703', '174610', '175048', '175539'];
 const before = ['165535', '170448', '170928', '171443'];
 const bench = (time: string) => record(`deployments/bench/20261021T${time}Z.json`);
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
-const ids = [...Array.from({length:21}, (_, i) => `L${String(i+1).padStart(3,'0')}`), ...Array.from({length:30}, (_, i) => `N${String(i+1).padStart(3,'0')}`)];
-const sections: Record<string,string> = { L003:'#how', L004:'#proof', L005:'#fridge', L006:'.goal-figs .gfig:nth-child(2)', L007:'.rover', L008:'#live', L009:'#live', L011:'#run', L012:'#run', L017:'#how', L018:'#proof', L019:'#fridge', L020:'#live', L021:'#run', N003:'#cut',N004:'#sheet',N005:'#replay',N006:'#twin',N007:'#apparatus',N009:'#replay',N010:'#replay',N011:'#replay',N012:'#replay',N013:'#replay',N014:'#replay',N015:'#twin',N016:'#cut',N017:'#sheet',N018:'#sheet',N019:'#replay',N020:'#twin',N021:'#apparatus',N022:'#run',N025:'#cut',N026:'#run',N027:'#sheet',N028:'#replay',N029:'#twin',N030:'#apparatus'};
+const ids = [...Array.from({length:21}, (_, i) => `L${String(i+1).padStart(3,'0')}`), ...Array.from({length:30}, (_, i) => `N${String(i+1).padStart(3,'0')}`), 'K004', 'K005'];
+const sections: Record<string,string> = { K004:'#live',K005:'#apparatus', L003:'#how', L004:'#proof', L005:'#fridge', L006:'.goal-figs .gfig:nth-child(2)', L007:'.rover', L008:'#live', L009:'#live', L011:'#run', L012:'#run', L017:'#how', L018:'#proof', L019:'#fridge', L020:'#live', L021:'#run', N003:'#cut',N004:'#sheet',N005:'#replay',N006:'#twin',N007:'#apparatus',N009:'#replay',N010:'#replay',N011:'#replay',N012:'#replay',N013:'#replay',N014:'#replay',N015:'#twin',N016:'#cut',N017:'#sheet',N018:'#sheet',N019:'#replay',N020:'#twin',N021:'#apparatus',N022:'#run',N025:'#cut',N026:'#run',N027:'#sheet',N028:'#replay',N029:'#twin',N030:'#apparatus'};
+
+let ownedServer: ChildProcess | null = null;
+const scratch = mkdtempSync(resolve(tmpdir(), 'hasami-final-landing-'));
+async function stopServer() {
+  if (!ownedServer || ownedServer.exitCode !== null) return;
+  const child = ownedServer;
+  const ended = new Promise<void>(r => child.once('exit', () => r()));
+  child.kill('SIGTERM'); await ended; ownedServer = null;
+}
+async function startServer(dashboard = false) {
+  await stopServer();
+  const fd = openSync(resolve(scratch, 'server.log'), 'a');
+  const env = { ...process.env, HASAMI_HOST:'127.0.0.1', HASAMI_PORT:'8420', HASAMI_RUNS_DIR:resolve(scratch,'runs'), HASAMI_TWINS_DIR:resolve(scratch,'twins') };
+  for (const key of ['MODEL_API_KEY','HASAMI_REALCAM','HASAMI_SO101_PORT','HASAMI_DISTURB']) delete env[key];
+  ownedServer = spawn(resolve(root,'.venv/bin/python'), dashboard ? ['-m','hasami_server'] : ['-m','http.server','8421','--bind','127.0.0.1','--directory',resolve(root,'packages/landing')], { cwd:root,env,stdio:['ignore',fd,fd] });
+  closeSync(fd);
+  const url = dashboard ? 'http://127.0.0.1:8420/api/status' : base+'index.html';
+  for (let i=0;i<180;i++) {
+    if (ownedServer.exitCode !== null) throw Error('Owned server exited');
+    try {if ((await fetch(url)).ok) return;} catch {}
+    await new Promise(r=>setTimeout(r,500));
+  }
+  throw Error('Owned server startup timeout');
+}
+test.beforeAll(async()=>{ await startServer(); });
+test.afterAll(async()=>{ await stopServer(); rmSync(scratch,{recursive:true,force:true}); });
 
 function provenance(kind: string) { return JSON.parse(execFileSync(resolve(root,'.venv/bin/python'),[resolve(root,'audit/tests/landing-provenance.py'),kind],{encoding:'utf8'})); }
 async function contains(p: Page, selector: string, texts: string[]) {
@@ -95,12 +123,12 @@ async function replaySummary(p:Page){await expect(p.locator('#replay .frame')).t
 async function twin(p:Page){await image(p,'assets/twin-sbs.webp',[1440,568]);await contains(p,'.twin-fig figcaption',['synthetic','MuJoCo render, seed 1','Right: the twin','A real desk photo has not been measured yet']);const s=record('deployments/twins/accuracy-20261021T164701Z.json').summary,t=s.true_fov,d=s.assumed_fov_70;await contains(p,'#twin',['86/86','1.2 mm','1.6 mm','16/20','0 false positives','83/86','colour 86/86','centre max 4.9 mm','centre mean 3.3 mm']);expect([t.found,t.objects,t.false_positives,t.kind_correct,t.colour_correct,t.centre_err_mm.mean,t.height_err_mm.mean.toFixed(1),t.centre_err_mm.max.toFixed(1),d.found,d.centre_err_mm.mean.toFixed(1),s.clear_desk_on_twin.ok,s.clear_desk_on_twin.run]).toEqual([86,86,0,83,86,1.2,'1.6','4.9',83,'3.3',16,20]);}
 async function apparatus(p:Page){await expect(p.locator('ul.apparatus li')).toHaveCount(9);await expect(p.locator('ul.apparatus .stamp')).toHaveText(['running','running','Setup required: MODEL_API_KEY','Setup required: MODEL_API_KEY','running','running','pending · a real photo','pending · ruler check','Setup required: HASAMI_SO101_PORT']);await contains(p,'.notes',['MuJoCo simulation','physics state','Click an object','SAM 2.1 runs locally']);}
 
-for(const width of [1280,375])for(const id of ids)test(`${id} ${width}x${width===375?812:800}`,async({page,browser},testInfo)=>{
+for(const id of ids)for(const width of [1280,375])test(`${id} ${width}x${width===375?812:800}`,async({page,browser},testInfo)=>{
   await page.setViewportSize({width,height:width===375?812:800});
   const evidence:any={id,browser:browser.version(),viewport:page.viewportSize(),started:new Date().toISOString(),navigations:[],console:[],pageErrors:[],requests:[],failedRequests:[],checks:[]};
   page.on('framenavigated',frame=>{if(frame===page.mainFrame())evidence.navigations.push(frame.url())});page.on('console',m=>evidence.console.push({type:m.type(),text:m.text()}));page.on('pageerror',e=>evidence.pageErrors.push(e.message));
   page.on('response',r=>evidence.requests.push({url:r.url(),status:r.status(),method:r.request().method()}));page.on('requestfailed',r=>evidence.failedRequests.push({url:r.url(),error:r.failure()?.errorText}));
-  const notebook=id.startsWith('N');await page.goto(base+(notebook?'evidence.html':'index.html'),{waitUntil:'networkidle'});
+  const notebook=id.startsWith('N')||id==='K005';await page.goto(base+(notebook?'evidence.html':'index.html'),{waitUntil:'networkidle'});
   let result='FAIL';
   evidence.expected=readFileSync(resolve(root,'AUDIT.md'),'utf8').split('\n').find(line=>line.startsWith(`| ${id} |`))?.split(' | ')[2];
   try{
@@ -112,8 +140,8 @@ for(const width of [1280,375])for(const id of ids)test(`${id} ${width}x${width==
       case 'L005':await fridge(page);break;
       case 'L006':evidence.provenance=provenance('fetch');await fetchRun(page);break;
       case 'L007':await rover(page);break;
-      case 'L008':await live(page);break;
-      case 'L009':case 'L020':await live(page);for(const name of ['Open the live dashboard','local dashboard']) {await page.goto(base+'index.html');const link=page.getByRole('link',{name,exact:true});await expect(link).toHaveAttribute('href','http://127.0.0.1:8420/');await link.click();await expect(page).toHaveURL('http://127.0.0.1:8420/');await expect(page.locator('h1')).toHaveText('Viewfinder / overhead');await page.waitForTimeout(600);}await page.goto(base+'index.html');await fit(page,'#live,.wait,.acts');break;
+      case 'K004':case 'L008':await live(page);break;
+      case 'L009':case 'L020':await live(page);for(const name of ['Open the live dashboard','local dashboard']) {await page.goto(base+'index.html');const link=page.getByRole('link',{name,exact:true});await expect(link).toHaveAttribute('href','http://127.0.0.1:8420/');await startServer(true);await link.click();await expect(page).toHaveURL('http://127.0.0.1:8420/');await expect(page.locator('h1')).toHaveText('Viewfinder / overhead');await page.waitForTimeout(600);await page.goto('about:blank');await startServer();}await page.goto(base+'index.html');await fit(page,'#live,.wait,.acts');break;
       case 'L010':await notebookLinks(page);break;
       case 'L011':await quickstart(page);break;
       case 'L012':await contains(page,'footer',['Hasami — 鋏, scissors','MIT','Copyright (c) 2026 Nivesh Gajengi','not affiliated with Meta']);await codeLinks(page);break;
@@ -132,6 +160,7 @@ for(const width of [1280,375])for(const id of ids)test(`${id} ${width}x${width==
       case 'N017':await familyRows(page,evidence);break;
       case 'N018':await comparisonRows(page,evidence);break;
       case 'N019':await replaySummary(page);break;
+      case 'K005':await apparatus(page);await expect(page.locator('.entries .stamp-setup')).toHaveText(['Setup required: MODEL_API_KEY','SAM 3.1 · Setup required: MODEL_API_KEY']);await fit(page,'.apparatus .stamp,.entry .stamp');break;
       case 'N021':await apparatus(page);break;
       case 'N022':await anchor(page,page.getByRole('link',{name:'Run it locally'}),'run');await quickstart(page);break;
       case 'N023':await skip(page);await notebookNavigation(page);await page.goto(base+'evidence.html');await codeLinks(page);break;
@@ -150,7 +179,7 @@ for(const width of [1280,375])for(const id of ids)test(`${id} ${width}x${width==
     await fit(page,'body');
     const shot=resolve(out,`${id}-${width}.jpg`);await page.screenshot({path:shot,type:'jpeg',quality:45});expect(statSync(shot).size).toBeLessThanOrEqual(200000);
     evidence.screenshots=[`${id}-${width}.jpg`];
-    const extras: Record<string,string> = {L016:'.stage',L017:'.steps3 li',L019:'.gfig',L021:'#run pre',N025:'.stage,.entry,.armlog',N027:'.res tbody tr:not(.grp)',N028:'.frame',N029:'.twin-fig,.twin-sheet',N030:'.apparatus li,.notes,#run pre'};
+    const extras: Record<string,string> = {K005:'.entries .stamp-setup',L016:'.stage',L017:'.steps3 li',L019:'.gfig',L021:'#run pre',N025:'.stage,.entry,.armlog',N027:'.res tbody tr:not(.grp)',N028:'.frame',N029:'.twin-fig,.twin-sheet',N030:'.apparatus li,.notes,#run pre'};
     if(width===375&&extras[id]) {
       const elements=await page.locator(extras[id]).all();
       for(let index=0;index<elements.length;index++) {

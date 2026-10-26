@@ -1,1 +1,1 @@
-[{"method":"POST","path":"/api/realcam/segment","status":409,"expected":409,"ms":1.1,"headers":{"content-type":"application/json"},"json":{"error":"grab or upload a frame and click the sheet's corners first"}}]
+[{"method":"POST","path":"/api/realcam/segment","status":409,"expected":409,"ms":0.8,"headers":{"content-type":"application/json"},"json":{"error":"grab or upload a frame and click the sheet's corners first"}}]
