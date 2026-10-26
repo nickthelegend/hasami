@@ -1,0 +1,15 @@
+C001 PASS
+C002 PASS
+C003 PASS
+C004 PASS
+K008 PASS
+C005 PASS
+WARNING: ARB_clip_control unavailable while mjDEPTH_ZEROFAR requested, depth accuracy will be limited
+
+W1027 00:02:06.364000 44483 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+[transformers] You are using a model of type `sam2_video` to instantiate a model of type `sam2`. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+
+Loading weights:   0%|          | 0/309 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 309/309 [00:00<00:00, 23551.94it/s]
+C006 PASS
+C007 PASS

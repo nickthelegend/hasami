@@ -1,9 +1,1 @@
-{
-  "id": "T015",
-  "width": 375,
-  "status": "PASS",
-  "log": "375-twin-empty-input-375px.json",
-  "screenshots": [
-    "T015-375-twin-empty-input-375px.jpg"
-  ]
-}
+{"id":"T015","width":375,"status":"PASS","log":"375-twin-empty-input-375px.json","screenshots":["T015-375-twin-empty-input-375px.jpg"]}

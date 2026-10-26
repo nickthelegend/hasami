@@ -1,0 +1,13 @@
+
+> @hasami/dashboard@0.1.0 build /Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/packages/dashboard
+> tsc --noEmit && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 40 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   1.00 kB │ gzip:  0.55 kB
+dist/assets/index-DFDbRdpT.css   25.34 kB │ gzip:  5.95 kB
+dist/assets/index-B-jadLiG.js   210.89 kB │ gzip: 67.16 kB
+✓ built in 282ms

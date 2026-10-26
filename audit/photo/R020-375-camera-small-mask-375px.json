@@ -1,9 +1,1 @@
-{
-  "id": "R020",
-  "width": 375,
-  "status": "PASS",
-  "log": "375-camera-small-mask-375px.json",
-  "screenshots": [
-    "R020-375-camera-small-mask-375px.jpg"
-  ]
-}
+{"id":"R020","width":375,"status":"PASS","log":"375-camera-small-mask-375px.json","screenshots":["R020-375-camera-small-mask-375px.jpg"]}

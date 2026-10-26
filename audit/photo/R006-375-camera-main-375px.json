@@ -1,9 +1,1 @@
-{
-  "id": "R006",
-  "width": 375,
-  "status": "PASS",
-  "log": "375-camera-main-375px.json",
-  "screenshots": [
-    "R006-375-camera-main-375px.jpg"
-  ]
-}
+{"id":"R006","width":375,"status":"PASS","log":"375-camera-main-375px.json","screenshots":["R006-375-camera-main-375px.jpg"]}

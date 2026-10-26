@@ -1,0 +1,1 @@
+A063 PASS Changed side, FOV, corner coordinates and default-height option; typed object height is 40 mm and latest twin matches.

@@ -1,9 +1,1 @@
-{
-  "id": "T010",
-  "width": 375,
-  "status": "PASS",
-  "log": "375-twin-main-375px.json",
-  "screenshots": [
-    "T010-375-twin-main-375px.jpg"
-  ]
-}
+{"id":"T010","width":375,"status":"PASS","log":"375-twin-main-375px.json","screenshots":["T010-375-twin-main-375px.jpg"]}

@@ -1,9 +1,1 @@
-{
-  "id": "R014",
-  "width": 375,
-  "status": "PASS",
-  "log": "375-camera-replacement-375px.json",
-  "screenshots": [
-    "R014-375-camera-replacement-375px.jpg"
-  ]
-}
+{"id":"R014","width":375,"status":"PASS","log":"375-camera-replacement-375px.json","screenshots":["R014-375-camera-replacement-375px.jpg"]}

@@ -1,13 +1,1 @@
-{
-  "base": "http://127.0.0.1:8420",
-  "scratch": "/var/folders/tp/gcpvr1451r350sq27v4csrq40000gn/T/hasami-audit-photo-xXXoBC",
-  "variablesUnset": [
-    "MODEL_API_KEY",
-    "HASAMI_REALCAM",
-    "HASAMI_SO101_PORT",
-    "HASAMI_DISTURB"
-  ],
-  "source": "/api/twin/sample.png",
-  "webcam": "UNTESTED: no configured webcam; no device opened",
-  "realDeskPhoto": "UNTESTED: real desk photo absent"
-}
+{"base":"http://127.0.0.1:8420","scratch":"/var/folders/tp/gcpvr1451r350sq27v4csrq40000gn/T/hasami-audit-photo-yVGOHT","variablesUnset":["MODEL_API_KEY","HASAMI_REALCAM","HASAMI_SO101_PORT","HASAMI_DISTURB"],"source":"/api/twin/sample.png","webcam":"UNTESTED: no configured webcam; no device opened","realDeskPhoto":"UNTESTED: real desk photo absent"}

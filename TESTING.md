@@ -140,35 +140,24 @@ are kept; the README has the per-sweep failure breakdown. The twin's photos are 
 - **Real SO-101 (mirror mode):** needs an arm on `HASAMI_SO101_PORT` and `pip install lerobot[feetech]`;
   check each joint's direction at low torque first.
 
+## Audit — 2026-10-26
 
-## Landing and notebook zero-tolerance audit — 2026-10-26
+Final zero-tolerance re-verification in this worktree: **235 PASS / 0 FAIL / 20 UNTESTED**, counted from `AUDIT.md` by `python3 audit/final-report.py`. There are no PENDING rows. Every PASS links to this run's evidence in [audit/final/index.md](audit/final/index.md); the ordered row manifest is [audit/final/rows.json](audit/final/rows.json).
 
-**51/51 audit rows PASS; 102/102 Chromium browser checks passed** at 1280×800 and 375×812. The final run is in `audit/landing/playwright.txt`, with per-row console/network JSON and JPEG evidence linked from L001–L021 and N001–N030 in `AUDIT.md`. Other audit rows were not changed.
+Commands actually run here:
 
-Command: `pnpm --dir audit exec playwright test tests/landing.spec.ts --project=chromium --workers=1`. The dashboard build also passed (`pnpm --dir packages/dashboard build`); its real local server was used only to verify landing entry links. All benchmark, run and twin comparisons use committed records without rerunning their sweeps.
+- `pnpm --dir packages/dashboard build`: TypeScript check and Vite production build passed; output in `audit/final/build.txt`.
+- `pnpm --dir packages/dashboard test`: **6 passed, 0 failed**; output in `audit/final/dashboard-unit.txt`.
+- `pnpm --dir audit exec playwright test tests/landing.spec.ts --project=chromium --workers=1 --trace=off --reporter=list`: **106 passed** (landing/notebook plus K004/K005 at 1280×800 and 375×812).
+- The same Playwright command for `tests/dashboard.spec.ts`: **30 passed**; for `tests/photo.spec.ts`: **16 passed**, including K007 at both widths.
+- Landing setup-only command with `-g 'K004|K005'`: **4 passed**, with the setup notices in the final screenshots. Thus the browser commands executed **156 checks, all passed**; these are audit scenarios, not a new total for `e2e/tests`.
+- `HASAMI_AUDIT_PART=<part> .venv/bin/python audit/cli/execute.py` for `api`, `mcp`, `cli`, `setup`, and `twin-adjust`: **96 independently recorded PASS rows**, including all six rewritten checks. API uses real uvicorn and Playwright HTTP/Chromium; MCP uses the official stdio client. The additional twin adjustment changed FOV, corners, side and typed height. The first API preflight and transport-expectation attempts are retained as harness diagnostics; the complete corrected API run passed.
+- The CLI stage's actual fetch command was `.venv/bin/python scripts/run_fetch.py 'the juice carton' --seed 0 --no-video`: exit 0, upright carton in basket, one attempt, IoU 0.9961. The actual benchmark command was `.venv/bin/python scripts/bench.py --family all-to-tray --seeds 1 --start 0 --planner clicks --out <temporary file>`: exit 0, **1/1 task, 3/3 steps, 3/3 agreeing checks**.
 
-Fixed local dashboard destinations, live-section anchor containment, sticky-header anchor offsets and the landing’s mobile header notebook link. No mocks, stubs, Meta calls or hardware access; no console, page or network errors in the tested surface. Both servers and Chrome were stopped and the heavy slot released after the run.
+The full pytest suite was **not re-run**: the existing **278 passed / 1 skipped** figures above remain historical. The historical **49 passed / 1 skipped** E2E figures above were also not re-run or replaced. No new pytest total is claimed.
 
-## API, MCP and CLI zero-tolerance audit — 2026-10-26
+A013 observed 502 `URLError` with no mask from the real segmenter pointed at a bound, non-listening loopback port. A016 observed 502 `APITimeoutError: Request timed out.` with no plan from the same transport, then 502 error/raw from a deliberately invalid local chat-completions peer. That peer is not Muse. No Hasami segmenter, planner, reset or twin loader was replaced. A062's real invalid inputs left the latest twin unchanged; A069's real twin load updated status/frame/latest; A077 observed real busy 409s, never 500. `git show --stat --oneline bf4dcce` and its exact file list proved C007: only AUDIT.md changed. No product fix was required during this final pass.
 
-**90 PASS / 0 FAIL / 6 UNTESTED across 96 newly resolved rows**: A001–A079, M001–M008,
-C001–C007 and K001/K008. Evidence and execution details are in `audit/api/`, `audit/cli/` and
-the corresponding AUDIT.md cells. Existing live Meta/hardware UNTESTED rows were retained.
+The 20 UNTESTED rows name their exact dependencies in [audit/final/dependencies.json](audit/final/dependencies.json): live Muse/SAM 3.1 need `MODEL_API_KEY`; webcam capture needs `HASAMI_REALCAM` and a connected camera; physical arm motion needs `HASAMI_SO101_PORT`; real-desk measurements need a person, a ruler and a real photo; walker operations need the Thenar Walker at `HASAMI_ROBOT`. K015/K016 retain their explicit user-approved exclusion of the historical 20-seed benchmark and 10-seed fetch sweep. Setup states passed independently.
 
-Real uvicorn on 127.0.0.1:8420 was exercised with Playwright's request API and Chrome, including
-the unbuilt-dashboard fallback, all validation branches available without injected implementations,
-SSE replay/keepalive, concurrent busy/reset routes, chunked upload caps, run files/images/video ranges,
-and synthetic-photo twins. A second real server on 8422 verified configured CORS origins/port.
-The official MCP stdio client exercised discovery, status, look, real SAM find and simulated pick/place.
-The single fetch and single one-seed all-to-tray benchmark both exited 0 (benchmark: 1/1 tasks,
-3/3 steps and 3/3 agreeing checks). Setup help/syntax and local walker poses/JPEG look passed.
-
-Fixed the dashboard mount swallowing API method mismatches: GET /api/reset now returns 405 and
-Allow: POST instead of 404. Focused regression command recorded in
-`audit/cli/routing-regression.json`: **4 passed, 42 deselected in 5.02s**. Dashboard build passed.
-The full historical pytest suite was not rerun for this worker task.
-
-A013/A016/A062/A069/A077 remain UNTESTED for their injected exception branches under the no-mocks
-constraint; C007 is an unverifiable historical Phase 1 claim. No fake masks, Meta calls, robot contacts,
-webcam captures or hardware motion were used. No unexpected browser console/network errors remained.
-Temporary stores were removed, all started processes stopped, and the shared heavy slot released.
+The run held `hasami-audit-final` with release in an EXIT trap. The four excluded runtime settings were unset, apart from the explicitly authorized unprinted placeholder in the isolated loopback-failure server processes. No `.env`, secrets, Meta service, webcam, serial device or Thenar Walker was accessed. No Hasami mocks, stubs, fabricated success data, or unexpected console/page/network errors remained on the tested surface. Expected validation/setup failures and deliberate outage errors are logged. Screenshots are JPEG ≤200,000 bytes; earlier attempt screenshots were removed and the final evidence is kept below 15 MB. No deployment was made.

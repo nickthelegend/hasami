@@ -1,0 +1,37 @@
+A002 PASS
+A001 PASS
+A003 PASS
+A004 PASS
+A005 PASS
+A006 PASS
+A007 PASS
+A008 PASS
+A009 PASS
+A010 PASS
+A011 PASS
+A012 PASS
+A013 PASS
+A016 FAIL AssertionError:
+A016 PASS
+Traceback (most recent call last):
+  File "/Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/audit/cli/execute.py", line 955, in <module>
+    try:asyncio.run(main())
+        ^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/.cache/uv-python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/.cache/uv-python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/.cache/uv-python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/audit/cli/execute.py", line 908, in main
+    if part in ("all", "api"): await api_audit(tmp)
+                               ^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/audit/cli/execute.py", line 355, in api_audit
+    await loopback_failures(h, tmp)
+  File "/Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/audit/cli/execute.py", line 232, in loopback_failures
+    assert refused_passed, "A016 refused TCP case failed"
+           ^^^^^^^^^^^^^^
+AssertionError: A016 refused TCP case failed

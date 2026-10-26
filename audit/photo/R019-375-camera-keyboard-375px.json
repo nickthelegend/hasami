@@ -1,9 +1,1 @@
-{
-  "id": "R019",
-  "width": 375,
-  "status": "PASS",
-  "log": "375-camera-keyboard-375px.json",
-  "screenshots": [
-    "R019-375-camera-keyboard-375px.jpg"
-  ]
-}
+{"id":"R019","width":375,"status":"PASS","log":"375-camera-keyboard-375px.json","screenshots":["R019-375-camera-keyboard-375px.jpg"]}

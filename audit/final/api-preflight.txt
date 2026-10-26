@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/audit/cli/execute.py", line 953, in <module>
+    try:asyncio.run(main())
+        ^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/.cache/uv-python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/.cache/uv-python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/.cache/uv-python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/audit/cli/execute.py", line 906, in main
+    if part in ("all", "api"): await api_audit(tmp)
+                               ^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/hasami-899f4f4f7026/omvphb5mn/t6/audit/cli/execute.py", line 247, in api_audit
+    sock.bind(("127.0.0.1", 8420))
+OSError: [Errno 48] Address already in use
