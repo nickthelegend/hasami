@@ -18,9 +18,11 @@ export HF_HOME=/path/to/huggingface-cache   # where SAM 2.1 weights are cached (
 .venv/bin/python -m pytest -q
 ```
 
-## Results (2026-10-25; Mac, CPU, no MODEL_API_KEY, no SO-101, no webcam)
+## Results (2026-10-26; Mac, CPU, no MODEL_API_KEY, no SO-101, no webcam)
 
-`249 passed, 1 skipped in 183.93s` (2026-10-25: +1 server test for the dashboard's cache headers, +1 twin test
+`278 passed, 1 skipped in 252.93s` (2026-10-26: +20 fridge-fetch tests in `tests/test_fridge.py`, and the 9
+walker tests that came with `packages/walker` (`tests/test_walker.py` 5, `tests/test_walker_look.py` 4; they ran
+against a thenar-walker clone next to this repo and skip without one). 249 on 2026-10-25: +1 server test for the dashboard's cache headers, +1 twin test
 and +2 docs tests from the Oct 24 deploy fixes; 245 on 2026-10-23 after the third ultra round: +9 server, +4 planner,
 +1 perception, +5 docs tests; 226 before it, 213 before the second ultra round, 204 before the first,
 180 before the target check)
@@ -48,7 +50,10 @@ pytest is not installed, which is why every install line now says `'.[dev]'` (`t
 | `tests/test_docs.py` | a fresh clone gets pytest: every install line in the README, TESTING and the landing installs `'.[dev]'`; `scripts/setup.sh` exists, is executable, passes `bash -n` and answers `--help`; CI runs pytest files that exist and the dashboard build (the first two failed before the fix) Third ultra round: every dependency pinned in `constraints.txt` to the tested version and installed at it, setup / CI / docs install with it; **the SAM 2.1 IoU quoted in the README and form is computed from run 20261021T053112874Z's record**; **every docs path a source file cites exists** (`specs/hasami.md` did not). | 11 | 0 |
 | `tests/test_plausible.py` | the target check before any move: a synthetic **594 mm-wide** leak (wider than the jaws, longer than any object, 6 mm tall, off the frame edge) is rejected; a normal cube passes; a lying cylinder and a leaning cube pass, an out-of-reach centre and a noise speck fail, a target inside a bin counts as workspace; a bare-table mask on a real noisy frame locates hundreds of mm wide and is rejected, a cube's mask passes; **retry path** with SAM 2.1 fault-injected: a leaked first mask is re-prompted with a box and the step places the cube; every prompt leaking falls back to the red blob; nothing plausible near a bare-table click skips the step as `implausible` with no pick-and-place phase and no object moved; **the sweep's own case, no injection:** tower-of-3 seed 0 under the noisy camera no longer sends the arm to the 594 mm target (step 2 is `implausible`); a clean run passes the check first time. 6 of these 10 fail on b1d6bfa's code (the other 4 test the new module directly) | 10 | 0 |
 | `tests/test_mcp.py` | `python -m hasami_mcp` over stdio: tools, status, look, find, Setup required by label, call log | 1 | 0 |
-| **Total** | | **249** | **1** |
+| `tests/test_fridge.py` | the simulated fridge fetch. The scene (3 layouts): builds, round-trips through JSON, its three items stand upright on the shelf, all in the head camera's view and none in the overhead's (the fridge's top hides them), the basket in the overhead's; layouts reproducible and shuffled by the seed; the user's words name the item ("bring me the juice" -> juice carton). **Reach** (2 layouts): every item gets a front plan at 15-40 deg below level, pointing into the fridge, jaws level within 3.5 deg, withdrawn past the cabinet's corners; a can 30 mm from the back wall gets none. **Shelf survey with real SAM 2.1** (2 layouts): shelf height within 2 mm, one mask per item with IoU > 0.95, centre within 2 mm, height within 3 mm, each passing only its own item's check. **Whole fetches in MuJoCo**: each item on two layouts into the basket upright, one attempt, all four gripper checks held, the robot's check agreeing with the physics, nothing else moved. **Verify and retry**: a labelled 30 mm short first grasp on the bottle is an empty grasp by the gripper reading, retried from a new head-camera frame into the basket. Without `MODEL_API_KEY` the Muse step is exactly the Setup required text; an unknown item ('the cheese') raises before the arm moves; an absent item (no bottle in the fridge) is refused by every thing's check and nothing moves. `scripts/run_fetch.py "the juice carton"` end to end in a subprocess: prints the outcome, writes one run record in the tabletop format with its step images. Needs the SAM 2.1 weights, so it is not in CI | 20 | 0 |
+| `tests/test_walker.py` | `hasami_walker` against the real `thenar_pi` runtime on its dry-run hardware over real WebSockets (added with `packages/walker`) | 5 | 0 |
+| `tests/test_walker_look.py` | `hasami_walker.look` on a synthetic shelf frame with real SAM 2.1 (added with `packages/walker`) | 4 | 0 |
+| **Total** | | **278** | **1** |
 
 ## Dashboard (not part of pytest)
 
@@ -108,8 +113,17 @@ HASAMI_DISTURB=offset_mm:6,slip:0.2 python scripts/bench.py --family all --seeds
 python scripts/twin_accuracy.py --seeds 20 --tasks                                 # 86/86 found, 1.2 mm, 16/20 cleared
 ```
 
+Fridge fetch (simulated; JSON in `deployments/fetch/`, see the README's "Fridge fetch (simulated)"):
+
+```bash
+python scripts/fetch_sweep.py --seeds 10                                   # 30/30: 10/10 per item, 0 retries, check agrees 30/30
+HASAMI_DISTURB=short_mm:40 python scripts/fetch_sweep.py --seeds 5         # 15/15, each after one retry
+HASAMI_DISTURB=short_mm:30 python scripts/fetch_sweep.py --seeds 5         # carton 1/5 (knocked over), can 5/5, bottle 5/5
+python scripts/run_fetch.py "bring me the juice from the fridge"           # the recorded run 20261026T111544704Z
+```
+
 The planner in these runs is the simulated-click oracle or the scripted Muse-format plan (both labelled in
-every JSON), not Muse. Before → after the target check, same seeds: clean 146/160 → 146/160 (165535Z →
+every JSON), not Muse; in the fridge sweeps the item is named directly (Muse: Setup required). Before → after the target check, same seeds: clean 146/160 → 146/160 (165535Z →
 173703Z), scripted 76/80 → 76/80 (170448Z → 174610Z), noisy camera 63/80 → 64/80 with 51 → 35 retries
 (170928Z → 175048Z), grasp faults 41/64 → 41/64 with 184 → 172 retries (171443Z → 175539Z). The old files
 are kept; the README has the per-sweep failure breakdown. The twin's photos are MuJoCo renders.

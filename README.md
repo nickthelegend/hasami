@@ -11,7 +11,7 @@ MuJoCo. A photo of your desk with an A4 sheet becomes a digital twin the simulat
 
 | Running now, no key needed | Waiting |
 |---|---|
-| SAM 2.1 hiera-tiny on this Mac · the SO-101 in MuJoCo (simulated) · the 8-family benchmark · the digital twin (on rendered photos) · dashboard, HTTP API, MCP | Muse planner and SAM 3.1: `MODEL_API_KEY` (Setup required, never called yet) · a real SO-101 (no arm attached) · a real desk photo with a ruler check |
+| SAM 2.1 hiera-tiny on this Mac · the SO-101 in MuJoCo (simulated) · the fridge fetch (simulated) · the 8-family benchmark · the digital twin (on rendered photos) · dashboard, HTTP API, MCP | Muse planner and SAM 3.1: `MODEL_API_KEY` (Setup required, never called yet) · a real SO-101 (no arm attached) · a real desk photo with a ruler check |
 
 **146/160** benchmark tasks solved (8 families x 20 seeds, simulated-click planner, SAM 2.1) · under
 injected disturbances the robot's own check matched the physics in **1106 of 1111** checks · twin from one
@@ -24,11 +24,11 @@ scripts/setup.sh                     # .venv with '.[dev]' (pytest too), the das
 ```
 
 **Muse plans (wired; it runs once a Meta Model API key is set), SAM 2.1 sees, a simulated SO-101 picks.**
-Every number in this README is SAM 2.1 with a clicked or scripted planner, not Muse. Say what you want
-moved: Muse (Meta Model API) is to read the camera frame and plan the steps (Setup required:
-`MODEL_API_KEY`, never called yet), SAM segments each object, depth turns each mask into a 3D grasp, and a
-MuJoCo simulation of the SO-101 arm picks and places it, checking every step and retrying when it fails. No
-real SO-101 has run.
+Every number in this README is SAM 2.1 with a clicked or scripted planner (the fridge fetch: the item named
+directly), not Muse. Say what you want moved: Muse (Meta Model API) is to read the camera frame and plan the
+steps (Setup required: `MODEL_API_KEY`, never called yet), SAM segments each object, depth turns each mask
+into a 3D grasp, and a MuJoCo simulation of the SO-101 arm picks and places it, checking every step and
+retrying when it fails. No real SO-101 has run.
 
 **Sim-first, scored against ground truth.** The arm is the official SO-101 model in MuJoCo. The pipeline
 sees only RGB + depth and the gripper's own position; the simulator's ground truth is used only to score
@@ -47,6 +47,72 @@ it is moved forward if more pre-event commits land. `git log pre-event-2026-10-2
 during the event. Left for the event: the live Muse plan and SAM 3.1 (they need `MODEL_API_KEY`), a
 Muse benchmark row, a twin from a real photo, and the narrated video. The official rules were not published
 yet on Oct 22; see [HACKATHON_SUBMISSION_FORM.md](HACKATHON_SUBMISSION_FORM.md).
+
+## Fridge fetch (simulated)
+
+![The head camera's view into the fridge with SAM 2.1's mask on the juice carton, the scene after the simulated SO-101 put the carton in its basket, and the overhead frame the check used](packages/landing/assets/fridge-fetch.webp)
+
+*Recorded run `20261026T111544704Z` ("bring me the juice from the fridge", layout 0), frames as stored
+(captions added): the head camera with SAM 2.1's mask, the three-quarter view after, the overhead frame the
+check used.*
+
+**"Bring me the juice from the fridge": the simulated SO-101 takes the carton off the shelf from the front
+and puts it in its basket.** The robot this is for is the owner's Thenar Walker, a wheeled base carrying an
+SO-ARM100-family 6-DoF arm. It is not wired yet, so this is the MuJoCo SO-101 standing in front of an open
+fridge. Nothing here has moved a real arm, and the base does not drive.
+
+```bash
+python scripts/run_fetch.py "the juice carton"   # or "bring me the juice from the fridge"; --seed N layout, --no-video
+python scripts/fetch_sweep.py --seeds 10         # every item on 10 layouts -> deployments/fetch/<UTC>.json
+```
+
+- **The fridge** (`hasami_sim.scene.fridge_scene`, built with MjSpec like the tabletop scenes): the item shelf
+  is 55 mm above the plane the arm stands on (the drawer under it is closed), with an upper shelf, walls, back,
+  ceiling, and the door swung open 115° beside the robot. On the shelf, 45 mm behind its front edge: a juice
+  carton (orange, 32 × 32 × 80 mm), a can (red, Ø30 × 56 mm) and a bottle (green, Ø26 × 85 mm). The seed
+  shuffles their order and moves each by a few millimetres (the carton also turns up to ±15°). They are scaled
+  to the SO-101's 41 mm jaw opening; a real can is 66 mm across. The robot's blue basket stands on a 40 mm
+  riser beside the arm.
+- **Seeing into it.** The overhead camera cannot (the fridge's top hides the shelf), so a head camera on a mast
+  behind the arm looks in. From its RGB + depth: the shelf is the largest level surface in reach, the things
+  on it are the pixels raised above it, SAM 2.1 segments each from a point prompt with its box, and each mask
+  is measured from the front: width across the view, height, colour, and the centre half a width behind the
+  nearest surface. The named item's entry (colour, height ±8 mm, width ±5 mm) picks which one; if nothing
+  passes, nothing moves. The basket is found in the overhead frame by its colour and SAM 2.1, as the tray is.
+- **In from the front, not from above.** `Arm.plan_front` tries gripper tilts from 15° to 40° below level and
+  keeps the flattest at which every pose of the fetch has an IK solution. The jaws stay level and close on the
+  item's sides 70 % of the way up, so it hangs below the jaw axis instead of balancing on it. In, close, lift
+  12 mm, slide back out past the cabinet's front corners, swing round on an arc, lower into the basket, open,
+  rise. The tabletop's top-down picks are unchanged: the benchmark rerun on seeds 0-2 (24 tasks, 8 families)
+  matched the committed clean sheet task for task.
+- **Muse.** With `MODEL_API_KEY` set, the existing planner reads the sentence and the head-camera frame and
+  names the item (and points at it). Without the key the run prints `Setup required: MODEL_API_KEY` and uses
+  the item you named, matched by its words ("juice" → the juice carton). Muse has not been called (no key), so
+  every number here is the named-item path.
+- **Check and retry**, as on the tabletop: the gripper's reading after closing, after the withdrawal and over
+  the basket; the head camera (is it still on the shelf?); the overhead camera (is a raised thing of its
+  colour in the basket, its top where the item's top should be?). A failed check surveys the shelf again from
+  a new frame and retries, up to twice.
+
+Simulated, SAM 2.1 hiera-tiny, the item named directly; about 4 s per fetch on this Mac's CPU without video:
+
+| Sweep | Juice carton | Can | Bottle | Retries | Check agrees |
+|---|---:|---:|---:|---:|---:|
+| Clean, layouts 0-9 ([`110634Z`](deployments/fetch/20261026T110634Z.json)) | **10/10** | **10/10** | **10/10** | 0 | 30/30 |
+| First grasp 40 mm short, layouts 0-4 ([`111011Z`](deployments/fetch/20261026T111011Z.json)) | 5/5 | 5/5 | 5/5 | 15 | 30/30 |
+| First grasp 30 mm short, layouts 0-4 ([`110816Z`](deployments/fetch/20261026T110816Z.json)) | **1/5** | 5/5 | 5/5 | 15 | 26/26 |
+
+Every item that reached the basket was upright. Clean sweep: mask IoU 0.991 mean (min 0.986), located
+centre 0.38 mm from the true one on average (max 0.68 mm), tilt 15° (20° on one layout). "Short" is a
+labelled injected fault (`HASAMI_DISTURB=short_mm:30`): the first grasp stops that far in front of the item
+and the jaws close on air. The gripper reading caught it every time and the retry fetched the item. What
+fails: at 30 mm short, the closing jaws knocked the carton over 4 times in 5. The new survey then sees an
+orange thing 79-101 mm wide, no carton, and the robot stops instead of grabbing it; a fallen item is not
+handled.
+
+Limits of this demo: simulation only, one fridge; the door is already open and the arm already in front of
+it (no driving, no door opening); perfect depth and an exactly known head-camera pose; the basket check uses
+the sim's overhead camera, which the real robot does not have; items scaled to the SO-101's jaws.
 
 ## Benchmark
 
@@ -280,6 +346,7 @@ export MODEL_API_KEY=...                          # optional: Muse planner + SAM
 (cd packages/dashboard && pnpm install && pnpm build)
 python -m hasami_server                           # http://127.0.0.1:8420 — click a cube, click the tray, Run
 python scripts/run_demo.py                        # 3-cube run -> deployments/runs/<id>.json + images + captioned video
+python scripts/run_fetch.py "the juice carton"    # fridge fetch -> deployments/runs/<id>.json + images + captioned video
 python scripts/bench.py --family all --seeds 5    # benchmark (see above)
 python -m pytest -q                               # see TESTING.md
 python -m hasami_mcp                              # MCP over stdio (HASAMI_MCP_LOG=calls.jsonl logs every call)
@@ -331,8 +398,8 @@ also needs the `X-Hasami: 1` header (the dashboard sends it) or a `Content-Type`
 - Simulation first, and a kind one: perfect metric depth, no sensor noise, ideal lighting, rigid objects.
   The real-arm path (mirror mode) is wired and its unit conversion tested, but has not moved a real
   SO-101. The real-camera path is tested on synthetic geometry only.
-- Top-down grasps; objects narrower than ~38 mm across one side; cylinders shorter than 40 mm slip out of
-  the hinged jaw in this model.
+- Top-down grasps on the tabletop, front grasps on the fridge shelf (one simulated fridge); objects narrower
+  than ~38 mm across one side; cylinders shorter than 40 mm slip out of the hinged jaw in this model (top-down).
 - SAM 2.1 needs a point; text prompts need Muse or SAM 3.1, i.e. a Meta Model API key.
 - Not audited for safety around people. Do not run a real arm unattended.
 
