@@ -1,55 +1,311 @@
 # Hasami (鋏)
 
-![A recorded run in the MuJoCo simulation: SAM 2.1's masks on the overhead frame, then the frame after the simulated SO-101 placed each cube](packages/landing/assets/run-hero.webp)
+**“Bring me the juice from the fridge.”** Hasami joins a Thenar Walker rover, Raspberry Pi controller, six 25 kg·cm digital positional servos and a top camera to a laptop brain. Muse Spark plans from an instruction and image; SAM 3.1 can segment a named object by text; local SAM 2.1 is the point-prompt fallback. The fridge fetch works in MuJoCo. This guide gets a friend through the physical build and states the camera-to-arm and reach work still needed for a real fetch.
 
-*Recorded run `20261021T053112874Z` in the MuJoCo simulation, frames as stored (cropped; captions added under
-each frame): SAM 2.1's masks (pick mint, place lilac), then the frame after the simulated SO-101 placed the cube.*
+> **As of 28 Oct 2026, nothing has run on this physical rover.** The runtime and Walker client have socket tests; the simulation video is not a real run. A human opens the fridge door. Autonomous door opening and navigation are not built.
 
-**Click what to move; SAM 2.1 sees it, a simulated SO-101 picks it, checks its own work and retries.**
-A camera frame becomes masks, metric 3D grasps and a verified pick-and-place on the official SO-101 model in
-MuJoCo. A photo of your desk with an A4 sheet becomes a digital twin the simulated arm can work in.
+**Share this guide:** [github.com/nickthelegend/hasami](https://github.com/nickthelegend/hasami). [Live landing](https://hasami-landing.vercel.app) · [recorded simulation evidence](https://hasami-landing.vercel.app/evidence.html).
 
-**Live landing:** [hasami-landing.vercel.app](https://hasami-landing.vercel.app) (static, built from recorded
-runs) · lab notebook: [evidence.html](https://hasami-landing.vercel.app/evidence.html)
+**Build in this order:** [parts](#1-bill-of-materials) → [assembly](#2-mechanical-assembly) → [wiring](#3-electrical-and-power) → [Pi setup](#4-raspberry-pi-setup-and-first-boot) → [servo calibration](#5-calibrate-all-six-new-servos) → [laptop commands](#6-run-hasami-on-a-laptop) → [Meta integration](#7-meta-models-and-apis). Then follow the [friend checklist](#8-friend-checklist), [recording plan](#9-record-a-truthful-3-minute-video) and [submission checklist](#10-submission).
 
-| Running now, no key needed | Waiting |
-|---|---|
-| SAM 2.1 hiera-tiny on this Mac · the SO-101 in MuJoCo (simulated) · the fridge fetch (simulated) · the 8-family benchmark · the digital twin (on rendered photos) · dashboard, HTTP API, MCP | Muse planner and SAM 3.1: `MODEL_API_KEY` (Setup required, never called yet) · a real SO-101 (no arm attached) · a real desk photo with a ruler check |
+## Build status
 
-**146/160** benchmark tasks solved (8 families x 20 seeds, simulated-click planner, SAM 2.1) · under
-injected disturbances the robot's own check matched the physics in **1106 of 1111** checks · twin from one
-photo: **86/86** objects found, **1.2 mm** mean centre error on 20 rendered photos.
+| Piece | Evidence today | Physical work |
+|---|---|---|
+| Fridge fetch and benchmark | MuJoCo SO-101 with SAM 2.1: 30/30 clean simulated fetches; 146/160 benchmark tasks. Details below. | Keep every result labelled simulation. |
+| Pi runtime / Walker client | `thenar_pi` + `hasami_walker` tested over sockets with recording stand-ins; `look` tested with actual SAM 2.1 weights. | Wire and test Pi, motors, arm and camera. |
+| Muse Spark / SAM 3.1 | Clients written; no verified live Meta call without `MODEL_API_KEY`. | Test account, request, response and real mask. |
+| Real fetch | Camera-to-arm transform, real reach/grasp and single-camera verification **not built yet**. | Build and validate before claiming a hardware fetch. |
 
-```bash
-git clone https://github.com/nickthelegend/hasami && cd hasami
-scripts/setup.sh                     # .venv with '.[dev]' (pytest too), the dashboard build, SAM 2.1 weights
-.venv/bin/python -m hasami_server    # http://127.0.0.1:8420 — click a cube, click the tray, Run
+## 1. Bill of materials
+
+Reuse the existing Thenar Walker where possible. Its [current brief](https://github.com/nickthelegend/thenar-walker/blob/main/CLAUDE.md) says **240 × 138 mm tub, 3 mm wooden deck, local 370 motors with 6 mm shafts, and flat TPU tyre strips**. The older [BOM](https://github.com/nickthelegend/thenar-walker/blob/main/docs/BOM.md) and [assembly guide](https://github.com/nickthelegend/thenar-walker/blob/main/docs/ASSEMBLY.md) still say 4 mm D shafts, printed deck, ESP32, MG996Rs and a 10 A servo buck. Those are **not this Pi/25 kg build**. Measure the robot in hand. All prices below are budget estimates, before shipping; confirm the current product, price and stock with the supplier before ordering.
+
+| Part | Qty | Purchase / fit check | ₹ guide |
+|---|---:|---|---:|
+| Thenar chassis, four motors/wheels, PETG/TPU prints, battery cage, fasteners | 1 set | [Print plates/settings](https://github.com/nickthelegend/thenar-walker/blob/main/cad/print/PRINT.md); use the **6 mm shaft** wheel variant for the current motors. New motor buyers: do [the bottle torque test](https://github.com/nickthelegend/thenar-walker/blob/main/docs/ASSEMBLY.md) on one before ordering four. [The Engineer Store 25GA](https://www.theengineerstore.in/products/25ga-370-12v-60rpm-dc-gear-motor) is a different footprint, not a drop-in for the current 6 mm motors. | ₹2,000–4,000 estimate, printing extra |
+| **25 kg·cm, 3-wire positional** digital servos | 6 + spare | Confirm label, 180°/270° variant, voltage and horn spline. [Robu DS3225-class 180°](https://robu.in/product/pro-range-ds3225-25kgcm-metal-gear-digital-servo-motor-180-degree/) listed ~₹1,409 each; [Kitsguru options](https://kitsguru.com/collections/servo-motors) vary in travel. Avoid continuous-rotation parts. | ~₹8,454 for six |
+| R3 arm prints, matching metal disc horns, screws | 1 set | [thenar-arms R3](https://github.com/nickthelegend/thenar-arms); old horn is **25T Ø20 mm, four M3 on 14 mm PCD**. Check new spline, centre screw and link clearance. PETG parts from the R3 print list; M3×8 horn, M3×12 tabs/nuts/washers, four M3×20 base bolts. | ₹1,000–2,000 estimate, printing extra |
+| Pi 4/5, microSD, cooler | 1 | Verify model with `cat /proc/device-tree/model`. [Robu Pi 5 4 GB](https://robu.in/product-category/raspberry-pi-5/) listed ₹13,409. | listing + accessories |
+| Camera Module 3 / 3 Wide and correct CSI ribbon | 1 | CSI preferred; Wide helps include shelf and jaws, but check object pixel size/distortion. [Robu camera listings](https://robu.in/product-category/raspberry-pi-displays/) show Wide ~₹4,173. USB webcam also supported. | ₹2,000–4,200 estimate |
+| PCA9685, Cytron MDD10A | 1 each | [Robu PCA9685](https://robu.in/product-tag/pca9685/) ~₹249; MDD10A is on the Walker. | ~₹249 + existing driver |
+| Servo DC-DC **6.0 V, ≥20 A continuous**; Pi DC-DC **5.0 V, 5 A** | 1 each | Regulators must accept the full 3S battery range and dissipate heat at load. Old 10 A servo buck is undersized. Proper USB-C output for Pi. | ₹1,500–3,500 estimate |
+| 3S LiPo/XT60, balance charger, DC-rated KCD4 kill, fuse, insulated distribution blocks, wiring | 1 set | Reuse battery if healthy; 14–16 AWG battery/main wire, 16–18 AWG servo feed, short individual servo leads, heat-shrink/strain relief; 1,000–2,200 µF ≥10 V low-ESR capacitor. | ₹1,500–3,000 estimate if not owned |
+| Optional ADS1115, 100 kΩ/27 kΩ resistors, LED/330 Ω | 1 each | I²C battery sense at 0x48; no ADC means “-- V”. [Robu ADS1115 search](https://robu.in/search/?q=ADS1115). | ~₹350 ADC estimate |
+
+Also bring calipers, meter, soldering iron, hex keys, M3 drill/tap, wheel stand, and a small object narrower than the *measured* jaws.
+
+**Servo facts and fit.** The [DS3225 manufacturer sheet](https://dsservo.com/d_file/DS3225%20datasheet.pdf) gives 40 × 20 × 40.5 mm, 60 g, 4.8–6.8 V, **1.9 A stall at 5 V / 2.3 A at 6.8 V**, **4–5 mA idle**, 500–2500 µs pulses, 3 µs deadband, and **180° or 270°** versions. [TowerPro MG996R](https://towerpro.com.tw/product/mg996R/) is 40.7 × 19.7 × 42.9 mm, 55 g. Some [DS3225MG listings](https://iot-robotics.store/shop/ds3225mg-25kg-digital-servo-180-degree-metal-gear/) specify a **25T spline**, matching the tooth count of the old horn, but tooth count alone does not prove a tight fit. Cases are close, but pocket depth, mounting tabs, shaft height, spline and horn screw are **not proven interchangeable**. Dry-fit one of each joint before printing/forcing six. Use the servo’s matching horn if the old 25T horn does not seat/clamp fully; adapt/reprint the link if its Ø20/14 mm PCD face differs. At the nominal 2 ms span, 270° means ~7.4 µs/°, 180° ~11.1 µs/°; **measure each installed joint**. The manufacturer sheet does **not specify moving/running current**; it depends on load, so measure it on the actual arm under motion rather than treating idle current as a design figure. Confirm the friend's actual label and datasheet before wiring 6.0 V.
+
+## 2. Mechanical assembly
+
+1. Print/reuse the tub, cage, wheels and TPU tyres with [Thenar print settings](https://github.com/nickthelegend/thenar-walker/blob/main/cad/print/PRINT.md): PETG 0.20 mm/4 walls/30% gyroid; TPU 95A 0.20 mm/3 walls/20% gyroid. Use the **6 mm shaft wheel variant** for its current local motors. Heat-set four M3 inserts in tub corner columns. Fasten battery cage with two M3×8 and nylocs; put the current motors' M8 collars and 13 mm nuts through the tub wall, leads facing inward. Fit two hard front wheels and rear hubs with flat TPU tyre strips; tighten M3 grubs on the shafts and spin all four by hand. Use the current **250 × 138 × 3 mm wood deck** if reusing the built rover; drill/fasten it to the four corner columns after checking actual holes. [Old assembly order](https://github.com/nickthelegend/thenar-walker/blob/main/docs/ASSEMBLY.md) helps, but its 4 mm shafts, printed deck and ESP32 instructions are stale here.
+2. The Walker [BOM](https://github.com/nickthelegend/thenar-walker/blob/main/docs/BOM.md) points to `so101-mg996r/R3-PRINT.md` in [thenar-arms](https://github.com/nickthelegend/thenar-arms). Clone that repo on the printing computer and follow its R3 file list and quantities for the base, shoulder, upper arm, forearm, wrist and gripper. **Those MG996R pockets are only a starting shape.** Dry-fit each new servo with calipers. Check tabs, body, horn, centre screw and full link sweep. Modify/print a link if it rubs. Assemble with **horns off or links disconnected for the first calibration pulse**. Position the arm base on the measured deck clear of switch and mast; drill four mounting holes through its base vent slots and fasten with M3×20, washers and nylocs. Optional 4 mm TPU finger pads improve thin-object grip only after measuring the new gripper gap.
+3. Print [parametric camera mast](hardware/camera_mount/camera_mount.scad) using its [print note](hardware/camera_mount/README.md). Place it on the **rear/top deck**, clear of arm/switch/battery; inspect underside before drilling M3 deck holes. Bolt through deck with washers/nylocs. Start at ~**100 mm lens height above deck** and tilt downward until **shelf target and gripper jaws share one frame**. This is a measured framing choice, not a calibrated pose. A frame with only the carton cannot support grasp checking.
+4. Fasten Camera Module 3 with four **M2** screws/nylocs and set an M3 tilt hinge. The [official drawing](https://datasheets.raspberrypi.com/camera/camera-module-3-standard-mechanical-drawing.pdf) gives a 25 × 23.862 mm board, Ø2.2 mm holes and 21 × 12.5 mm centres; [Raspberry Pi docs](https://www.raspberrypi.com/documentation/accessories/camera.html) say Module 3 and 3 Wide use the same board/hole pattern. Check your physical module before tightening. Route CSI ribbon from its lower connector down the mast back, with a loose hinge loop, soft clamps, no sharp fold and no arm/wheel contact. Power off before seating CSI; Pi 5 needs its matching 22-to-15-pin camera cable.
+5. Mount the Pi with cooler airflow, MDD10A on deck bosses, insulated power blocks away from metal dust. Keep high-current and motor wiring apart from CSI/I²C. Add a basket where the arm can reach and camera can verify it; the simulation's position is not measured real geometry.
+
+## 3. Electrical and power
+
+**The Pi directly connects to PCA9685 and MDD10A. There is no ESP32.** This table uses the defaults in [`pi/thenar_pi/config.py`](https://github.com/nickthelegend/thenar-walker/blob/main/pi/thenar_pi/config.py) and [`docs/WIRING_PI.md`](https://github.com/nickthelegend/thenar-walker/blob/main/docs/WIRING_PI.md). BCM is the GPIO name; number at left is the physical 40-pin header. Colour is a suggestion; label both ends.
+
+| Physical pin | BCM / signal | Colour | Destination |
+|---:|---|---|---|
+| 1 | 3V3 | orange | PCA9685 **VCC logic**, optional ADS1115 VDD |
+| 3 | GPIO2 SDA1 | blue | PCA9685 SDA, optional ADS1115 SDA |
+| 5 | GPIO3 SCL1 | yellow | PCA9685 SCL, optional ADS1115 SCL |
+| 6 | GND | black | PCA GND, MDD10A signal GND, ADC GND and common ground reference |
+| 11 | GPIO17 OE | violet | PCA9685 OE (active low: HIGH = servo outputs off) |
+| 13 | GPIO27 LED | white | LED anode through 330 Ω; cathode to ground |
+| 29 | GPIO5 DIR1 | green | MDD10A DIR1, left motor pair |
+| 31 | GPIO6 DIR2 | green/white | MDD10A DIR2, right motor pair |
+| 32 | GPIO12 PWM0 | grey | MDD10A PWM1, left pair, 20 kHz hardware PWM |
+| 33 | GPIO13 PWM1 | grey/white | MDD10A PWM2, right pair |
+| USB-C power socket | 5 V input | red/black | Separate regulated 5.0 V 5 A supply after kill switch |
+| CSI camera socket | Camera Module 3 ribbon | ribbon | Top camera; Pi 5 requires matching cable; USB webcam instead uses USB port |
+
+PCA9685 **VCC = Pi 3.3 V logic; V+ = separate 6.0 V servo bus**. MDD10A accepts 3.3 V signals per the [Walker BOM](https://github.com/nickthelegend/thenar-walker/blob/main/docs/BOM.md). PCA channels: **0 J1 pan, 1 J2 shoulder, 2 J3 elbow, 3 J4 wrist flex, 4 J5 wrist roll, 5 J6 gripper**. Split each servo harness: **red and brown/black go straight to rated +/− distribution**, *only signal* to its PCA channel. Connect PCA V+ and GND to bus for reference; do **not** send six-servo current through its small screw terminal, board rail or Pi ground wire. A rated servo distribution board with separate high-current feed is also fine. Check each label for pin order.
+
+```text
+3S battery + -- main fuse -- DC-rated KCD4 KILL -- +BUS
+3S battery - ----------------------------------- common -BUS
++BUS -> MDD10A B+; -BUS -> MDD10A B- -> motors ch1 LEFT / ch2 RIGHT
++BUS -> 6.0 V, >=20 A buck -> SERVO + block -> six servo red wires
+-BUS ----------------------> SERVO - block -> six servo brown/black wires
++BUS -> separate 5.0 V, 5 A buck -> Pi USB-C; return -> -BUS
+Pi pin 1 3V3 -> PCA VCC; pin 3 SDA + pin 5 SCL -> PCA [0x40]
+Pi pin 11 GPIO17 -> PCA OE; pin 6 GND -> common ground
+PCA ch 0..5 SIGNAL only -----------------------> J1..J6 signals
+Pi 32/29 PWM1/DIR1 -> MDD10A left; Pi 33/31 PWM2/DIR2 -> right
+Optional ADS1115 [0x48]: 3V3/GND/SDA/SCL; AIN0 <- 100k <- battery +
+                                      AIN0 -> 27k -> GND (sense after kill)
+Top CSI camera ---------------------------------> Pi camera connector
 ```
 
-**Muse plans (wired; it runs once a Meta Model API key is set), SAM 2.1 sees, a simulated SO-101 picks.**
-Every number in this README is SAM 2.1 with a clicked or scripted planner (the fridge fetch: the item named
-directly), not Muse. Say what you want moved: Muse (Meta Model API) is to read the camera frame and plan the
-steps (Setup required: `MODEL_API_KEY`, never called yet), SAM segments each object, depth turns each mask
-into a 3D grasp, and a MuJoCo simulation of the SO-101 arm picks and places it, checking every step and
-retrying when it fails. No real SO-101 has run.
+The manufacturer sheet gives **6 × 2.3 A = 13.8 A simultaneous stall at 6.8 V**. Choose **≥20 A continuous at regulated 6.0 V** with cooling and wiring margin. Fit a 1,000–2,200 µF ≥10 V capacitor across servo bus near the split, observing polarity. Put a fuse close to the battery before the kill. A **20 A main fuse is a starting choice only if all wire, connector and switch DC ratings support it**; reduce it to the weakest component and use branch protection where practical. The KCD4 must cut MDD10A, servo buck **and Pi buck together**. All returns meet at common distribution. The old 10 A buck/fuse suggestions were for MG996Rs.
 
-**Sim-first, scored against ground truth.** The arm is the official SO-101 model in MuJoCo. The pipeline
-sees only RGB + depth and the gripper's own position; the simulator's ground truth is used only to score
-it. The simulation is kind by default (perfect depth, no sensor noise, ideal lighting); one benchmark sheet
-adds depth noise, a calibration error and lighting jitter to measure that. Every number below is from the sim.
+Optional battery sense: ADS1115 at **0x48**, powered from **3.3 V**, battery + after kill through 100 kΩ to AIN0 and 27 kΩ from AIN0 to ground (full 3S pack ~2.7 V at ADC). Never connect battery directly to a GPIO. Without ADS1115, battery display is “-- V”; meter the pack.
 
-Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon)
-(Indie track). Hasami is Japanese for scissors, the shape of the SO-101's gripper.
+**Pre-power checklist:** kill OFF, battery unplugged, check +/− for shorts, switch and fuse interrupt + rail, bench-set bucks to 6.0/5.0 V without loads, confirm servo labels allow 6 V, inspect every servo connector, measure PCA VCC 3.3 V versus V+ 6.0 V, check common ground/OE/motor pins, clear arm and lift all wheels. Energise Pi/logic first without servo leads, then servo power without motion, then one servo at a time. Stop immediately for heat, smoke, twitch or voltage collapse.
+## 4. Raspberry Pi setup and first boot
 
-**Built before the event, and what is left for it.** The event runs Oct 26 – Nov 4, 2026. Hasami was
-started on Oct 20 (first commit `5390ae3`), and everything up to the tag `pre-event-2026-10-22` predates the
-event: the simulation, SAM 2.1 perception, the benchmark, the digital twin on rendered photos, the real
-camera tab, the agent trace, MCP, the dashboard, the landing and both test suites. Work landed after Oct 22
-(a hardening round on Oct 23), so the last pre-event commit is tagged `pre-event-2026-10-25`, the tag to use;
-it is moved forward if more pre-event commits land. `git log pre-event-2026-10-25..main` lists only work done
-during the event. Left for the event: the live Muse plan and SAM 3.1 (they need `MODEL_API_KEY`), a
-Muse benchmark row, a twin from a real photo, and the narrated video. The official rules were not published
-yet on Oct 22; see [HACKATHON_SUBMISSION_FORM.md](HACKATHON_SUBMISSION_FORM.md).
+Flash **Raspberry Pi OS Bookworm 64-bit** with Raspberry Pi Imager. Configure user, hostname, SSH and temporary internet Wi-Fi before flashing. Attach monitor/keyboard or SSH. **Clone before changing `wlan0` to AP**, since AP setup can drop SSH. [Raspberry Pi’s camera docs](https://www.raspberrypi.com/documentation/accessories/camera-software.html) say Bookworm uses `rpicam-*` apps; use Picamera2, not the old legacy-camera enable switch.
+
+```bash
+cat /proc/device-tree/model
+sudo apt update
+sudo apt install -y git python3-venv python3-picamera2 python3-opencv i2c-tools
+sudo raspi-config nonint do_i2c 0
+sudo nano /boot/firmware/config.txt
+```
+
+Under an `[all]` section, add the following line once (replace an existing `pwm-2chan` line rather than adding a second). Save and exit. This avoids putting the overlay inside a model-specific section at the end of the file; see [Raspberry Pi config.txt documentation](https://www.raspberrypi.com/documentation/computers/config_txt.html).
+
+```ini
+dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
+```
+
+```bash
+sudo reboot
+```
+
+After reboot check the overlay line occurs **once** in `/boot/firmware/config.txt`. Seat camera ribbon with power off. Check `rpicam-hello --list-cameras`; take `rpicam-still -o /tmp/camera-check.jpg` after mounting. The runtime prefers Picamera2 (CSI), then OpenCV USB index 0; `THENAR_CAMERA=1` changes USB index and `THENAR_CAMERA=off` disables capture.
+
+```bash
+cd /opt
+sudo git clone https://github.com/nickthelegend/thenar-walker.git
+sudo git clone https://github.com/nickthelegend/hasami.git
+cd /opt/thenar-walker/pi
+sudo python3 -m venv --system-site-packages .venv
+sudo .venv/bin/python -m pip install --editable '.[pi]'
+sudo i2cdetect -y 1
+```
+
+Expect **`40`** (PCA9685), possibly `70` all-call, and `48` only if ADS1115 is fitted. If `40` is absent, stop and fix wiring before motor power. `[pi]` is the actual extra in `pi/pyproject.toml`; system site packages let the venv see apt Picamera2.
+
+**Lift all wheels and keep the arm limp** for first runtime start. It needs root for ports, PWM sysfs and `/var/lib/thenar`.
+
+```bash
+cd /opt/thenar-walker/pi
+sudo .venv/bin/python -m thenar_pi
+```
+
+In another terminal check `curl http://127.0.0.1/health` and `curl --output /tmp/snap.jpg http://127.0.0.1/snap.jpg`. `GET /snap.jpg` takes a fresh JPEG; HTTP 503 “Setup required: no camera” means camera bring-up remains. Ctrl+C stops wheels and makes servos limp. Then install the **shipped** unit:
+
+```bash
+sudo cp /opt/thenar-walker/pi/systemd/thenar-pi.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now thenar-pi
+sudo systemctl status thenar-pi
+sudo journalctl -u thenar-pi -f
+```
+
+Exit the live log view with Ctrl+C (the systemd service keeps running), then configure Wi-Fi:
+
+```bash
+sudo python3 /opt/thenar-walker/pi/tools/setup_ap.py "Thenar Walker"
+```
+
+The AP script privately prompts for an 8–63 character WPA2 password. SSID rule: strip spaces, keep first 20 characters, append `_TF`, so **`ThenarWalker_TF`** at **192.168.4.1**. Reconnect to the AP or use console/Ethernet if SSH drops. On the phone join it, turn **mobile data off**, and open **`http://192.168.4.1`**. Page/`snap.jpg` are port **80**; phone WebSocket **81**, calibrator **82**, Hasami brain **83**. The optional `/etc/thenar-pi.env` sets `THENAR_SSID`, `THENAR_CAMERA` or pin overrides for the service; it is local to the Pi. Without `THENAR_SSID` the page display name is the Pi hostname, which may differ from the AP SSID.
+
+On the stand, send a tiny phone forward/turn command. MDD10A channel 1 is **left pair**, channel 2 **right pair**. Check each wheel direction; power off before swapping a motor's leads. The code defaults `SIDE_SIGN=(1,-1)`. Test phone STOP, link timeout and kill switch while wheels remain lifted. GPIO27 status LED blinks while waiting and lights with phone link.
+
+## 5. Calibrate all six new servos
+
+**The MG996R table in old docs and `thenar_pi.armcal.KNOWN` is invalid. Never run `python -m thenar_pi.armcal seed-known` for the 25 kg arm.** Each joint needs two physical reference poses and two safe pulse ends. The runtime needs a complete record to enable all six; Pi saves it at **`/var/lib/thenar/armcal.json`** (or `THENAR_STATE_DIR/armcal.json`). The file is CRC-checked/atomically written. Browser draft is localStorage per browser and origin; **Save to robot** is required.
+
+1. Wheels on stand, no payload, kill reachable, fingers clear. Support the arm so a limp shoulder cannot fall. Remove horns/disconnect links for first neutral pulse; refit near neutral without hitting stops. Open **`http://192.168.4.1/calibrator`**, press **Connect Pi (Wi-Fi)** (WebSocket port **82**), then **ALL SERVOS OFF**.
+2. Work **one joint at a time**. Select J6, J5, J4, J1, J3, J2 as the tool suggests. Check that selected PCA channel is the named joint. Choose a conservative start pulse near **1500 µs** and press **Start this joint**. The *first* pulse jumps at full speed even though later raw jogging is rate-limited. Support the link, not the horn.
+3. Jog slowly to displayed **Reference A**, press **Set A**; jog to **Reference B**, press **Set B**. References must differ by at least **10°**. Physical cues from the tool: J1 forward then right (edit B to 45° if 90° unreachable); J2 upper arm vertical then 45° forward; J3 straight then L; J4 gripper straight then 45° down; J5 jaws vertical then quarter turn; J6 jaw tips 20 mm then 60 mm. Use square/protractor/ruler and on-screen *logical* angles, not old pulses.
+4. The tool computes `k=(Bµs−Aµs)/(qB−qA)`, `us_per_deg=|k|`, `sign=sign(k)`, `zero=Aµs−qA*k`. A **270°** variant usually gives a smaller slope; never copy 180° numbers. Recheck references/horn if it rejects slope outside **3–20 µs/°** or zero outside **500–2500 µs**. Runtime requires zero strictly between safe ends.
+5. Jog to each **safe end**, **3–5° before mechanical contact**, pressing **Set safe end here** at both. Stay within **500–2500 µs**. Use **Test / Go to angle / Sweep** only with clear supported arm. If zero is far from ~1200–1800 µs, shift horn one spline tooth and redo. Verify sweep clears deck, mast, cable and other links. Press **Mark joint done**.
+6. Repeat all six, then press **Save to robot**. It sends `CAL` then `CALSAVE` and makes all joints limp again. The tool also offers an old `calibration.h` export; **do not use it for the Pi**. Verify:
+
+```bash
+cd /opt/thenar-walker/pi
+sudo .venv/bin/python -m thenar_pi.armcal show
+sudo test -f /var/lib/thenar/armcal.json
+```
+
+`mask=3F complete=1` is the finish line. Back up the JSON outside the robot. With arm supported near its target, use phone Arm ON one joint at a time and test tiny motions before any taught pose. Runtime starts limp, slew-limits later target moves to **120°/s**, clamps calibrated ends, stops wheels after **300 ms** link silence and **holds arm with PWM on** so a grasp is not dropped. At 25 kg·cm a wrong horn/first pulse can break plastic or injure fingers; link-loss hold does not replace the physical kill switch.
+
+## 6. Run Hasami on a laptop
+
+The Pi runs the body; the laptop runs `hasami_walker` over the AP. Use Python **3.12**. Windows 11 PowerShell (no batch launcher):
+
+```powershell
+git clone https://github.com/nickthelegend/hasami.git
+cd hasami
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e '.[dev]' -c constraints.txt
+```
+
+Linux/macOS:
+
+```bash
+git clone https://github.com/nickthelegend/hasami.git
+cd hasami
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]' -c constraints.txt
+```
+
+Below, `python` means the venv Python (`.\.venv\Scripts\python.exe` on Windows; `.venv/bin/python` on Linux/macOS). Join `ThenarWalker_TF`. Default address `192.168.4.1`; `HASAMI_ROBOT` or `--robot` overrides it. Poses live in `~/.hasami/walker_poses.json` unless `HASAMI_WALKER_POSES` is set.
+
+**Prepare while the laptop has internet.** Install packages and download SAM weights before switching Wi-Fi to the robot:
+
+```bash
+python -c "from hasami_perception.segment import LocalSam2; LocalSam2(); print('SAM 2.1 ready')"
+```
+
+Expected: the first run downloads weights, then prints `SAM 2.1 ready`; later runs use the cache. Meta API calls still need internet **during** the run. Keep a second internet connection on the laptop (for example Ethernet or USB tethering), or put laptop and Pi on the same internet-connected router and use `--robot <pi-address>`. The robot AP alone does not provide upstream internet unless separately configured. Phone mobile data should stay off while using its local controller page.
+
+Get a key from [dev.meta.ai/api-keys](https://dev.meta.ai/api-keys/); put `MODEL_API_KEY=...` in a **git-ignored `.env`** in Hasami. Optional `MODEL_API_BASE_URL=https://api.meta.ai/v1`, `HASAMI_ROBOT=192.168.4.1` and `HF_HOME=...`. **The code does not auto-load `.env`.** Load it into the current shell before running commands. Keep simple values without quotes/spaces. Never commit, print or share the key.
+
+```powershell
+Get-Content .env | Where-Object { $_ -match '^[A-Za-z_][A-Za-z0-9_]*=' } | ForEach-Object { $n,$v = $_ -split '=',2; [Environment]::SetEnvironmentVariable($n,$v,'Process') }
+```
+
+```bash
+set -a
+. ./.env
+set +a
+```
+
+Start with **`python -m hasami_walker status`**: config, calibration, usable joints, round-trip, camera and phone/brain state. Battery value needs ADS1115. After calibration:
+
+| Command | Action / check |
+|---|---|
+| `python -m hasami_walker snap shelf.jpg` | Save one robot JPEG; inspect shelf, target **and jaws**. Same feed as `GET http://192.168.4.1/snap.jpg`. |
+| `python -m hasami_walker teach look_shelf` | Store current six-joint phone-positioned shelf pose on laptop. |
+| `python -m hasami_walker teach carry` | Store separately a stable, clear carrying pose after phone positions it. |
+| `python -m hasami_walker poses` | List stored poses/file. |
+| `python -m hasami_walker go look_shelf` | Move an **already switched-on** arm to taught angles and wait. If limp, hold near target and press phone Arm ON. |
+| `python -m hasami_walker look "orange juice" --pose look_shelf --out look.png` | Fresh frame and item outline/centroid; moves **only** optional taught pose, **no reach/grasp**. Without key supply `--point 410,260` or a colour like “orange”. `--image photo.jpg` works without robot. |
+| `python -m hasami_walker drive 15 0 0.5` | 15% forward for 0.5 s then zero. **Wheels on stand first.** CLI caps duration to 5 s. |
+| `python -m hasami_walker limp` | Turns arm PWM off; support arm/payload. |
+| `python -m hasami_walker resume` | A human deliberately clears a phone STOP pause after checking scene. |
+
+Real phone input outranks Hasami for **2 s**; the brain forgets its prior drive stick. **Phone STOP pauses brain until `resume`.** Either link silent for **300 ms** stops wheels while holding arm. Test on stand. The laptop [dashboard](#simulation-and-evidence) at `127.0.0.1:8420` is a **simulation/real-camera lab UI**, not a live Walker fetch dashboard. Do not say its simulated Run button drove the rover.
+
+**Angles are commanded estimates.** These three-wire hobby servos have no position or gripper-force feedback to the Pi. `status`, `teach` and `wait_pose()` report the runtime's commanded/slewed angles; they cannot prove a joint physically arrived or an object was held. Move the arm with the phone while powered before teaching a pose; manually repositioning a limp arm is not measured. The real fetch needs fresh camera verification and external measurements during calibration.
+
+## 7. Meta models and APIs
+
+| Model/API | Hasami job | Implemented / environment | Proof still needed |
+|---|---|---|---|
+| [SAM 3.1 on Meta Model API](https://dev.meta.ai/docs/sam/overview) | Short text phrase (“orange juice carton”) → matching box/mask in Pi image. | `hasami_perception.segment.MetaSam3` and `hasami_walker.look.find` call `POST /v1/responses`. **`MODEL_API_KEY`**, optional `MODEL_API_BASE_URL`. Written, not live-verified. `meta-sam-parser` is **not a dependency**; absent/mismatched decoder means this `look` path cannot yet return a SAM 3.1 mask. With a key set, `look` does **not** automatically fall back to a point after a SAM 3.1 decode error; unset `MODEL_API_KEY` in that shell to use local SAM 2.1. Simulation grounding can use a SAM 3.1 box and local SAM 2.1. | With key, verify real response, decode actual mask, overlay on `snap.jpg` and time it. |
+| [Muse Spark 1.3](https://dev.meta.ai/models/muse-spark) | Instruction + image → validated named pick/place plan with pixel hints. | `hasami_planner.muse.Planner` uses `muse-spark-1.3` and forced `submit_plan`. **`MODEL_API_KEY`**, optional `MODEL_API_BASE_URL` and `HASAMI_PLANNER_MODEL`. Only simulation invokes this planner; live call unverified. | Validate real tool output and then connect to guarded real fetch after reach exists. |
+| [SAM 2.1 open weights](https://ai.meta.com/research/sam2/) | Local point/box mask after click or colour-selected point; fallback without Meta key. | `LocalSam2` in `segment.py`, `look.find` and simulated fetch. No API key. `HF_HOME` selects download/cache. Actual weights exercised in sim and `look` tests. | Check real mask in real `snap.jpg`. First download needs internet and ~150 MB. |
+| [Llama 4 Scout vision](https://dev.meta.ai/llama/docs/model-cards-and-prompt-formats/llama4) | Optional independent frame check: is target still on shelf, or held in jaws? Its text judgment must not bypass geometry/safety gates. | **Not wired.** No Hasami env var. Model/hosting choice and access are separate; do not assume `MODEL_API_KEY` grants it on Model API. | If time, choose available provider, use new git-ignored key variable, compare against filmed frames. Muse already accepts images; prioritise a reliable checker. |
+| [Meta DINOv3](https://ai.meta.com/research/dinov3/) | Candidate dense vision/depth **backbone** for shelf geometry from a monocular RGB camera. | **Not wired.** Open weights; no existing env var. Requires adapter, scale calibration and laptop/Pi performance check. | Validate *metric* distance against a ruler before permitting reach. Raw DINOv3 features are not a depth sensor. |
+| [Muse Voice Transcribe](https://dev.meta.ai/docs/overview#build-with-muse-voice-transcribe) | Optional spoken request → text for the planner. | **Not wired.** Documented model `muse-voice-transcribe-1.0`; no microphone/transcription client in Hasami. | Add push-to-talk, show the transcript for confirmation, and use the existing key only after account access is checked. |
+
+**SAM decoder task:** current Python `_decode_mask()` in `packages/perception/hasami_perception/segment.py` assumes an unverified `meta_sam_parser` interface. The [current official SAM guide](https://dev.meta.ai/docs/sam/overview) documents the JavaScript package **`@meta-sam/parser`** (`decodeMaskToRaster`). Adding a similarly named Python package is not a verified fix. Implement a compatible decoder or a small bridge to the official parser; test mask dimensions, offsets and a real response against the input image before claiming SAM 3.1 masks work.
+
+The Camera Module 3 supplies **RGB, not metric depth**. The sim’s perfect depth and overhead basket camera do not exist on this rover. More model calls cannot replace camera-to-arm calibration. Use SAM 2.1 for bring-up, then Meta API when the key and response format work. [Meta Model API docs](https://dev.meta.ai/docs/overview) confirm base `https://api.meta.ai/v1` and key; check Nick’s account access/billing.
+
+## 8. Friend checklist
+
+- [ ] **Inventory/fit.** Read each servo label, confirm 3-wire positional, voltage, travel and spline; dry-fit every pocket/horn. **Done when:** joints sweep by hand without binding.
+- [ ] **Assemble body/mast.** Check wheel-shaft variant and CSI ribbon loop. **Done when:** all wheels spin freely and mast frames target and jaws together.
+- [ ] **Wire/meter power.** Replace 10 A buck, add fuse, kill, distribution, common ground. **Done when:** switch cuts *all* rails; unloaded bucks read 6.0 and 5.0 V.
+- [ ] **Bring up Pi.** Install OS, I²C/PWM/camera/runtime/AP. **Done when:** `i2cdetect -y 1` shows `40`, `/health` reports camera, `/snap.jpg` saves real image and phone page opens.
+- [ ] **Test wheels on stand.** Confirm side/direction, phone STOP, silence/kill. **Done when:** tiny command turns intended side and silence stops both sides.
+- [ ] **Calibrate six servos.** Two references, two safe ends, Save to robot. **Done when:** `armcal show` says `mask=3F complete=1` and tiny commanded moves go the right way.
+- [ ] **Teach/look.** Teach `look_shelf`/`carry`, `snap`, local `look`, then key-backed SAM 3.1. **Done when:** a fresh real frame shows the right mask and arm/camera clearances.
+- [ ] **Finish Meta mask decoding and live planning.** Resolve the parser task above, keep internet alongside the robot connection, and validate Muse's actual output. **Done when:** a real image produces a correctly aligned SAM 3.1 mask and a schema-valid Muse plan; record model IDs and timings without secrets.
+- [ ] **Build camera-to-arm calibration and real reach — not built yet.** Add a real-robot module beside `packages/walker/hasami_walker/look.py`, e.g. `reach.py` with `calibrate_camera_to_arm()` and `plan_reach()`. Measure camera intrinsics/distortion, camera-to-arm 3D correspondences (fiducial/ruler), object depth/scale and uncertainty. Add a guarded `packages/walker/hasami_walker/fetch.py:fetch()` that calls `look.find()`, rejects poor mask/scale/jaw fit/out-of-reach/colliding targets, plans approach, grasp, withdrawal and delivery, then sends only checked targets through `Walker.pose()/wait_pose()` in `client.py`. `packages/core/hasami_core/fetch.py:FridgeFetch._attempt()` and sim `Arm.plan_front()/fetch_front()` are **MuJoCo examples**, not hardware commands. Design new verification from the single top camera; the sim’s overhead basket check is absent. **Done when:** no-payload target at several measured shelf positions is reached within measured tolerance at low speed, failures stop safely, then actual grasp/release is verified in fresh frames.
+- [ ] **Film a live task.** A person opens the fridge; attempt only after guarded reach passes. **Done when:** uninterrupted filmed real detection, grasp, carry and release, or a truthful statement of the last manual step.
+- [ ] **Submit.** Check public URLs/form. **Done when:** accepted before deadline.
+
+## 9. Record a truthful ~3-minute video
+
+Use **live real runs only: no replays and no edited robot output; captions are allowed.** Keep the fetch uncut in a continuous wide camera view and capture the live screen at the same time. The current dashboard is a *sim/lab* dashboard. If a live Walker dashboard is not built, show `snap.jpg`, `look.png` and CLI output with timestamps, labelling the sim dashboard separately. Never overlay a simulated mask on real video.
+
+| Time | Shot and line |
+|---|---|
+| 0:00–0:20 | Wide person/open fridge/rover. “A shelf pickup needs the robot to find, grasp and check an item.” State that a person opens the door. |
+| 0:20–0:45 | Show top camera, Pi, power kill, phone. “Thenar Walker body, Pi, six newly calibrated 25 kg servos.” |
+| 0:45–1:45 | **Continuous live attempt** from shelf view through grasp/carry, only if reach is implemented. Show live feed, SAM mask, model name and timestamps on screen. |
+| 1:45–2:10 | Phone safety override: low-speed command in safe space/on stand, phone STOP, brain pause, deliberate `resume`. |
+| 2:10–2:40 | Show result/fresh-frame verification; briefly label simulation benchmark/evidence as **simulation**. State whether Muse, SAM 3.1 or local SAM 2.1 actually ran. |
+| 2:40–3:00 | State exactly what ran on hardware and remaining reach/depth/verification work; show repo. |
+
+Use one wide angle including rover, arm, shelf and operator; a close angle may show jaws but cannot conceal the wide live run. Screen capture the product UI or terminal beside the camera feed. Light fridge shelf from the side to avoid a dark gripper and blown-out cartons; check focus, audio, battery, disk and timestamps. **Retake plan:** keep a failed take as evidence, explain it, reset visibly and start a separately labelled attempt; never splice two tries into a single “success.” Large MP4s go in a GitHub Release or public video host, **not git**.
+
+## 10. Submission
+
+Deadline: **Nov 4 2026, 9 PM ET = Nov 5 2026, 07:30 IST** (Indie track). Hasami is Nick’s only entry. Check [submission form draft](HACKATHON_SUBMISSION_FORM.md) against the actual submission site: its older “video not recorded” and pre-event text need factual updates before sending. Provide public [repo](https://github.com/nickthelegend/hasami), public live demo video URL, accurate description and Meta models **actually called**. Check event work with `git log --format='%h %cI %s' pre-event-2026-10-25..main`: commits after that tag should be dated **Oct 26 or later**. Do not re-label pre-event evidence. Confirm current official video/edit and eligibility rules on the [event page](https://cerebralvalley.ai/e/meta-ai-developer-hackathon).
+
+The live, uncut recording requirements above are this project's recording standard. The public event page confirms the deadline but does not publish those detailed video rules; check the accepted-participant portal for the binding submission format and eligibility requirements.
+
+- [ ] Public repository opens while signed out; README matches the filmed hardware and code.
+- [ ] Public video link plays without an access request; every simulation sequence is labelled.
+- [ ] Submission form reports only models actually called and hardware actually demonstrated.
+- [ ] Pre-event baseline and event work are disclosed accurately; review the event commit range.
+- [ ] Submit through the participant portal before the deadline; save the confirmation/receipt.
+
+**Project provenance:** Hasami started on Oct 20. The simulation, benchmark, dashboard and digital-twin foundation predate the event; `pre-event-2026-10-25` is the baseline for identifying later work. The repository preserves that history. This guide does not establish whether pre-existing work is eligible; use the organizer's rules and disclose it in the submission.
+
+## 11. Safety and troubleshooting
+
+**Safety:** Accessible, DC-rated KCD4 kill must cut all power. Lift wheels for first tests. A 25 kg servo can crush fingers/snap prints; keep hands clear, support limp arm, and treat Arm ON’s first pulse as full speed. No unattended arm or occupied fridge. Charge 3S LiPo with a balance charger, inspect swelling/damage, prevent shorts, and store/transport safely. Use an object narrower than measured jaw opening; the simulated 32 mm carton is not a retail carton.
+
+| Symptom | Check |
+|---|---|
+| `i2cdetect -y 1` lacks `40` | I²C enabled/rebooted? Pin 1 3.3 V to VCC, 3 SDA, 5 SCL, 6 GND? Check address jumpers/shorts; keep V+ separate. |
+| Pi brown-out/reset on servo motion | Meter Pi 5 V and servo 6 V under load; separate 5 V 5 A supply, ≥20 A servo supply, capacitor, short/heavy leads, buck cooling/common ground. |
+| Jitter, jump, reversed joint | Confirm variant/power/horn, redo two-reference calibration/safe ends; swap servo between channels to isolate bad servo vs PCA channel. First pulse is **not** slew-limited. |
+| Wrong wheel direction | Wheels on stand; MDD10A ch1 left/ch2 right; check lead polarity and `SIDE_SIGN=(1,-1)`; kill before rewiring. |
+| No camera / `/snap.jpg` 503 | `rpicam-hello --list-cameras`, reseat CSI with power off, check Pi 5 cable; for USB check `/dev/video*`/`THENAR_CAMERA`. Runtime tries CSI then USB. |
+| “Setup required” | `MODEL_API_KEY` missing for Meta, no camera for snap, or no valid arm calibration for Arm ON. `.env` is **not auto-loaded**. |
+| First SAM 2.1 look slow | First use downloads `facebook/sam2.1-hiera-tiny` to `HF_HOME`/Hugging Face cache (~150 MB); give laptop internet before joining the AP. |
+| Page works, brain does not | Laptop on AP? `status` uses port 83; phone 81, calibrator 82. Check `journalctl -u thenar-pi -f` and `/health`. |
+| Calibration “lost” | Browser localStorage is per origin/port; return to `http://192.168.4.1/calibrator` and **Save to robot**. Check `armcal show`. |
+
+## Simulation and evidence
+
+Everything below is measured **MuJoCo simulation** or its dashboard. Its SO-101, perfect depth and overhead camera are not measurements on the Pi rover.
 
 ## Fridge fetch (simulated)
 
@@ -116,39 +372,6 @@ handled.
 Limits of this demo: simulation only, one fridge; the door is already open and the arm already in front of
 it (no driving, no door opening); perfect depth and an exactly known head-camera pose; the basket check uses
 the sim's overhead camera, which the real robot does not have; items scaled to the SO-101's jaws.
-
-## The real robot (Thenar Walker on a Raspberry Pi)
-
-![Illustration, not a run: a small graphite four-wheel rover at an open fridge, its arm holding a juice carton outlined by a mint dashed mask](packages/landing/assets/illo-fridge.webp)
-
-*Illustration (a generated image) of the goal. It is not a recorded run: the real rover has not fetched anything
-yet. The simulated fetch above is what runs today.*
-
-The body is the Thenar Walker ([nickthelegend/thenar-walker](https://github.com/nickthelegend/thenar-walker)): a
-wheeled base carrying a 6-DoF MG996R arm from the SO-ARM100 family. Its brain moved from an ESP32 to a Raspberry Pi,
-which runs `thenar_pi` (folder `pi/` there): the same phone page and safety rules as before, plus a camera endpoint
-and a **brain channel** for Hasami on port 83.
-
-The phone always outranks Hasami:
-- **Real phone input** takes control for 2 s.
-- **A phone STOP** pauses Hasami until a person resumes it.
-- **Either side going silent** for 300 ms stops the wheels while the arm holds.
-
-```bash
-python -m hasami_walker status                         # config, joints, round trip, camera, who has control
-python -m hasami_walker teach look_shelf               # store the arm's current angles (move it with the phone)
-python -m hasami_walker look "orange juice" --pose look_shelf --out look.png   # find the item in a robot frame
-```
-
-**`look`** finds the item in one robot camera frame: SAM 3.1 from the text when a Meta key is set, otherwise SAM 2.1 at
-your click or at the colour you name. It writes the annotated frame and moves nothing except the optional taught pose.
-`--image photo.jpg` runs it on a photo instead.
-
-**Tested so far:** the brain against the real `thenar_pi` runtime over sockets (`tests/test_walker.py`), and `look`
-with real SAM 2.1 (`tests/test_walker_look.py`). The Pi runtime has 33 tests of its own.
-
-**Untested, because it needs the robot:** everything on the hardware, and reaching for an item, which waits for the
-camera to be mounted and calibrated to the arm.
 
 ## Benchmark
 
@@ -331,7 +554,7 @@ score (not used by the robot): physics state, goal predicate
 | Grasp + image check, retry | Running: gripper position after close / lift / carry, SAM on the frame after each step, re-find and retry. SSE `verify` / `retry`. |
 | Scenes | Procedural (`mujoco.MjSpec`): 20/25/30 mm cubes, blocks, flat boxes, 40 mm cylinders, six colours, 4–8 objects, tray + grey bin. Stacking works (place height from the measured surface). |
 | Muse planner | `muse-spark-1.3` at `https://api.meta.ai/v1` (the model id and base URL are in the dev.meta.ai docs; the image part and the forced tool call on Chat Completions are unverified until a key exists). **Setup required: `MODEL_API_KEY`.** Without it `/api/plan` answers 503 `setup_required`; never a canned plan. Grounding of its hints is tested in the sim with deliberately bad hints. |
-| SAM 3.1 | `sam-3.1` via `POST /v1/responses` (both confirmed in the docs); the special-token output is parsed per the docs. Its mask payload can be decoded only by Meta's `meta-sam-parser`, which is **not installed and not a dependency**, so in a run today a SAM 3.1 answer would be used for its box only: SAM 2.1 is prompted at the box centre and that mask is checked as usual. **Setup required: `MODEL_API_KEY`; unverified until then.** |
+| SAM 3.1 | `sam-3.1` via `POST /v1/responses` (confirmed in the docs); the special-token box output is parsed. The Python mask decoder hook is **unverified and not a dependency**; current official documentation uses JavaScript `@meta-sam/parser` (see section 7). Without a compatible decoder, simulation grounding can use its box centre to prompt SAM 2.1; Walker `look` needs the actual mask and fails instead. **Setup required: `MODEL_API_KEY`; live request and mask decoding unverified.** |
 | Real SO-101 | Wired into `Session` behind `HASAMI_SO101_PORT`: a connected LeRobot follower mirrors every joint target the simulated arm is commanded (≤ 6° per joint and gripper per command, ~30 Hz; the first command is measured from the arm's present position, read when mirroring starts). `/api/status` says `"arm": "so101"` only while one is connected. Unit conversion tested; **never run on hardware. BLOCKED: no arm attached** (`HASAMI_SO101_PORT` + `pip install lerobot[feetech]`). |
 | Digital twin | One desk photo with an A4 sheet → a MuJoCo scene with the simulated arm (`POST /api/twin`, Twin tab). 86/86 objects found, 1.2 mm mean centre error on 20 rendered photos; **a real photo is pending.** |
 | Real camera | Dashboard tab: webcam frame (`HASAMI_REALCAM`) or a photo, A4 sheet / ArUco for the table plane (portrait or landscape, read from the corners in the order clicked, from any first corner), SAM 2.1 on a clicked object (mouse or keyboard), x / y / yaw / size on the plane (typed height, parallax-corrected). Segment and locate only; the arm stays simulated. Geometry tested on synthetic cameras; **ruler check on real objects pending.** |
@@ -345,7 +568,7 @@ score (not used by the robot): physics state, goal predicate
 | Yaw (fourth-order moment / minimum-area rectangle) | max 1.76°, mean 0.18° over 60 cubes |
 | Real-camera geometry (synthetic tilted camera, 50 × 30 × 40 mm box) | centre within 1 mm, yaw within 1.5° with parallax correction; > 10 mm off without it |
 | Recorded demo runs (replay them in the dashboard's Agent trace) | [`20261021T053112874Z`](deployments/runs/20261021T053112874Z.json): 3/3 in the tray, no retries. [`20261021T053203432Z`](deployments/runs/20261021T053203432Z.json): 6 mm offset injected on every first attempt, each first attempt fails at the descent, each retry places the cube: 3/3. Videos (captioned "MuJoCo simulation · official SO-101 model") are shared separately until hosted. |
-| Test suite | `249 passed, 1 skipped` (the skip is the live Muse call); dashboard unit `6 passed`; browser E2E in Google Chrome `49 passed, 1 skipped` (see [TESTING.md](TESTING.md)) |
+| Test suite | Latest recorded Python run: `278 passed, 1 skipped` (live Muse call without key), 2026-10-26; dashboard unit `6 passed`; browser E2E in Google Chrome `49 passed, 1 skipped` (see [TESTING.md](TESTING.md)) |
 
 ## Watch the agent think
 
@@ -377,7 +600,7 @@ One command on a fresh clone (needs `uv` and `pnpm`): `scripts/setup.sh` creates
 ```bash
 uv venv --python 3.12 && source .venv/bin/activate && uv pip install -e '.[dev]' -c constraints.txt   # [dev] brings pytest; constraints.txt pins the tested versions
 export HF_HOME=/path/to/huggingface-cache        # SAM 2.1 weights (~150 MB, downloaded on first use)
-export MODEL_API_KEY=...                          # optional: Muse planner + SAM 3.1 (dev.meta.ai)
+# Load the git-ignored .env as shown in section 6 above for optional Meta API calls.
 
 (cd packages/dashboard && pnpm install && pnpm build)
 python -m hasami_server                           # http://127.0.0.1:8420 — click a cube, click the tray, Run
