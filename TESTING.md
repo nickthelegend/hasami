@@ -18,7 +18,17 @@ export HF_HOME=/path/to/huggingface-cache   # where SAM 2.1 weights are cached (
 .venv/bin/python -m pytest -q
 ```
 
-## Results (2026-10-26; Mac, CPU, no MODEL_API_KEY, no SO-101, no webcam)
+## Results (2026-11-01; Mac, CPU, no SO-101, no webcam)
+
+`297 passed, 3 skipped in 263.79s` without a key: the three skips are the live Meta tests. With `MODEL_API_KEY`
+and `HASAMI_LIVE_META=1`, all three pass against the real Meta Model API (`tests/test_planner.py` live Muse plan,
+`tests/test_fetch_intent_live.py`, `tests/test_sam31_live.py`: 19 passed in those files). New since Oct 26:
+`tests/test_sam_mask.py` (the Python port of Meta's `one_bit` mask decoder against three real SAM 3.1 responses),
+`tests/test_reach.py` and `tests/test_fetch_geometry.py` (grasp-grid interpolation and the post-lift check),
+`tests/test_walker_fetch.py` (4 end-to-end fetches over real sockets against the in-process Pi runtime with
+dry-run hardware, a file camera and local SAM 2.1: success, one retry, a phone STOP mid-fetch, a target outside
+the taught grid), `tests/test_walker_gripper_geometry.py`, and a parallel-gripper round trip in `tests/test_walker.py`.
+The Pi runtime (thenar-walker `pi/tests`) passes 39. None of this is a run on the real robot.
 
 `278 passed, 1 skipped in 252.93s` (2026-10-26: +20 fridge-fetch tests in `tests/test_fridge.py`, and the 9
 walker tests that came with `packages/walker` (`tests/test_walker.py` 5, `tests/test_walker_look.py` 4; they ran
@@ -37,6 +47,7 @@ pytest is not installed, which is why every install line now says `'.[dev]'` (`t
 | `tests/test_sim.py` | IK reach < 4 mm on 5 targets; pick-place into the tray (physics); phase callback order; each of six shapes at two yaws into the tray; a tower of three from the measured surface heights | 21 | 0 |
 | `tests/test_scene.py` | MjSpec scenes: geometry, colours, containers; dict round trip; reproducible, reachable, non-overlapping layouts; eight objects fit; the classic scene; a measured object (own form, size, colour), an extra camera and a visual-only sheet survive JSON and compile | 11 | 0 |
 | `tests/test_perception.py` | SAM 2.1 IoU >= 0.6, localisation <= 3 mm, yaw <= 3 deg (2 seeds x 3 cubes); bare-table click; every shape's IoU, localisation, top height, roundness and grasp width Third ultra round: **SAM 2.1 clamps the looked-up pixel to its mask** (a point that rounds to column 640 raised IndexError). | 6 | 0 |
+| `tests/test_sam_mask.py` | Offline SAM 3.1 decoder: all four real masks, canonical validation, binary shape, carton placement and orange-pixel overlap, corruption, synthetic round trip, scaled placement and clipping. | 8 | 0 |
 | `tests/test_colour.py` | HSV colour names for the six scene colours lit and shaded; blobs and nearest-blob search; footprint size / roundness -> grasp axes on synthetic footprints | 12 | 0 |
 | `tests/test_grounding.py` | grounding a label + hint: accept, fall back to colour, reject the wrong colour, raised-blob fallback, give up with every try, containers; SAM 3.1 token parser and request body; a Muse-style step with a hint 22 px off grounded and placed in the sim; 'the table' is not searched; **for all eight families, a scripted Muse-format plan with every pick hint 20 px off grounds the named object** (truth label, IoU > 0.6); a scripted line-up with 'the table' places runs in MuJoCo and meets its row goal | 20 | 0 |
 | `tests/test_verify.py` | `HASAMI_DISTURB` parsing; gripper reading empty vs holding; a forced 6 mm offset fails the first attempt and the retry succeeds; a grip that always slips fails as `grasp` after two retries; perception disturbances: depth noise sigma ~2 mm, camera offset exactly 3 mm, lighting changed, truth untouched, reproducible, a located cube 1.5-6 mm off | 5 | 0 |
@@ -161,3 +172,11 @@ A013 observed 502 `URLError` with no mask from the real segmenter pointed at a b
 The 20 UNTESTED rows name their exact dependencies in [audit/final/dependencies.json](audit/final/dependencies.json): live Muse/SAM 3.1 need `MODEL_API_KEY`; webcam capture needs `HASAMI_REALCAM` and a connected camera; physical arm motion needs `HASAMI_SO101_PORT`; real-desk measurements need a person, a ruler and a real photo; walker operations need the Thenar Walker at `HASAMI_ROBOT`. K015/K016 retain their explicit user-approved exclusion of the historical 20-seed benchmark and 10-seed fetch sweep. Setup states passed independently.
 
 The run held `hasami-audit-final` with release in an EXIT trap. The four excluded runtime settings were unset, apart from the explicitly authorized unprinted placeholder in the isolated loopback-failure server processes. No `.env`, secrets, Meta service, webcam, serial device or Thenar Walker was accessed. No Hasami mocks, stubs, fabricated success data, or unexpected console/page/network errors remained on the tested surface. Expected validation/setup failures and deliberate outage errors are logged. Screenshots are JPEG ≤200,000 bytes; earlier attempt screenshots were removed and the final evidence is kept below 15 MB. No deployment was made.
+
+## Real Walker fetch worktree checks — 2026-11-01
+
+The new reach math, mask geometry, gripper geometry and SAM decoder unit selection: **13 passed, 1 skipped** (the opt-in live Muse intent call). The Pi non-socket selection including the new file camera: **34 passed**. The Walker CLI `--help` completed with an import blocker that raised on `torch`, `transformers`, `torchvision` or `mujoco`, confirming those imports are lazy on that path. `compileall` and `git diff --check` passed.
+
+The requested full Walker selection was attempted: **6 failed, 5 passed, 5 skipped, 3 errors**. All six socket tests failed because this sandbox denies binding `127.0.0.1` (`PermissionError: operation not permitted`); four new fetch socket tests skipped on that condition. The three SAM 2.1 look tests could not initialize the shared MuJoCo `session` fixture because the headless Mac CoreGraphics context is unavailable. The full Pi suite was attempted with Hasami's venv: **34 passed, 5 errors**; the five async server tests need `pytest-asyncio`, which that venv lacks. Before changes, the six existing Walker socket tests were attempted and all six failed on the same bind restriction; the Pi suite could not start with system `python3` because pytest was missing. These are environment limits, not passing integration evidence.
+
+A fresh Pi-only venv was created in a temporary directory. Its `pip install --no-deps -e .` could not fetch build dependency `setuptools>=69` because this sandbox has no PyPI DNS/network, and offline `uv` had no cached setuptools. Thus the exact fresh-venv light-install check is **unverified** here. On an internet-connected Pi, run the README's light-install commands and `python -m hasami_walker --help`. No live Meta test or physical robot motion was run in this task.

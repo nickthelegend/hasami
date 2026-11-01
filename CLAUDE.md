@@ -13,23 +13,23 @@ Reusable methods and pitfalls from the last robot: [docs/PLAYBOOK.md](docs/PLAYB
   pre-event-2026-10-25..main`). Work done before the event stays clearly before that tag.
 - Meta's models are the point: **Muse Spark** (`muse-spark-1.3`, planning) and **SAM 3.1** (`sam-3.1`, segmentation)
   through the Meta Model API (`MODEL_API_KEY` from dev.meta.ai; base URL `MODEL_API_BASE_URL`, default
-  `https://api.meta.ai/v1`). Without the key every Meta step says **Setup required** and the on-device SAM 2.1 path
-  runs instead. Never fake a model answer.
-- The current official SAM documentation uses JavaScript `@meta-sam/parser`. Our Python `meta_sam_parser` hook is unverified and not installed; a compatible mask decoder/bridge is an explicit TODO. With a key set, Walker `look` does not fall back after a SAM 3.1 decode error. Laptop internet is needed alongside the robot network for Meta calls.
+  `https://api.meta.ai/v1`). Without the key the real fetch requires explicit `--item`; local SAM 2.1 at a click or colour
+  runs only where torch/transformers are installed (the laptop install). Never fake a model answer.
+- Python port of Meta's `@meta-sam/parser` one_bit decoder, verified on real SAM 3.1 responses (Nov 1 2026), with attribution under Meta's SAM License in `packages/perception/hasami_perception/SAM-LICENSE`. With a key set, Walker `look` does not fall back after a SAM 3.1 decode error. The brain computer needs internet for Meta calls; the Pi can join home Wi-Fi or a phone hotspot as a client.
 - A demo video and a public repo are part of the submission; the video shows real runs only (captions, never edited
   output).
 
 ## The robot (Oct 26 2026)
 The body is the owner's **Thenar Walker** (github.com/nickthelegend/thenar-walker): a 4-wheel skid-steer printed
 PETG tub carrying the **thenar-arms** 6-DoF arm (SO-ARM100 derived, so the SO-101 kinematics in `packages/sim`
-are the right family). Its MG996Rs are being replaced by six 25 kg·cm digital positional servos. This Hasami build uses a **Raspberry Pi**, not an ESP32: the Pi runs the robot runtime
+are the right family, though the sim still has the official rotary jaw). The built arm has six 25 kg·cm digital positional PWM servos and a [Robonine parallel rack-and-pinion gripper](https://github.com/roboninecom/SO-ARM100-101-102-Parallel-Gripper/blob/main/docs/specifications.md) at J6. This Hasami build uses a **Raspberry Pi**, not an ESP32: the Pi runs the robot runtime
 (`thenar-walker/pi/`, the Python port of `firmware/thenar_phone`) and the camera; Hasami (this repo) is the brain
 that plans, sees and commands it over the robot's WebSocket.
 
 | Part | What it is |
 |---|---|
 | Base | Thenar Walker tub v2 240 × 138, Ø140 wheels, 4 × 370 gear motors, Cytron **MDD10A** (ch1 = left pair, ch2 = right pair) |
-| Arm | 6 × **25 kg·cm digital positional servos** on a **PCA9685** (0x40, 50 Hz, OE active-low); channels 0 pan, 1 shoulder, 2 elbow, 3 wrist flex, 4 wrist roll, 5 gripper. Confirm each label: 180° vs 270°, voltage, spline/fit. |
+| Arm | 6 × **25 kg·cm digital positional servos** on a **PCA9685** (0x40, 50 Hz, OE active-low); channels 0 pan, 1 shoulder, 2 elbow, 3 wrist flex, 4 wrist roll, 5 Robonine parallel gripper. Confirm each label: 180° vs 270°, voltage, spline/fit; the STS3215-designed pinion fit on the DS3225 horn is untested. |
 | Brain | **Raspberry Pi** (model not yet confirmed: assume a Pi 5, check `cat /proc/device-tree/model`) |
 | Camera | **Top/deck mast planned**: Pi Camera Module 3 or 3 Wide on CSI preferred; USB webcam also works. Parametric tilt mount: `hardware/camera_mount/camera_mount.scad`. Framing must include shelf item and gripper. Not mounted/tested yet. |
 | Power | 3S battery through fuse and KCD4 kill to motor, regulated **6.0 V ≥20 A continuous servo supply** and separate **5.0 V 5 A Pi supply**; all common ground. Split servo power at rated distribution block, not PCA9685 terminal. DS3225-class stall up to 2.3 A × 6 = 13.8 A at 6.8 V; confirm actual labels. |
@@ -40,12 +40,12 @@ that plans, sees and commands it over the robot's WebSocket.
 DIR1 GPIO5, DIR2 GPIO6 · status LED GPIO27 · battery sense needs an ADC (the Pi has none): ADS1115 on I2C 0x48,
 optional; without it the battery reads "n/a", never a made-up number.
 
-**Arm calibration for the new servos:** the old MG996R table and `thenar_pi.armcal.KNOWN`/`seed-known` are **invalid**. Do not seed those numbers. The Pi needs every joint measured anew in the Wi-Fi calibrator (`http://192.168.4.1/calibrator`, **Connect Pi (Wi-Fi)**, WebSocket :82): two physical references ≥10° apart → zero/slope/sign; two safe pulse ends 3–5° before contact; mark all six done → **Save to robot**. Verify `sudo .venv/bin/python -m thenar_pi.armcal show` says `mask=3F complete=1`; record lives at `/var/lib/thenar/armcal.json`. A 270° variant has a different µs/degree slope from 180°. First pulse can jump at full speed; support the arm. See README §5 for the full procedure. The prior J2/J4/J6 jitter history was with MG996R clones; test the new servo/power/channel before drawing conclusions.
+**Arm calibration for the new servos:** the old MG996R table and `thenar_pi.armcal.KNOWN`/`seed-known` are **invalid**. Do not seed those numbers. The Pi needs every joint measured anew in the Wi-Fi calibrator (`http://192.168.4.1/calibrator`, **Connect Pi (Wi-Fi)**, WebSocket :82): J1–J5 use two angle references ≥10° apart; J6 uses caliper-measured inner-face gaps, initially 20 and 60 mm; set safe pulse ends before contact, mark all six done → **Save to robot**. Verify `sudo .venv/bin/python -m thenar_pi.armcal show` says `mask=3F complete=1`; record lives at `/var/lib/thenar/armcal.json`. `THENAR_GRIPPER=parallel` is default; `rotary` restores the old claw. J6 is a commanded mm gap, capped at 14 mm/s. A 180° variant reaches about 56 mm of the 84 mm nominal stroke; 270° can approach the full stroke. The PWM servo has no torque limit or feedback: target item width minus a small capped squeeze, never fully closed on an item. First pulse can jump at full speed; support the arm. See README §5 for the full procedure. The prior J2/J4/J6 jitter history was with MG996R clones; test the new servo/power/channel before drawing conclusions.
 
 ## How the pieces talk
 - **Robot runtime (Pi)**: `python -m thenar_pi` (repo thenar-walker, folder `pi/`). Same protocol as the ESP32
-  firmware, so the phone page and the calibrator work unchanged: page on port 80, one WebSocket on **port 81**
-  (`D thr turn`, `S`, `X`, `A`, `M`, `Q joint deg`, `V joint dps`, `P n`, `G`; robot sends `C{json}`, `T ...` at
+  firmware, with J6 units and limits selected by gripper kind: page on port 80, one WebSocket on **port 81**
+  (`D thr turn`, `S`, `X`, `A`, `M`, `Q joint value`, `V joint value/s`, `P n`, `G`; robot sends `C{json}` with `units`/`gripper`, `T ...` at
   10 Hz, `P n`), calibrator line protocol on a WebSocket on port 82, camera snapshot `GET /snap.jpg`.
   Safety is unchanged: 300 ms without a message → wheels stop, arm holds with PWM on.
 - **The brain's own channel** is port 83: the same messages at lower priority than the phone. Real phone input takes
@@ -60,10 +60,10 @@ optional; without it the battery reads "n/a", never a made-up number.
 |---|---|---|
 | `packages/sim` | active | MuJoCo SO-101 scene, DLS IK with sag correction, shape-aware grasps, cameras, ground truth |
 | `packages/perception` | active | `LocalSam2`, `MetaSam3`, `locate()`, grounding, colour, real-camera geometry, digital twin |
-| `packages/planner` | active | Muse client (forced `submit_plan` tool call, strict validation), `plan_from_clicks()` |
+| `packages/planner` | active | Muse client (`submit_plan` tool call, `tool_choice="auto"` because the API rejects forced calls, strict validation), `plan_from_clicks()` |
 | `packages/core` | active | `Session` (observe, segment, ground, run with verify + retry), benchmark task families, twin |
 | `packages/robot` | active | LeRobot SO-101 follower adapter (bus servos); the 25 kg servo Walker is driven through `thenar_pi` instead |
-| `packages/walker` | active | `hasami_walker`: the real robot. `Walker` client (port 83), taught poses, `look` (find the item in a robot frame: SAM 3.1 text / SAM 2.1 at a click or a named colour), CLI `python -m hasami_walker status|teach|go|look|snap|drive|limp|resume` |
+| `packages/walker` | active | `hasami_walker`: real robot client (port 83), taught poses, `look`, parallel jaw gap commands, taught shelf grid (`reach.py`), guarded fetch with camera verification and run records (`fetch.py`); CLI also has `teach-grid` and `fetch`. Reach/verification unit-tested; full dry-run socket test is included but blocked by sandbox loopback. Not run on hardware. |
 | `packages/server` | active | FastAPI on :8420, REST + SSE, serves the dashboard |
 | `packages/mcp` | active | MCP stdio server: `status`, `look`, `find`, `pick_place` |
 | `packages/dashboard` | active | Vite + React viewfinder + lab notebook |
@@ -105,9 +105,9 @@ On the Pi: from `/opt/thenar-walker/pi`, create a `--system-site-packages` venv,
 - SAM 2.1 weights come from Hugging Face on first use (`HF_HOME`); the first run is slow, later runs are cached.
 
 ## Open items
-1. Confirm actual Pi model and each 25 kg servo label (DS3225-class only as an example): 180°/270°, 4.8–6.8 V if DS3225, 25T horn fit and printed pocket clearance. Replace old 10 A buck with a 6.0 V ≥20 A continuous supply and direct high-current servo distribution; fit fuse/kill/common ground.
+1. Confirm actual Pi model and each 25 kg servo label (DS3225-class only as an example): 180°/270°, 4.8–6.8 V if DS3225, 25T horn fit and printed pocket clearance. Check Robonine pinion seat on the disc horn and actual jaw stroke/force with no item first. Replace old 10 A buck with a 6.0 V ≥20 A continuous supply and direct high-current servo distribution; fit fuse/kill/common ground.
 2. Print and fit `hardware/camera_mount/camera_mount.scad` on top of the deck. Pi Camera Module 3/Wide CSI preferred, USB fallback. Adjust height/tilt until shelf item and gripper share a `/snap.jpg` frame. Measure actual camera intrinsics and camera-to-arm transform; no metric depth is provided by Module 3.
 3. Flash Pi OS Bookworm, enable I2C and `dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4`; verify `i2cdetect -y 1` shows 0x40, camera works, AP/ports and MDD10A wheel directions with wheels lifted.
-4. Calibrate **all six new servos** from two references and safe ends via `docs/calibrator`; save to `/var/lib/thenar/armcal.json`. Never use MG996R `seed-known`. Teach `look_shelf` and `carry`, run `look` on real frames.
-5. Real fetch reach is **not built yet**: add camera-to-arm/metric target calibration and guarded reach in `packages/walker/hasami_walker/reach.py` (proposed `calibrate_camera_to_arm()`, `plan_reach()`) and a real orchestrator in `packages/walker/hasami_walker/fetch.py` using `Walker.pose()/wait_pose()`; create single-camera verification because simulation uses an overhead camera too.
-6. Get `MODEL_API_KEY` from dev.meta.ai for Muse Spark and SAM 3.1, validate live calls and resolve the mask parser interface, then film a truthful real run before Nov 4. Do not claim hardware fetch if the reach/verification step remains unbuilt. `Walker` joint telemetry is commanded/slewed angle, not physical position feedback from the three-wire servos; `wait_pose()` alone cannot verify a grasp or arrival.
+4. Calibrate **all six new servos** from two references and safe ends via `docs/calibrator`; J6 references are 20/60 mm jaw gaps. Save to `/var/lib/thenar/armcal.json`. Never use MG996R `seed-known`. Teach `look_shelf` and `carry`, run `look` on real frames. Optional UVC wrist camera holder RB9.01.060.074 works through `THENAR_CAMERA=<index>`; its 28×28 mm M2 fit is untested here.
+5. Real fetch code now uses a taught 3–12 spot shelf grid, barycentric reach, calibrated mm/px, guarded moves, and a single-camera lift check. On the hardware: teach six spots, photograph/inspect each mask and jaw region, run `--dry-plan`, then measure no-payload reach error at several shelf positions with wheels chocked before any payload. Re-teach after robot/camera/shelf changes. The code cannot detect collisions or prove physical joint arrival from three-wire PWM telemetry; it has not run on the actual arm. Delivery into the basket is commanded, not camera verified.
+6. Pi brain light install is `pip install --no-deps -e .` plus `requirements-pi.txt` on Python 3.11 Bookworm. Use the Pi as a Wi-Fi client with internet for Meta calls, phone on the same network and `--robot 127.0.0.1`; AP mode without internet needs laptop SAM 2.1. Live-verified Nov 1 2026: Muse planner and `fetch_intent` (with `tool_choice="auto"`), SAM 3.1 boxes and decoded masks. Next: inspect masks on fresh Pi frames, then film a truthful hardware attempt. `Walker` joint telemetry is commanded/slewed angle for J1–J5 and gap in mm for J6, not physical position feedback; `wait_pose()` and `gripper_gap()` cannot verify a grasp.
