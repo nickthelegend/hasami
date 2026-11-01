@@ -7,7 +7,7 @@ ground truth, which the pipeline itself never sees.
 ## Perception
 
 1. **Grounding.** Muse receives the overhead frame (640×480 PNG) and the instruction, and must answer with
-   a forced `submit_plan` tool call: steps that name the object and give a pixel on it, and the destination
+   a `submit_plan` tool call (`tool_choice="auto"`: the Meta Model API rejects a forced named function with HTTP 400, checked Nov 1 2026; no tool call is a `PlanError`): steps that name the object and give a pixel on it, and the destination
    and a pixel there. The plan is validated strictly (pixels inside the frame, at most six steps, no extra
    fields). A planner's pixel is a hint, not a fact (`hasami_perception.grounding`): SAM is prompted at the
    hint and the mask is accepted only if it has a sensible size, is near the hint, is raised off the table
@@ -118,7 +118,7 @@ Checked against dev.meta.ai on 2026-10-21 (no key, so no call has been made):
 
 | | Confirmed in the docs | Unverified until a key exists |
 |---|---|---|
-| Muse | model id `muse-spark-1.3` (also `-contributor`, 1.2, 1.1); base URL `https://api.meta.ai/v1`; `POST /v1/chat/completions` exists; image input to Muse Spark | image parts as `image_url` data URLs on Chat Completions, and forcing `tool_choice` to a named function (the Chat Completions page defers both to other pages) |
+| Muse | model id `muse-spark-1.3` (also `-contributor`, 1.2, 1.1); base URL `https://api.meta.ai/v1`; `POST /v1/chat/completions` exists; image input to Muse Spark | image parts as `image_url` data URLs on Chat Completions, and forcing `tool_choice` to a named function (the Chat Completions page defers both to other pages). Checked live Nov 1 2026: image parts work; only `tool_choice="auto"` is accepted |
 | SAM 3.1 | model id `sam-3.1`; `POST /v1/responses` with an `input_text` prompt and an `input_image`; output is special-token text `<|box;x1;y1;x2;y2;w;h[;c]|><|mask;x;y;data=H,W,<enc>payload|>` with boxes in source pixels; `metadata.mask_encoding: "one_bit"` | the base85 mask payload (decoded only through Meta's `meta-sam-parser` package, not installed here) and whether a mask is relative to its box. Without it the box centre prompts SAM 2.1 |
 
 ## Sim to real

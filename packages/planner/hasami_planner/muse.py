@@ -14,6 +14,7 @@ import time
 from hasami_perception import SetupRequired
 
 from .plan import FRAME_H, FRAME_W, MAX_STEPS, Plan, PlanError, tool_schema, validate_steps
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 DEFAULT_MODEL = "muse-spark-1.3"
@@ -79,7 +80,9 @@ class Planner:
             model=self.model,
             messages=build_messages(instruction, png, labels),  # type: ignore[arg-type]
             tools=[tool_schema()],  # type: ignore[list-item]
-            tool_choice={"type": "function", "function": {"name": "submit_plan"}},  # type: ignore[arg-type]
+            # the Meta Model API accepts only "auto" (HTTP 400 for a named function, checked 2026-11-01); the system
+            # prompt asks for submit_plan and a reply without it is a PlanError below
+            tool_choice="auto",
         )
         latency_ms = (time.perf_counter() - t0) * 1000
         msg = resp.choices[0].message
@@ -95,3 +98,43 @@ class Planner:
             raise PlanError("submit_plan arguments have no 'steps'", raw=raw)
         plan = validate_steps(args["steps"], source="muse", model=self.model, instruction=instruction, raw=raw)
         return plan, latency_ms
+
+
+class FetchIntent(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    item_text: str = Field(min_length=2, max_length=100)
+    destination: str = Field(min_length=2, max_length=100)
+
+
+FETCH_INTENT_TOOL = {"type": "function", "function": {
+    "name": "fetch_intent", "description": "Extract the item to find and delivery destination from a fetch instruction.",
+    "parameters": {"type": "object", "properties": {
+        "item_text": {"type": "string", "description": "Short visible item phrase for image segmentation"},
+        "destination": {"type": "string", "description": "Destination explicitly named by the user, or 'operator'"}},
+        "required": ["item_text", "destination"], "additionalProperties": False}}}
+
+
+def fetch_intent(instruction: str, planner: Planner | None = None) -> tuple[FetchIntent, float, str]:
+    """One Muse tool call, strict schema. No local language guess is substituted."""
+    if not instruction.strip():
+        raise PlanError("empty fetch instruction")
+    planner = planner or Planner()
+    t0 = time.perf_counter()
+    response = planner.client.chat.completions.create(
+        model=planner.model,
+        messages=[{"role": "system", "content": "Extract only what the user requested. Do not invent an item. "
+                   "If no destination is stated, use 'operator'. Call fetch_intent exactly once."},
+                  {"role": "user", "content": instruction}],
+        tools=[FETCH_INTENT_TOOL],
+        tool_choice="auto",  # the only value the Meta Model API accepts; no fetch_intent call is a PlanError below
+    )
+    all_calls = response.choices[0].message.tool_calls or []
+    calls = [c for c in all_calls
+             if getattr(c, "function", None) and c.function.name == "fetch_intent"]
+    if len(calls) != 1 or len(all_calls) != 1:
+        raise PlanError(f"Muse returned {len(all_calls)} tool calls, {len(calls)} fetch_intent; expected exactly one fetch_intent")
+    try:
+        intent = FetchIntent.model_validate_json(calls[0].function.arguments)
+    except ValidationError as e:
+        raise PlanError(f"invalid fetch_intent: {e}") from e
+    return intent, (time.perf_counter() - t0) * 1000, planner.model
