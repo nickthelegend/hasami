@@ -107,9 +107,11 @@ def test_size_and_distance_limits():
 # ---- SAM 3.1 wire format (dev.meta.ai docs, 2026-10-21): pure parsing; no key here, so no live call ----
 def test_sam31_output_tokens_parse_to_boxes_in_frame_pixels():
     from hasami_perception.segment import _output_text, parse_sam_output
+    from hasami_perception.sam_mask import encode_raster
 
-    # the documented example (truncated payload), plus a second record with a confidence
-    text = ("<0f>0<|box;x1=353;y1=382;x2=453;y2=427;w=537;h=561|><|mask;x=0;y=0;data=46,101,~abc|>,"
+    # the documented box with a complete synthetic payload, plus a second record with a confidence
+    payload = encode_raster(np.ones((46, 101), dtype=np.uint8))
+    text = (f"<0f>0<|box;x1=353;y1=382;x2=453;y2=427;w=537;h=561|><|mask;x=0;y=0;data=46,101,{payload}|>,"
             "1<|box;x1=10;y1=20;x2=30;y2=40;w=537;h=561;c=0.9|>")
     found = parse_sam_output(_output_text({"output": [{"content": [{"type": "output_text", "text": text}]}]}),
                              (561, 537))

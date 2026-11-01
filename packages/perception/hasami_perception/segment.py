@@ -13,6 +13,8 @@ from typing import Protocol
 import numpy as np
 from PIL import Image
 
+from .sam_mask import decode_raster, InvalidSamMask
+
 META_BASE_URL = os.environ.get("MODEL_API_BASE_URL", "https://api.meta.ai/v1")
 
 
@@ -33,8 +35,11 @@ class LocalSam2:
     name = "sam2.1-hiera-tiny (local)"
 
     def __init__(self, checkpoint: str = "facebook/sam2.1-hiera-tiny", device: str | None = None):
-        import torch
-        from transformers import Sam2Model, Sam2Processor
+        try:
+            import torch
+            from transformers import Sam2Model, Sam2Processor
+        except ImportError as e:
+            raise SetupRequired("Setup required: SAM 2.1 needs torch (laptop install) and transformers") from e
 
         self._torch = torch
         self.device = device or "cpu"
@@ -111,11 +116,9 @@ class MetaSam3:
     2026-10-21): POST {base}/responses with model "sam-3.1" and one user message holding an input_text
     (the prompt) and an input_image; the output is special-token text, one line per frame
     ("<0f>id<|box;x1=..;y1=..;x2=..;y2=..;w=W;h=H[;c=conf]|><|mask;x=0;y=0;data=H,W,<enc>payload|>,id...").
-    Box corners are source pixels (documented). Masks are base85 payloads whose decoding the docs leave
-    to Meta's `meta-sam-parser` package; if it is installed the mask is used, otherwise SAM 2.1 is
-    prompted at the box centre by the caller (hasami_core grounding). Never run with a key yet: the
-    request and the parser are written to the docs but unverified. Without MODEL_API_KEY this raises
-    SetupRequired; it never returns a placeholder mask.
+    Box corners are inclusive source pixels. Masks use the bundled Python port of Meta's
+    @meta-sam/parser one_bit decoder. Request and decoding were verified against real
+    SAM 3.1 responses on Nov 1 2026. Without MODEL_API_KEY this raises SetupRequired.
     """
 
     name = "sam-3.1 (Meta Model API)"
@@ -162,8 +165,7 @@ class MetaSam3:
             raise RuntimeError(f"SAM 3.1 found no {text!r}")
         best = max(found, key=lambda d: d.get("conf") or 0.0)
         if best["mask"] is None:
-            raise RuntimeError("SAM 3.1 returned a box but its mask could not be decoded "
-                               "(pip install meta-sam-parser); box " + str(best["box"]))
+            raise RuntimeError("SAM 3.1 returned a box without a mask: " + str(best["box"]))
         return best["mask"]
 
 
@@ -185,7 +187,7 @@ _TOKEN = re.compile(r"<\|(box|mask);([^|]*)\|>")
 
 
 def parse_sam_output(text: str, hw: tuple[int, int]) -> list[dict]:
-    """Parse SAM 3.1's special-token output for one image (frame 0) into boxes (+ masks if decodable).
+    """Parse SAM 3.1's special-token output for one image (frame 0) into boxes and masks.
 
     Documented grammar: '<0f>' then comma-separated records 'id<|box;k=v;...|><|mask;k=v;...;data=H,W,<enc>payload|>'.
     """
@@ -198,43 +200,54 @@ def parse_sam_output(text: str, hw: tuple[int, int]) -> list[dict]:
         if not idm:
             continue
         item: dict = {"id": int(idm.group(1)), "box": None, "conf": None, "mask": None}
+        mask_fields = None
+        source_box = None
+        source_hw = None
         for kind, fields in _TOKEN.findall(rec):
             kv = dict(f.split("=", 1) for f in fields.split(";") if "=" in f)
             if kind == "box":
-                sx = hw[1] / float(kv.get("w", hw[1]))
-                sy = hw[0] / float(kv.get("h", hw[0]))
-                item["box"] = (float(kv["x1"]) * sx, float(kv["y1"]) * sy, float(kv["x2"]) * sx, float(kv["y2"]) * sy)
+                source_hw = (int(kv.get("h", hw[0])), int(kv.get("w", hw[1])))
+                source_box = tuple(int(kv[k]) for k in ("x1", "y1", "x2", "y2"))
+                sx = hw[1] / source_hw[1]
+                sy = hw[0] / source_hw[0]
+                item["box"] = (source_box[0] * sx, source_box[1] * sy,
+                               source_box[2] * sx, source_box[3] * sy)
                 if "c" in kv:
                     item["conf"] = float(kv["c"])
             elif kind == "mask":
                 if "c" in kv and item["conf"] is None:
                     item["conf"] = float(kv["c"])
-                item["mask"] = _decode_mask(kv, item["box"], hw)
+                mask_fields = kv
+        if mask_fields is not None:
+            if source_box is None or source_hw is None:
+                raise ValueError("SAM 3.1 mask has no box")
+            item["mask"] = _decode_mask(mask_fields, source_box, source_hw, hw)
         if item["box"] is not None:
             out.append(item)
     return out
 
 
-def _decode_mask(kv: dict, box, hw: tuple[int, int]) -> np.ndarray | None:
-    """Decode with Meta's meta-sam-parser when installed (the docs define the payload only through it).
-    The raster is placed at the box when its size matches the box, or used as is when it matches the frame."""
+def _decode_mask(kv: dict, box: tuple[int, int, int, int],
+                 source_hw: tuple[int, int], hw: tuple[int, int]) -> np.ndarray:
+    """Place a box-local raster in source pixels, then resize to the caller's frame."""
     try:
-        import meta_sam_parser  # type: ignore[import-not-found]
-    except ImportError:
-        return None
-    try:  # the package's Python signature is not in the docs we read; any mismatch means "no mask"
-        raster = np.asarray(meta_sam_parser.decode_mask_to_raster(kv["data"]))
-        h, w = (int(v) for v in kv["data"].split(",")[:2])
-        raster = raster.reshape(h, w)
-    except Exception:  # noqa: BLE001
-        return None
-    full = np.zeros(hw, dtype=bool)
-    if (h, w) == hw:
-        return raster.astype(bool)
-    if box is not None:
-        x1, y1 = int(round(box[0])) + int(kv.get("x", 0)), int(round(box[1])) + int(kv.get("y", 0))
-        hh, ww = min(h, hw[0] - y1), min(w, hw[1] - x1)
-        if hh > 0 and ww > 0:
-            full[y1:y1 + hh, x1:x1 + ww] = raster[:hh, :ww].astype(bool)
-            return full
-    return None
+        height_text, width_text, payload = kv["data"].split(",", 2)
+        height, width = int(height_text), int(width_text)
+        if not (payload.startswith("!") or payload.startswith("~")):
+            raise InvalidSamMask("mask data has no supported encoding marker")
+        raster = decode_raster(payload, width, height).astype(bool)
+        left = box[0] + int(kv.get("x", 0))
+        top = box[1] + int(kv.get("y", 0))
+        source_height, source_width = source_hw
+        if source_height <= 0 or source_width <= 0:
+            raise InvalidSamMask("source frame dimensions must be positive")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"Malformed SAM 3.1 mask payload: {exc}") from exc
+    full = np.zeros(source_hw, dtype=np.uint8)
+    x0, y0 = max(left, 0), max(top, 0)
+    x1, y1 = min(left + width, source_width), min(top + height, source_height)
+    if x1 > x0 and y1 > y0:
+        full[y0:y1, x0:x1] = raster[y0 - top:y1 - top, x0 - left:x1 - left]
+    if source_hw != hw:
+        full = np.asarray(Image.fromarray(full).resize((hw[1], hw[0]), Image.Resampling.NEAREST))
+    return full.astype(bool)
