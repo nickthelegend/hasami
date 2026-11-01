@@ -1,7 +1,7 @@
 """Hasami's link to the Thenar Walker robot (thenar-walker/pi, `python -m thenar_pi` on the robot's Raspberry Pi).
 
 The brain connects to the robot's brain WebSocket (port 83) and speaks the phone's messages: `D thr turn`, `S speed`,
-`X`, `A 1|0`, `M mask`, `Q joint deg`, `V joint dps`, `P n`, `G`; the robot answers `C{config}`, `T bat on speed latch
+`X`, `A 1|0`, `M mask`, `Q joint value`, `V joint value/s`, `P n`, `G`; the robot answers `C{config}`, `T bat on speed latch
 q0..q5` at 10 Hz and `P n`. The phone always has priority: while a person drives, the robot answers `E manual`; after a
 phone STOP it answers `E paused` until `resume()` (a human decision, never automatic).
 
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import time
 import urllib.error
 import urllib.request
@@ -163,7 +164,10 @@ class Walker:
     async def drive_for(self, thr: int, turn: int, seconds: float) -> None:
         await self.drive(thr, turn)
         try:
-            await asyncio.sleep(seconds)
+            end = time.monotonic() + seconds
+            while time.monotonic() < end:
+                self._check_control()
+                await asyncio.sleep(min(0.05, end - time.monotonic()))
         finally:
             self._stick = (0, 0)
             await self._send("D 0 0")
@@ -193,18 +197,71 @@ class Walker:
 
     async def joint(self, i: int, deg: float) -> None:
         self._check_control()
-        await self._send(f"Q {int(i)} {float(deg):.1f}")
+        value = float(deg)
+        if not math.isfinite(value):
+            raise ValueError("joint target must be finite")
+        if int(i) == 5 and self.config.get("gripper") == "parallel":
+            from .gripper_geometry import MIN_GRIP_GAP_MM
+            if value < MIN_GRIP_GAP_MM:
+                raise ValueError(f"parallel gripper target must be at least {MIN_GRIP_GAP_MM:g} mm")
+        await self._send(f"Q {int(i)} {value:.1f}")
+
+    def _parallel_limits(self) -> tuple[float, float]:
+        if self.config.get("gripper") != "parallel" or not (self.config.get("usable", 0) & 32):
+            raise SetupRequired("calibrate and enable the parallel gripper before using gap commands")
+        lo, hi = self.limits()[5]
+        if not 0 <= lo < hi <= 84:
+            raise SetupRequired("parallel gripper has no valid calibrated gap range")
+        return lo, hi
+
+    async def open_gripper(self, gap_mm: float | None = None) -> float:
+        """Command the calibrated open end, or a requested gap in mm; returns the commanded target."""
+        from .gripper_geometry import MIN_GRIP_GAP_MM
+
+        lo, hi = self._parallel_limits()
+        if hi < MIN_GRIP_GAP_MM:
+            raise SetupRequired("calibrated open gap is below the minimum safe grip gap")
+        gap = hi if gap_mm is None else float(gap_mm)
+        if not math.isfinite(gap):
+            raise ValueError("gap must be finite")
+        target = round(min(hi, max(lo, MIN_GRIP_GAP_MM, gap)), 1)
+        await self.joint(5, target)
+        return target
+
+    async def grip(self, item_width_mm: float, squeeze_mm: float = 2.0) -> float:
+        """Command a gap just below the measured item width; no PWM servo force or position feedback exists."""
+        from .gripper_geometry import MIN_GRIP_GAP_MM, MAX_SQUEEZE_MM
+
+        lo, hi = self._parallel_limits()
+        width, squeeze = float(item_width_mm), float(squeeze_mm)
+        if not math.isfinite(width) or width <= 0 or not math.isfinite(squeeze) or squeeze < 0:
+            raise ValueError("item width must be positive and squeeze must be nonnegative; both must be finite")
+        if width > hi:
+            raise ValueError(f"item is {width:g} mm wide, wider than the calibrated open gap {hi:g} mm")
+        if hi < MIN_GRIP_GAP_MM:
+            raise SetupRequired("calibrated open gap is below the minimum safe grip gap")
+        target = round(min(hi, max(lo, MIN_GRIP_GAP_MM, width - min(squeeze, MAX_SQUEEZE_MM))), 1)
+        await self.joint(5, target)
+        return target
+
+    def gripper_gap(self) -> float:
+        """Last commanded/slewed gap in mm, not a measured jaw position or proof of grasp."""
+        self._parallel_limits()
+        return self.tele.q[5] if self.tele.at else self.config["g"][5]
 
     async def pose(self, q: list[float]) -> None:
         for i, d in enumerate(q):
             await self.joint(i, d)
 
     async def wait_pose(self, q: list[float], tol: float = 1.5, timeout: float = 8.0) -> bool:
-        """True once every switched-on joint is within tol degrees of q (the robot slews at 120 deg/s)."""
+        """True once switched-on joints approach q (tol is degrees for J1–J5, mm for parallel J6)."""
         end = time.monotonic() + timeout
         while time.monotonic() < end:
+            self._check_control()
+            if self._ws is None or self._reader_done():
+                raise RobotError("robot connection closed during arm move")
             on = self.tele.on_mask
-            if on and all(abs(self.tele.q[i] - q[i]) <= tol for i in range(6) if (on >> i) & 1):
+            if on == 63 and all(abs(self.tele.q[i] - q[i]) <= tol for i in range(6)):
                 return True
             self._tele_event.clear()
             try:
@@ -213,24 +270,30 @@ class Walker:
                 pass
         return False
 
-    async def go(self, q: list[float], tol: float = 1.5, timeout: float = 8.0) -> bool:
+    def _reader_done(self) -> bool:
+        return bool(self._tasks and self._tasks[0].done())
+
+    async def go(self, q: list[float], tol: float = 1.5, timeout: float = 8.0,
+                 fail_on_manual: bool = False) -> bool:
         """Move to q. While the operator uses the phone the robot refuses ("E manual"): wait out the operator's hold
-        and send again. A phone STOP (paused) raises PhoneHasControl."""
+        and send again (the brain often learns of a hold only from the refusal of its own command). A phone STOP
+        raises PhoneHasControl. Fetch uses fail_on_manual=True to stop on any manual hold instead of waiting."""
         end = time.monotonic() + timeout
         while time.monotonic() < end:
             if self._refresh_state() == "manual":
+                if fail_on_manual:
+                    self._check_control()
                 await asyncio.sleep(max(0.0, MANUAL_HOLD_S - (time.monotonic() - self._manual_at)) + 0.05)
                 continue
             try:
                 await self.pose(q)
+                if await self.wait_pose(q, tol, min(0.6, max(0.0, end - time.monotonic()))):
+                    return True
+                if self.state != "manual":
+                    return await self.wait_pose(q, tol, max(0.0, end - time.monotonic()))
             except PhoneHasControl:
-                if self.state == "paused":
+                if self.state == "paused" or fail_on_manual:
                     raise
-                continue
-            if await self.wait_pose(q, tol, min(0.6, max(0.0, end - time.monotonic()))):
-                return True
-            if self.state != "manual":
-                return await self.wait_pose(q, tol, max(0.0, end - time.monotonic()))
         return False
 
     def limits(self) -> list[tuple[float, float]]:

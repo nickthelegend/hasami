@@ -29,20 +29,21 @@ class Found:
     bbox: tuple[int, int, int, int]         # u0, v0, u1, v1
     how: str                                # "sam-3.1 text" | "sam-2.1 point" | "colour + sam-2.1"
     pixels: int
+    confidence: float | None = None
 
     def summary(self) -> dict:
         return {"how": self.how, "centroid_px": [round(self.centroid[0], 1), round(self.centroid[1], 1)],
-                "bbox_px": list(self.bbox), "pixels": self.pixels}
+                "bbox_px": list(self.bbox), "pixels": self.pixels, "confidence": self.confidence}
 
 
-def _found(mask: np.ndarray, how: str, min_pixels: int) -> Found:
+def _found(mask: np.ndarray, how: str, min_pixels: int, confidence: float | None = None) -> Found:
     mask = mask.astype(bool)
     n = int(mask.sum())
     if n < min_pixels:
         raise FindError(f"{how}: the mask has {n} pixels (< {min_pixels}); the item is not visible enough")
     vs, us = np.nonzero(mask)
     return Found(mask, (float(us.mean()), float(vs.mean())), (int(us.min()), int(vs.min()), int(us.max()), int(vs.max())),
-                 how, n)
+                 how, n, confidence)
 
 
 def find(rgb: np.ndarray, label: str, point: tuple[float, float] | None = None, sam2=None, sam3=None,
@@ -56,7 +57,13 @@ def find(rgb: np.ndarray, label: str, point: tuple[float, float] | None = None, 
         except SetupRequired as e:
             tries.append(str(e))
     if sam3 is not None:
-        return _found(sam3.segment(rgb, text=label), "sam-3.1 text", min_pixels)
+        matches = sam3.detect(rgb, label)
+        if not matches:
+            raise FindError(f"SAM 3.1 found no {label!r}")
+        best = max(matches, key=lambda d: d.get("conf") or 0.0)
+        if best["mask"] is None:
+            raise FindError("SAM 3.1 returned a box without a decoded mask")
+        return _found(best["mask"], "sam-3.1 text", min_pixels, best.get("conf"))
 
     def sam2_at(p):
         nonlocal sam2

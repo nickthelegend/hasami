@@ -1,0 +1,7 @@
+# Install with: pip install --no-deps -e . && pip install -r requirements-pi.txt
+# Walker, Meta clients and image masks only; local SAM 2.1 requires the laptop install.
+numpy>=1.26
+pillow>=10
+openai>=1.40
+pydantic>=2.6
+websockets>=12

@@ -24,7 +24,10 @@ from hasami_walker import PhoneHasControl, SetupRequired, Walker, poses  # noqa:
 
 def with_robot(tmp_path, body):
     """Run `body(walker, robot, server)` against a fresh robot runtime on free ports."""
-    armcal.save(tmp_path, armcal.known())
+    c = armcal.known()
+    c.zero_us[5], c.us_per_deg[5], c.sign[5] = 600, 36, 1
+    c.min_us[5], c.max_us[5] = 600, 2400
+    armcal.save(tmp_path, c)
 
     async def main():
         robot = Robot(hw.PCA9685(hw.DryBus()), hw.DryPins(), state_dir=str(tmp_path), ssid="Test_TF", dry_run=True)
@@ -114,4 +117,25 @@ def test_snapshot_without_a_camera_says_setup_required(tmp_path):
             await asyncio.get_running_loop().run_in_executor(None, w.snapshot)
         h = await asyncio.get_running_loop().run_in_executor(None, w.health)
         assert h["camera"] == "none"
+    with_robot(tmp_path, body)
+
+
+def test_grip_open_and_oversize_against_robot(tmp_path):
+    async def body(w, robot, srv):
+        robot.set_mask(63)
+        assert w.config["gripper"] == "parallel" and w.config["units"][5] == "mm"
+        assert await w.grip(20) == 18
+        assert await wait_for(lambda: robot.goal[5] == 18)
+        assert await w.grip(5, squeeze_mm=100) == 4
+        assert await wait_for(lambda: robot.goal[5] == 4)
+        assert await w.open_gripper() == 50
+        assert await wait_for(lambda: robot.goal[5] == 50)
+        assert await w.open_gripper(0) == 4  # even an explicit request cannot command full closure
+        assert await wait_for(lambda: robot.goal[5] == 4)
+        with pytest.raises(ValueError, match="at least 4"):
+            await w.joint(5, 0)
+        assert w.gripper_gap() >= 0           # commanded/slewed telemetry, not measured position
+        with pytest.raises(ValueError, match="wider than"):
+            await w.grip(51)
+        assert robot.goal[5] == 4
     with_robot(tmp_path, body)

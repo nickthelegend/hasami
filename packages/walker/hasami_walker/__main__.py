@@ -8,6 +8,11 @@
     python -m hasami_walker drive 40 0 1.0         stick 40 % forward for 1 s, then stop (wheels off the ground first!)
     python -m hasami_walker limp                   every joint limp
     python -m hasami_walker resume                 after a phone STOP: only when a person has decided it may move again
+    python -m hasami_walker open [gap_mm]          command the parallel jaws open in mm
+    python -m hasami_walker grip <width_mm>        close toward a measured item width, with a 2 mm squeeze
+    python -m hasami_walker teach-grid fridge --item 'orange juice carton'   teach 3–12 shelf spots
+    python -m hasami_walker fetch 'bring me the juice from the fridge' --grid fridge --dry-plan
+                                                   look/plan without moving; omit --dry-plan after inspecting targets
     python -m hasami_walker look "orange juice" [--pose look_shelf] [--point 410,260] [--image photo.jpg] [--out look.png]
                                                    find the item in a camera frame (SAM 3.1 text with MODEL_API_KEY,
                                                    else SAM 2.1 at your click or at the colour you named); moves
@@ -31,6 +36,20 @@ async def run(a: argparse.Namespace) -> int:
             print(f"{name:16s} " + "  ".join(f"{x:7.1f}" for x in q))
         print(f"({poses.store()})")
         return 0
+    if a.cmd == "fetch":
+        from .fetch import fetch
+        instruction = " ".join(a.args)
+        if not instruction:
+            raise ValueError('fetch needs an instruction, e.g. fetch "bring me the juice from the fridge"')
+        async with w:
+            await asyncio.sleep(0.2)
+            result = await fetch(w, instruction, item=a.item, grid_name=a.grid, point=_point(a.point),
+                                 drive_back=a.drive_back, dry_plan=a.dry_plan,
+                                 callback=lambda e: print(f"{e['step']}: {e['status']}"))
+        import json
+        print(json.dumps({"verdict": result["verdict"], "error": result["error"],
+                          "targets": result["targets"], "run_dir": result["run_dir"]}, indent=2))
+        return 0 if result["error"] is None and (a.dry_plan or "grasp verified" in result["verdict"]) else 2
     if a.cmd == "look" and a.image:   # a photo instead of the robot's camera: no robot needed
         from .look import decode_jpeg
         rgb = decode_jpeg(open(a.image, "rb").read())
@@ -54,7 +73,8 @@ async def run(a: argparse.Namespace) -> int:
             print(f"battery {t.battery_v if t.battery_v else '--'} V  joints on {t.on_mask:06b}  speed {t.speed}  "
                   f"STOP latched {t.latched}  round trip {w.rtt_ms and round(w.rtt_ms)} ms")
             for i, (lo, hi) in enumerate(w.limits()):
-                print(f"  {JOINTS[i]:14s} {t.q[i]:7.1f}  (allowed {lo:.0f} .. {hi:.0f})")
+                unit = c.get("units", ["deg"] * 6)[i]
+                print(f"  {JOINTS[i]:14s} {t.q[i]:7.1f} {unit}  (allowed {lo:.0f} .. {hi:.0f} {unit})")
             try:
                 h = w.health()
                 print(f"camera {h.get('camera')}  phone connected {h.get('phone')}  brain paused {h.get('brain_paused')}")
@@ -66,6 +86,10 @@ async def run(a: argparse.Namespace) -> int:
                 return 1
             p = poses.save(a.args[0], w.tele.q)
             print(f"taught {a.args[0]} = {w.tele.q} -> {p}")
+        elif a.cmd == "teach-grid":
+            if len(a.args) != 1:
+                raise ValueError("teach-grid needs one shelf name")
+            await _teach_grid(w, a)
         elif a.cmd == "go":
             q = poses.get(a.args[0])
             if w.tele.on_mask == 0:   # switching joints on makes them jump to their targets: a person does that
@@ -78,6 +102,19 @@ async def run(a: argparse.Namespace) -> int:
         elif a.cmd == "drive":
             thr, turn, secs = int(a.args[0]), int(a.args[1]), float(a.args[2])
             await w.drive_for(thr, turn, min(secs, 5.0))
+        elif a.cmd in ("open", "grip"):
+            if w.tele.on_mask & 32 == 0:
+                print("the gripper is limp: press Arm ON on the phone with jaws near the shown target first")
+                return 1
+            if a.cmd == "grip":
+                if len(a.args) != 1:
+                    raise ValueError("grip needs the measured item width in mm")
+                target = await w.grip(float(a.args[0]))
+            else:
+                if len(a.args) > 1:
+                    raise ValueError("open accepts at most one gap in mm")
+                target = await w.open_gripper(float(a.args[0]) if a.args else None)
+            print(f"commanded gripper gap {target:.1f} mm (no position or force feedback)")
         elif a.cmd == "look":
             from .look import decode_jpeg
             if a.pose:
@@ -93,7 +130,8 @@ async def run(a: argparse.Namespace) -> int:
             except SetupRequired as e:
                 print(e)
                 return 2
-            return _look(decode_jpeg(jpg), a)
+            open_gap = w.config["hi"][5] if w.config.get("gripper") == "parallel" and w.config.get("cal") else None
+            return _look(decode_jpeg(jpg), a, open_gap)
         elif a.cmd == "limp":
             await w.limp()
         elif a.cmd == "resume":
@@ -106,10 +144,11 @@ async def run(a: argparse.Namespace) -> int:
     return 0
 
 
-def _look(rgb, a) -> int:
+def _look(rgb, a, open_gap_mm: float | None = None) -> int:
     import json
 
     from .look import FindError, annotate, find
+    from .gripper_geometry import estimate_width
     if not a.args:
         print('look needs what to find, e.g.  look "orange juice"')
         return 1
@@ -122,9 +161,81 @@ def _look(rgb, a) -> int:
         return 3
     with open(a.out, "wb") as fh:
         fh.write(annotate(rgb, f, label))
-    print(json.dumps({"label": label, **f.summary(), "frame_px": [rgb.shape[1], rgb.shape[0]], "annotated": a.out}))
-    print("next: reaching it needs the camera-to-arm calibration (CLAUDE.md open item 3); nothing moved")
+    width = estimate_width(f.bbox[2] - f.bbox[0] + 1, mm_per_pixel=a.mm_per_pixel,
+                           distance_mm=a.distance_mm, focal_px=a.focal_px, open_gap_mm=open_gap_mm)
+    print(json.dumps({"label": label, **f.summary(), "width_estimate": width,
+                      "frame_px": [rgb.shape[1], rgb.shape[0]], "annotated": a.out}))
+    if width["scale"] == "unknown":
+        print("item width unknown: supply --mm-per-pixel or --distance-mm with --focal-px; no depth sensor is available")
+    print("next: teach a shelf grid and run fetch --dry-plan; look itself did not reach or grip")
     return 0
+
+
+def _point(value):
+    if value is None:
+        return None
+    parts = value.split(",")
+    if len(parts) != 2:
+        raise ValueError("--point must be x,y")
+    return tuple(float(x) for x in parts)
+
+
+async def _teach_grid(w, a):
+    from .look import annotate, decode_jpeg, find
+    from .reach import save_grid
+
+    if not 3 <= a.spots <= 12:
+        raise ValueError("--spots must be between 3 and 12")
+    if w.tele.on_mask != 63:
+        raise RobotError("Setup required: press Arm ON on the phone; all six joints must be on before teaching")
+    name = a.args[0]
+    label = a.item or await asyncio.to_thread(input, "Visible item phrase (include colour without Meta key): ")
+    width = float(await asyncio.to_thread(input, "Measure this item's width across the jaws in mm: "))
+    if width <= 0:
+        raise ValueError("item width must be positive")
+    spots = []
+    resolution = None
+    for i in range(a.spots):
+        await asyncio.to_thread(input, f"Spot {i+1}/{a.spots}: put item there, place OPEN jaws around it with phone; Enter to capture grasp: ")
+        await asyncio.sleep(0.15)
+        rgb = decode_jpeg(await asyncio.to_thread(w.snapshot))
+        current_resolution = [rgb.shape[1], rgb.shape[0]]
+        if resolution is not None and current_resolution != resolution:
+            raise ValueError("camera resolution changed while teaching")
+        resolution = current_resolution
+        point = _point(a.point) if i == 0 and a.point else None
+        if point is None and not os.environ.get("MODEL_API_KEY") and not __import__("hasami_perception.colour", fromlist=["colour_word"]).colour_word(label):
+            point = _point(await asyncio.to_thread(input, "Click item in a saved frame; type its x,y pixel: "))
+        f = await asyncio.to_thread(find, rgb, label, point)
+        from .fetch import _foot, _valid
+        _valid(f, rgb.shape)
+        image = f"grid-{name}-{i+1}-grasp.png"
+        with open(image, "wb") as out:
+            out.write(annotate(rgb, f, label))
+        grasp = list(w.tele.q)
+        await asyncio.to_thread(input, "Back jaws straight out about 5 cm with phone; Enter to capture pre-grasp: ")
+        await asyncio.sleep(0.15)
+        pre = list(w.tele.q)
+        await asyncio.to_thread(input, "Move jaws to a safe lifted pose with phone; Enter to capture lift: ")
+        await asyncio.sleep(0.15)
+        lift = list(w.tele.q)
+        jaw_rgb = decode_jpeg(await asyncio.to_thread(w.snapshot))
+        with open(f"grid-{name}-{i+1}-lift.png", "wb") as out:
+            from .fetch import _raw_png
+            out.write(_raw_png(jaw_rgb))
+        jaw_text = await asyncio.to_thread(input, "In lift photo, type jaw region x0,y0,x1,y1 (must contain held item): ")
+        jaw = [float(x) for x in jaw_text.split(",")]
+        if len(jaw) != 4 or not (0 <= jaw[0] < jaw[2] < resolution[0] and 0 <= jaw[1] < jaw[3] < resolution[1]):
+            raise ValueError("jaw region must be four in-frame coordinates x0,y0,x1,y1")
+        pixel_width = f.bbox[2] - f.bbox[0] + 1
+        spots.append({"pixel": list(_foot(f)), "pixel_width": pixel_width, "item_width_mm": width,
+                      "mm_per_px": width / pixel_width, "grasp": grasp, "pre_grasp": pre, "lift": lift,
+                      "jaw_region": jaw})
+        print(f"spot {i+1}: foot {spots[-1]['pixel']}, scale {width/pixel_width:.3f} mm/px; photos {image} and lift")
+    grid = {"version": 1, "name": name, "resolution": resolution, "spots": spots,
+            "note": "Joint targets are commanded telemetry, not measured physical servo angles or gaps."}
+    path = save_grid(name, grid)
+    print(f"saved {path}; inspect all grid photos and dry-plan before moving the arm autonomously")
 
 
 def main() -> None:
@@ -139,10 +250,18 @@ def main() -> None:
     ap.add_argument("--point", help="look: the item's pixel x,y (an operator's click)")
     ap.add_argument("--image", help="look: use this photo instead of the robot's camera")
     ap.add_argument("--out", default="look.png", help="look: where to write the annotated frame")
+    ap.add_argument("--mm-per-pixel", type=float, help="look: measured local image scale at the item")
+    ap.add_argument("--distance-mm", type=float, help="look: measured camera-to-item distance")
+    ap.add_argument("--focal-px", type=float, help="look: calibrated horizontal focal length in pixels")
+    ap.add_argument("--item", help="fetch without Muse: explicit item phrase; teach-grid: visible item phrase")
+    ap.add_argument("--grid", default="fridge", help="fetch: taught shelf grid name")
+    ap.add_argument("--spots", type=int, default=6, help="teach-grid: number of spots, 3 to 12 (default 6)")
+    ap.add_argument("--drive-back", type=float, default=0, help="fetch: reverse at low throttle for up to 5 s")
+    ap.add_argument("--dry-plan", action="store_true", help="fetch: look and print joint targets, do not command motion")
     a = ap.parse_args()
     try:
         sys.exit(asyncio.run(run(a)))
-    except (RobotError, KeyError) as e:
+    except (RobotError, KeyError, ValueError) as e:
         print(f"error: {e}" if not isinstance(e, PhoneHasControl) else f"waiting for the operator: {e}", file=sys.stderr)
         sys.exit(2)
 

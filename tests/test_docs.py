@@ -131,7 +131,8 @@ def test_cited_contract_documents_exist_in_this_repo():
             if (p.suffix not in (".py", ".ts", ".tsx", ".mjs", ".sh") or "node_modules" in p.parts or "dist" in p.parts
                     or p == Path(__file__).resolve()):  # this test quotes the old reference
                 continue
-            for m in re.finditer(r"\b((?:specs|docs|packages/docs)/[\w./-]+\.md)\b", p.read_text(errors="ignore")):
+            # (?<!/): a path inside a URL (another repo's docs/...) is not a path in this repo
+            for m in re.finditer(r"(?<!/)\b((?:specs|docs|packages/docs)/[\w./-]+\.md)\b", p.read_text(errors="ignore")):
                 cited.append((p.relative_to(ROOT).as_posix(), m.group(1)))
     missing = [(f, ref) for f, ref in cited if not (ROOT / ref).is_file()]
     assert not missing, missing
