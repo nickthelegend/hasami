@@ -91,7 +91,7 @@ async def fetch(w: Walker, instruction: str, *, item: str | None = None, grid_na
         w._check_control()
         started = time.perf_counter()
         from .gripper_geometry import MIN_GRIP_GAP_MM
-        if len(q) != 6 or q[5] < MIN_GRIP_GAP_MM:
+        if len(q) != 6 or (not w.rotary() and q[5] < MIN_GRIP_GAP_MM):
             raise ReachError(f"{label}: six joint targets and J6 gap >= {MIN_GRIP_GAP_MM:g} mm are required")
         for i, (value, (lo, hi)) in enumerate(zip(q, w.limits())):
             if not lo <= value <= hi:
@@ -123,8 +123,12 @@ async def fetch(w: Walker, instruction: str, *, item: str | None = None, grid_na
         if not 0 <= drive_back <= 5:
             raise ValueError("--drive-back must be between 0 and 5 seconds")
         grid = load_grid(grid_name)
-        if w.config.get("gripper") != "parallel" or w.config.get("usable") != 63 or not w.config.get("cal"):
-            raise RobotError("Setup required: all six joints and the parallel gripper must be calibrated")
+        if w.config.get("gripper") not in ("parallel", "rotary") or w.config.get("usable") != 63 or not w.config.get("cal"):
+            raise RobotError("Setup required: all six joints and the gripper must be calibrated")
+        if w.rotary():
+            claw_open, claw_grip = w._claw("claw_open"), w._claw("claw_grip")
+            event("claw", "ok", kind="rotary", open_deg=claw_open, grip_deg=claw_grip,
+                  note="taught claw poses; item-width fit checked only against HASAMI_CLAW_MAX_MM if set")
         if not w.tele.at:
             try:
                 await asyncio.wait_for(w._tele_event.wait(), 1.0)
@@ -150,7 +154,13 @@ async def fetch(w: Walker, instruction: str, *, item: str | None = None, grid_na
             event("look", "ok", attempt=attempt, **before.summary(), ms=round((time.perf_counter() - t0) * 1000))
             reach = plan_reach(grid, _foot(before), resolution=(before_rgb.shape[1], before_rgb.shape[0]))
             width = reach.width_mm(before.bbox[2] - before.bbox[0] + 1)
-            gap = w._parallel_limits()[1]
+            if w.rotary():
+                claw_max = float(os.environ.get("HASAMI_CLAW_MAX_MM", "0") or 0)
+                if claw_max and width > claw_max:
+                    raise ReachError(f"item width {width:.1f} mm exceeds the measured claw opening {claw_max:.1f} mm")
+                gap = claw_max or width + 6
+            else:
+                gap = w._parallel_limits()[1]
             if width > gap:
                 raise ReachError(f"item width {width:.1f} mm exceeds calibrated open gap {gap:.1f} mm")
             if width <= 4:
@@ -167,16 +177,16 @@ async def fetch(w: Walker, instruction: str, *, item: str | None = None, grid_na
             if dry_plan:
                 report["verdict"] = "dry plan complete; no arm command sent"
                 break
-            open_gap = min(gap, width + 6)
+            open_gap = claw_open if w.rotary() else min(gap, width + 6)
             await w.open_gripper(open_gap)
             open_target = list(w.tele.q[:5]) + [open_gap]
-            if not await w.wait_pose(open_target, timeout=max(8, (open_gap - w.gripper_gap()) / 14 + 3)):
+            if not await w.wait_pose(open_target, timeout=max(8, abs(open_gap - w.gripper_gap()) / 14 + 3)):
                 raise RobotError("gripper open command did not reach its commanded target")
             event("open", "ok", attempt=attempt, gap_mm=open_gap)
             for step, target in (("pre_grasp", reach.pre_grasp), ("grasp", reach.grasp)):
                 await move(step, target[:5] + [open_gap])
             grip_gap = await w.grip(width)
-            if not await w.wait_pose(reach.grasp[:5] + [grip_gap], timeout=max(8, (open_gap - grip_gap) / 14 + 3)):
+            if not await w.wait_pose(reach.grasp[:5] + [grip_gap], timeout=max(8, abs(open_gap - grip_gap) / 14 + 3)):
                 raise RobotError("grip command did not reach its commanded gap")
             event("grip", "ok", attempt=attempt, gap_mm=grip_gap, note="commanded gap, no force feedback")
             await move("lift", reach.lift[:5] + [grip_gap])

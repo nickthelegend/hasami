@@ -214,10 +214,33 @@ class Walker:
             raise SetupRequired("parallel gripper has no valid calibrated gap range")
         return lo, hi
 
+    def rotary(self) -> bool:
+        """True for the single-jaw rotary claw (THENAR_GRIPPER=rotary): J6 is degrees, open/grip are taught poses."""
+        return self.config.get("gripper") == "rotary"
+
+    def _claw(self, name: str) -> float:
+        """J6 angle of the taught pose claw_open or claw_grip (rotary claw only)."""
+        from . import poses
+        if not (self.config.get("usable", 0) & 32):
+            raise SetupRequired("Setup required: calibrate and enable J6 (the claw) first")
+        try:
+            value = float(poses.get(name)[5])
+        except KeyError as e:
+            raise SetupRequired(f"Setup required: rotary claw: {e.args[0]}") from None
+        lo, hi = self.limits()[5]
+        if not lo <= value <= hi:
+            raise SetupRequired(f"Setup required: taught {name} J6 {value:.1f} is outside calibrated [{lo:.1f}, {hi:.1f}]; teach it again")
+        return value
+
     async def open_gripper(self, gap_mm: float | None = None) -> float:
-        """Command the calibrated open end, or a requested gap in mm; returns the commanded target."""
+        """Command the calibrated open end, or a requested gap in mm; returns the commanded target.
+        Rotary claw: command the taught claw_open angle (gap_mm is ignored)."""
         from .gripper_geometry import MIN_GRIP_GAP_MM
 
+        if self.rotary():
+            target = self._claw("claw_open")
+            await self.joint(5, target)
+            return target
         lo, hi = self._parallel_limits()
         if hi < MIN_GRIP_GAP_MM:
             raise SetupRequired("calibrated open gap is below the minimum safe grip gap")
@@ -232,6 +255,10 @@ class Walker:
         """Command a gap just below the measured item width; no PWM servo force or position feedback exists."""
         from .gripper_geometry import MIN_GRIP_GAP_MM, MAX_SQUEEZE_MM
 
+        if self.rotary():
+            target = self._claw("claw_grip")      # taught on the real item; never fully closed past it
+            await self.joint(5, target)
+            return target
         lo, hi = self._parallel_limits()
         width, squeeze = float(item_width_mm), float(squeeze_mm)
         if not math.isfinite(width) or width <= 0 or not math.isfinite(squeeze) or squeeze < 0:
@@ -245,8 +272,9 @@ class Walker:
         return target
 
     def gripper_gap(self) -> float:
-        """Last commanded/slewed gap in mm, not a measured jaw position or proof of grasp."""
-        self._parallel_limits()
+        """Last commanded/slewed gap in mm (rotary claw: degrees), not a measured jaw position or proof of grasp."""
+        if not self.rotary():
+            self._parallel_limits()
         return self.tele.q[5] if self.tele.at else self.config["g"][5]
 
     async def pose(self, q: list[float]) -> None:
