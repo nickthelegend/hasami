@@ -247,7 +247,7 @@ def test_wrist_verification_three_ways():
 
 
 def test_approach_step_directions(monkeypatch):
-    for name in ("HASAMI_APPROACH_THR", "HASAMI_APPROACH_TURN", "HASAMI_APPROACH_S_PER_PX"):
+    for name in ("HASAMI_APPROACH_THR", "HASAMI_APPROACH_TURN", "HASAMI_APPROACH_TURN_S_PER_PX", "HASAMI_APPROACH_DRIVE_S_PER_PX"):
         monkeypatch.delenv(name, raising=False)
     target = (600, 400)
     assert approach_step((610, 390), target) is None

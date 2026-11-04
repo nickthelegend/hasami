@@ -202,6 +202,7 @@ async def _teach_grid(w, a):
         if wrist:
             await asyncio.to_thread(input, f"Spot {i+1}/{a.spots}: put item there, hands clear of the arm; Enter: the arm "
                                            "moves to look_shelf and takes the photo: ")
+            await asyncio.sleep(2.5)                   # the phone keeps control for 2 s after its last input
             if not await w.go(look, timeout=15):
                 raise RobotError("arm did not reach look_shelf")
             await asyncio.sleep(0.6)

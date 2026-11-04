@@ -99,12 +99,14 @@ def approach_step(foot: tuple[float, float], target: tuple[float, float], tol_px
     ex, ey = foot[0] - target[0], foot[1] - target[1]
     thr = int(os.environ.get("HASAMI_APPROACH_THR", "25"))
     turn = int(os.environ.get("HASAMI_APPROACH_TURN", "35"))
-    s_per_px = float(os.environ.get("HASAMI_APPROACH_S_PER_PX", "0.002"))
-    secs = lambda e: round(float(min(0.6, max(0.12, abs(e) * s_per_px))), 2)
+    # measured on the real robot, Nov 4 2026, item about 35 cm away: turn 35 moves it about 500 px/s, throttle 25 about 120 px/s
+    turn_s = float(os.environ.get("HASAMI_APPROACH_TURN_S_PER_PX", "0.002"))
+    drive_s = float(os.environ.get("HASAMI_APPROACH_DRIVE_S_PER_PX", "0.008"))
+    secs = lambda e, rate: round(float(min(0.6, max(0.12, abs(e) * rate))), 2)
     if abs(ex) > tol_px:
-        return {"thr": 0, "turn": -turn if ex > 0 else turn, "seconds": secs(ex), "error_px": [round(ex), round(ey)]}
+        return {"thr": 0, "turn": -turn if ex > 0 else turn, "seconds": secs(ex, turn_s), "error_px": [round(ex), round(ey)]}
     if abs(ey) > tol_px:
-        return {"thr": thr if ey < 0 else -thr, "turn": 0, "seconds": secs(ey), "error_px": [round(ex), round(ey)]}
+        return {"thr": thr if ey < 0 else -thr, "turn": 0, "seconds": secs(ey, drive_s), "error_px": [round(ex), round(ey)]}
     return None
 
 
