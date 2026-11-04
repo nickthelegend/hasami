@@ -57,30 +57,60 @@ def _verification(before, after, jaw_region: list[float], up_px: float = 12.0) -
             "reason": "geometry agrees" if held else "item did not move up/clear shelf and overlap taught jaw region"}
 
 
-def _wrist_verification(before, lift_found, look_found, jaw_region: list[float], min_jaw: float = 0.3) -> dict:
-    """Wrist camera: the camera moves with the claw, so 'moved up' means nothing. Held = the item fills the taught jaw
-    region in the lift-pose frame AND, seen again from the look pose, its old floor/shelf spot is clear."""
+def jaw_thumbnail(rgb, jaw_region: list[float], n: int = 16) -> list:
+    """Jaw region of a frame shrunk to n x n average colours, small enough to keep in the grid file."""
     x0, y0, x1, y1 = (int(round(x)) for x in jaw_region)
-    jaw_overlap = 0.0
-    if lift_found is not None:
-        m = lift_found.mask
-        if x1 <= x0 or y1 <= y0 or x0 < 0 or y0 < 0 or x1 >= m.shape[1] or y1 >= m.shape[0]:
-            raise ReachError("taught jaw region is invalid for this camera frame")
-        jaw_overlap = int(m[y0:y1 + 1, x0:x1 + 1].sum()) / max(1, int(m.sum()))
+    if x1 <= x0 or y1 <= y0 or x0 < 0 or y0 < 0 or x1 >= rgb.shape[1] or y1 >= rgb.shape[0]:
+        raise ReachError("taught jaw region is invalid for this camera frame")
+    xs, ys = np.linspace(x0, x1 + 1, n + 1).astype(int), np.linspace(y0, y1 + 1, n + 1).astype(int)
+    return [[np.asarray(rgb[ys[r]:max(ys[r + 1], ys[r] + 1), xs[c]:max(xs[c + 1], xs[c] + 1), :3]).mean(axis=(0, 1)).round(1).tolist()
+             for c in range(n)] for r in range(n)]
+
+
+def _wrist_verification(before, lift_rgb, look_found, jaw_region: list[float], empty_refs: list,
+                        min_changed: float = 0.4, cell_diff: float = 40.0) -> dict:
+    """Wrist camera: the camera moves with the claw, so 'moved up' means nothing, and a stick held deep in the jaws is too
+    close to the lens to be in focus, so SAM cannot name it. Held = the jaw region differs from the empty-claw photo
+    taught at the lift pose AND, seen again from the look pose, the item's old spot is clear."""
+    if not empty_refs:
+        return {"held": False, "camera": "wrist", "reason": "grid has no empty-claw photo: teach the grid again"}
+    now = np.asarray(jaw_thumbnail(lift_rgb, jaw_region))
+    changed = min(float((np.abs(now - np.asarray(ref)).mean(axis=2) > cell_diff).mean()) for ref in empty_refs)
     old_area = int(before.mask.sum())
     old_covered = (int(np.logical_and(before.mask, look_found.mask).sum()) / max(1, old_area)
                    if look_found is not None else 0.0)
     spot_clear = old_covered < 0.25
-    held = spot_clear and jaw_overlap >= min_jaw
-    return {"held": bool(held), "camera": "wrist", "jaw_overlap": round(jaw_overlap, 3),
-            "old_spot_covered": round(old_covered, 3), "lift_detected": lift_found is not None,
-            "reason": "item between the jaws and its old spot is clear" if held else
-                      ("item still at its old spot" if not spot_clear else "item not seen between the jaws at lift")}
+    held = spot_clear and changed >= min_changed
+    return {"held": bool(held), "camera": "wrist", "jaw_changed": round(changed, 3),
+            "old_spot_covered": round(old_covered, 3),
+            "reason": "something fills the jaws and its old spot is clear" if held else
+                      ("item still at its old spot" if not spot_clear else "jaws look empty at lift")}
+
+
+def _approach_target(grid: dict) -> tuple[float, float]:
+    """Where the item should appear from look_shelf before the arm moves: the middle of the taught spots."""
+    pixels = np.asarray([s["pixel"] for s in grid["spots"]], dtype=float)
+    return float(pixels[:, 0].mean()), float(pixels[:, 1].mean())
+
+
+def approach_step(foot: tuple[float, float], target: tuple[float, float], tol_px: float = 40.0) -> dict | None:
+    """One wheel nudge from the item's image position, or None when it is where the arm was taught to reach.
+    Turn first (image right = robot right), then drive (image up = farther away). Not odometry: the next photo decides."""
+    ex, ey = foot[0] - target[0], foot[1] - target[1]
+    thr = int(os.environ.get("HASAMI_APPROACH_THR", "25"))
+    turn = int(os.environ.get("HASAMI_APPROACH_TURN", "35"))
+    s_per_px = float(os.environ.get("HASAMI_APPROACH_S_PER_PX", "0.002"))
+    secs = lambda e: round(float(min(0.6, max(0.12, abs(e) * s_per_px))), 2)
+    if abs(ex) > tol_px:
+        return {"thr": 0, "turn": -turn if ex > 0 else turn, "seconds": secs(ex), "error_px": [round(ex), round(ey)]}
+    if abs(ey) > tol_px:
+        return {"thr": thr if ey < 0 else -thr, "turn": 0, "seconds": secs(ey), "error_px": [round(ex), round(ey)]}
+    return None
 
 
 async def fetch(w: Walker, instruction: str, *, item: str | None = None, grid_name: str = "fridge",
                 point: tuple[float, float] | None = None, drive_back: float = 0, dry_plan: bool = False,
-                callback: EventCallback | None = None, sam2=None, sam3=None) -> dict:
+                approach: bool = False, callback: EventCallback | None = None, sam2=None, sam3=None) -> dict:
     """Run one fetch and save the evidence even on error. Returns a report; it never reports a held item by command alone."""
     path = _run_dir()
     wrist = False
@@ -180,6 +210,20 @@ async def fetch(w: Walker, instruction: str, *, item: str | None = None, grid_na
             w._check_control()
             if wrist and attempt > 1:
                 await move("look_pose", poses.get("look_shelf")[:5] + [open_gap])
+            if approach and wrist and not dry_plan:
+                target = _approach_target(grid)
+                for nudge in range(1, 11):
+                    seen_rgb = await snap()
+                    seen = await asyncio.to_thread(find, seen_rgb, label, point, sam2, sam3)
+                    step = approach_step(_foot(seen), target)
+                    if step is None:
+                        event("approach", "ok", nudges=nudge - 1, pixel=list(_foot(seen)), target=list(target))
+                        break
+                    event("approach_nudge", "ok", nudge=nudge, pixel=list(_foot(seen)), **step,
+                          note="wheels: open-loop pulse, checked by the next photo")
+                    await w.drive_for(step["thr"], step["turn"], step["seconds"])
+                else:
+                    raise ReachError("wheels did not bring the item to the taught area in 10 nudges")
             t0 = time.perf_counter()
             before_rgb = await snap()
             before = await asyncio.to_thread(detect, before_rgb, label)
@@ -227,12 +271,7 @@ async def fetch(w: Walker, instruction: str, *, item: str | None = None, grid_na
             await move("lift", reach.lift[:5] + [grip_gap])
             after_rgb = await snap()
             if wrist:
-                try:   # held item is close to the lens and may touch the frame edge: no _valid() here
-                    lift_found = await asyncio.to_thread(find, after_rgb, label, None, sam2, sam3)
-                    (path / f"after-{attempt}.png").write_bytes(annotate(after_rgb, lift_found, label))
-                except FindError:
-                    lift_found = None
-                    (path / f"after-{attempt}.png").write_bytes(_raw_png(after_rgb))
+                (path / f"after-{attempt}.png").write_bytes(_raw_png(after_rgb))
                 await move("verify_look", poses.get("look_shelf")[:5] + [grip_gap])
                 look_rgb = await snap()
                 try:
@@ -241,7 +280,8 @@ async def fetch(w: Walker, instruction: str, *, item: str | None = None, grid_na
                 except FindError:
                     look_found = None   # nothing left on the shelf where the camera looks
                     (path / f"check-{attempt}.png").write_bytes(_raw_png(look_rgb))
-                verdict = _wrist_verification(before, lift_found, look_found, reach.jaw_region)
+                refs = [grid["spots"][i]["empty_lift"] for i in reach.triangle if "empty_lift" in grid["spots"][i]]
+                verdict = _wrist_verification(before, after_rgb, look_found, reach.jaw_region, refs)
             else:
                 try:
                     after = await asyncio.to_thread(detect, after_rgb, label)

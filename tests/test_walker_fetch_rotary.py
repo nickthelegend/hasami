@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 """Rotary claw (THENAR_GRIPPER=rotary): the real fetch over real Walker/thenar_pi sockets with dry-run I/O and a
 file camera. J6 is degrees; open and grip come only from the taught claw_open / claw_grip poses. A colour stand-in
 replaces SAM 2.1 so this runs without torch; the segmenter is not what is under test here."""
@@ -9,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from hasami_walker.fetch import _wrist_verification, approach_step, jaw_thumbnail
 from PIL import Image
 
 TW = Path(os.environ.get("THENAR_WALKER", Path(__file__).resolve().parents[2] / "thenar-walker"))
@@ -175,8 +177,10 @@ def test_fetch_wrist_camera(tmp_path, monkeypatch, scenario):
             for name in ("carry", "place", "claw_open"):
                 poses.save(name, look + [claw_open])
             poses.save("claw_grip", look + [claw_grip])
+            empty = np.full((480, 640, 3), (205, 210, 214), dtype=np.uint8)
             spots = [{"pixel": [x, y], "pre_grasp": reach + [claw_open], "grasp": reach + [claw_open],
-                      "lift": reach + [claw_open], "mm_per_px": 0.4, "jaw_region": [200, 280, 450, 479 - 1]}
+                      "lift": reach + [claw_open], "mm_per_px": 0.4, "jaw_region": [200, 280, 450, 479 - 1],
+                      "empty_lift": jaw_thumbnail(empty, [200, 280, 450, 478])}
                      for x, y in ((300, 300), (480, 300), (300, 400), (480, 400))]
             save_grid("floor", {"version": 1, "resolution": [640, 480], "spots": spots, "camera": "wrist"})
             events, lifts = [], 0
@@ -219,3 +223,37 @@ def test_fetch_wrist_camera(tmp_path, monkeypatch, scenario):
             await server.stop()
             camera.close()
     asyncio.run(main())
+
+
+def _found_mask(x0, y0, x1, y1):
+    mask = np.zeros((480, 640), bool)
+    mask[y0:y1, x0:x1] = True
+    return SimpleNamespace(mask=mask)
+
+
+def test_wrist_verification_three_ways():
+    jaw = [200, 280, 450, 478]
+    empty = np.full((480, 640, 3), (205, 210, 214), dtype=np.uint8)
+    held = empty.copy()
+    held[285:470, 210:440] = (40, 35, 20)
+    before = _found_mask(360, 200, 430, 330)
+    refs = [jaw_thumbnail(empty, jaw)]
+    assert _wrist_verification(before, held, None, jaw, refs)["held"]
+    missed = _wrist_verification(before, empty, None, jaw, refs)      # stick knocked away, jaws empty
+    assert not missed["held"] and missed["reason"] == "jaws look empty at lift"
+    still = _wrist_verification(before, held, before, jaw, refs)      # something in view but the stick never left
+    assert not still["held"] and still["reason"] == "item still at its old spot"
+    assert not _wrist_verification(before, held, None, jaw, [])["held"]
+
+
+def test_approach_step_directions(monkeypatch):
+    for name in ("HASAMI_APPROACH_THR", "HASAMI_APPROACH_TURN", "HASAMI_APPROACH_S_PER_PX"):
+        monkeypatch.delenv(name, raising=False)
+    target = (600, 400)
+    assert approach_step((610, 390), target) is None
+    assert approach_step((800, 400), target)["turn"] < 0     # item to the right: turn right (turn > 0 is left)
+    assert approach_step((400, 400), target)["turn"] > 0
+    far = approach_step((600, 200), target)                  # item high in the image: farther away, drive forward
+    assert far["thr"] > 0 and far["turn"] == 0
+    assert approach_step((600, 600), target)["thr"] < 0
+    assert 0.12 <= far["seconds"] <= 0.6
