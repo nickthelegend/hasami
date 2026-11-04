@@ -131,3 +131,91 @@ def test_rotary_claw_pose_outside_limits(tmp_path, monkeypatch):
     poses.save("claw_grip", [0, 0, 0, 0, 0, 120])
     with pytest.raises(SetupRequired, match="outside calibrated"):
         w._claw("claw_grip")
+
+
+def _wrist_frame(path, kind):
+    """Wrist camera views: 'floor' = item on the floor seen from look_shelf, 'empty' = floor with nothing,
+    'held' = item filling the space between the jaws (lift pose), 'jaws_empty' = lift pose, nothing held."""
+    rgb = np.full((480, 640, 3), (205, 210, 214), dtype=np.uint8)
+    if kind == "floor":
+        rgb[200:330, 360:430] = (236, 128, 28)
+    elif kind == "held":
+        rgb[300:470, 250:400] = (236, 128, 28)
+    Image.fromarray(rgb).save(path)
+
+
+@pytest.mark.parametrize("scenario", ["success", "retry", "dry_not_at_look", "dry"])
+def test_fetch_wrist_camera(tmp_path, monkeypatch, scenario):
+    if not _socket_available():
+        pytest.skip("loopback sockets are unavailable in this sandbox")
+    monkeypatch.setattr(config, "GRIPPER", "rotary")
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.setenv("HASAMI_RUNS_DIR", str(tmp_path / "runs"))
+    monkeypatch.setenv("HASAMI_GRIDS_DIR", str(tmp_path / "grids"))
+    monkeypatch.setenv("HASAMI_WALKER_POSES", str(tmp_path / "poses.json"))
+    image = tmp_path / "view.png"
+    _wrist_frame(image, "floor")
+    monkeypatch.setenv("THENAR_CAMERA", f"file:{image}")
+    armcal.save(tmp_path, armcal.known())
+
+    async def main():
+        robot = Robot(hw.PCA9685(hw.DryBus()), hw.DryPins(), state_dir=str(tmp_path), dry_run=True)
+        robot.boot()
+        camera = Camera()
+        server = Server(robot, camera, http_port=0, ws_port=0, cal_port=0, brain_port=0, host="127.0.0.1")
+        await server.start()
+        try:
+            robot.set_mask(63)
+            lo6, hi6 = robot.lo[5], robot.hi[5]
+            claw_open, claw_grip = round(lo6 + 0.75 * (hi6 - lo6), 1), round(lo6 + 0.3 * (hi6 - lo6), 1)
+            mid = [round((lo + hi) / 2, 1) for lo, hi in zip(robot.lo[:5], robot.hi[:5])]
+            look = mid[:]
+            reach = [x + 5 for x in mid]
+            poses.save("look_shelf", look + [claw_open])
+            for name in ("carry", "place", "claw_open"):
+                poses.save(name, look + [claw_open])
+            poses.save("claw_grip", look + [claw_grip])
+            spots = [{"pixel": [x, y], "pre_grasp": reach + [claw_open], "grasp": reach + [claw_open],
+                      "lift": reach + [claw_open], "mm_per_px": 0.4, "jaw_region": [200, 280, 450, 479 - 1]}
+                     for x, y in ((300, 300), (480, 300), (300, 400), (480, 400))]
+            save_grid("floor", {"version": 1, "resolution": [640, 480], "spots": spots, "camera": "wrist"})
+            events, lifts = [], 0
+            async with Walker("127.0.0.1", brain_port=server.brain_port, http_port=server.http_port) as walker:
+                if scenario == "dry":
+                    assert await walker.go(look + [claw_open], timeout=10)
+
+                def callback(event):
+                    nonlocal lifts
+                    events.append(event)
+                    ok_attempt = scenario == "success" or lifts == 2
+                    if event["step"] == "lift":
+                        lifts += 1
+                        ok_attempt = scenario == "success" or lifts == 2
+                        _wrist_frame(image, "held" if ok_attempt else "jaws_empty")
+                    elif event["step"] == "verify_look":
+                        _wrist_frame(image, "empty" if ok_attempt else "floor")
+                    elif event["step"] == "look_pose":
+                        _wrist_frame(image, "floor")
+                report = await fetch(walker, "bring me the orange juice", item="orange carton", grid_name="floor",
+                                     dry_plan=scenario.startswith("dry"), callback=callback,
+                                     sam2=ColourSam(), sam3=None)
+            steps_ok = [e["step"] for e in events if e["status"] == "ok"]
+            if scenario == "dry_not_at_look":
+                assert "go look_shelf" in report["verdict"]
+                return
+            if scenario == "dry":
+                assert report["verdict"].startswith("dry plan complete"), report["verdict"]
+                assert "grip" not in steps_ok
+                return
+            verifies = [e for e in events if e["step"] == "verify"]
+            assert "grasp verified" in report["verdict"], (report["verdict"], verifies)
+            assert verifies[-1]["camera"] == "wrist" and verifies[-1]["held"]
+            if scenario == "retry":
+                assert not verifies[0]["held"] and verifies[0]["reason"] == "item still at its old spot"
+                assert sum(e["step"] == "retry" and e["status"] == "ok" for e in events) == 1
+                assert steps_ok.count("look_pose") == 2
+            assert (Path(report["run_dir"]) / "check-1.png").exists()
+        finally:
+            await server.stop()
+            camera.close()
+    asyncio.run(main())
