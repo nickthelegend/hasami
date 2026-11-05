@@ -1,5 +1,7 @@
 # Hasami — Meta Global AI Developer Hackathon submission draft
 
+> **Historical draft, kept for reference. It was written before the key and the robot arrived, so it does not describe what was submitted.** Hasami was submitted on 5 Nov 2026 with the real-robot fetch; see the top of the [README](README.md) and the [demo video](https://www.youtube.com/watch?v=VF5VMHTNchs). "Never called" and "not recorded yet" below are out of date.
+>
 > Draft. Event Oct 26 (12:00 PM, per the event page) – Nov 4, 2026; submissions due **Nov 4, 9:00 PM ET** (Nov 5 02:00 UTC).
 > Applications close **Oct 25, 11:59 PM ET**.
 

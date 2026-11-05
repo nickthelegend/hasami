@@ -86,8 +86,8 @@ free) ends from its record or as "The server restarted; this run was lost." inst
 `.github/workflows/ci.yml` runs on push and pull request: the pytest files that need no SAM 2.1 weights
 (`test_docs`, `test_colour`, `test_scene`, `test_sim`, `test_tasks`, `test_realcam`, `test_robot`,
 `test_planner`) on headless MuJoCo (OSMesa) with CPU torch, and the dashboard's type check, build and unit
-test. **It has not run yet:** the repository has no GitHub remote until Nick creates it. The full suite and
-the browser E2E run locally.
+test. The repository is public now, so it runs on GitHub; check the Actions tab for the latest result. A pull request from
+a fork needs a maintainer's approval before it runs. The full suite and the browser E2E run locally.
 
 ## Browser E2E (Playwright in Google Chrome)
 
@@ -168,6 +168,8 @@ Commands actually run here:
 The full pytest suite was **not re-run**: the existing **278 passed / 1 skipped** figures above remain historical. The historical **49 passed / 1 skipped** E2E figures above were also not re-run or replaced. No new pytest total is claimed.
 
 A013 observed 502 `URLError` with no mask from the real segmenter pointed at a bound, non-listening loopback port. A016 observed 502 `APITimeoutError: Request timed out.` with no plan from the same transport, then 502 error/raw from a deliberately invalid local chat-completions peer. That peer is not Muse. No Hasami segmenter, planner, reset or twin loader was replaced. A062's real invalid inputs left the latest twin unchanged; A069's real twin load updated status/frame/latest; A077 observed real busy 409s, never 500. `git show --stat --oneline bf4dcce` and its exact file list proved C007: only AUDIT.md changed. No product fix was required during this final pass.
+
+**Update, 5 Nov 2026:** the live Muse and SAM 3.1 calls and the Walker operations have since run on the physical robot (see the README), outside this audit; the audit is the dated 26 Oct snapshot and was not rerun.
 
 The 20 UNTESTED rows name their exact dependencies in [audit/final/dependencies.json](audit/final/dependencies.json): live Muse/SAM 3.1 need `MODEL_API_KEY`; webcam capture needs `HASAMI_REALCAM` and a connected camera; physical arm motion needs `HASAMI_SO101_PORT`; real-desk measurements need a person, a ruler and a real photo; walker operations need the Thenar Walker at `HASAMI_ROBOT`. K015/K016 retain their explicit user-approved exclusion of the historical 20-seed benchmark and 10-seed fetch sweep. Setup states passed independently.
 

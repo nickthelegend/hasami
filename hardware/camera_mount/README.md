@@ -1,5 +1,7 @@
 # Parametric top camera mount
 
+> **Future.** The built robot uses one USB webcam on the wrist. This mast has not been fitted to it.
+
 ![Camera mast and plate at 30 degrees downward; CAD preview, not a photograph of built hardware](assembly-preview.png)
 
 **Ready to slice:** [mast STL](camera_mast.stl) · [camera plate STL](camera_plate.stl). These use the source defaults. Re-export both after changing dimensions in OpenSCAD; the STLs do not update themselves.

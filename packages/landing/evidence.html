@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hasami — lab notebook and results</title>
-    <meta name="description" content="Muse plans from the overhead camera once a Meta Model API key is set (Setup required, never called yet); today SAM 2.1 cuts each clicked object out of the frame, depth turns the cut into a 3D grasp, and a simulated SO-101 arm closes its jaws on it. MuJoCo simulation of the official SO-101 model." />
+    <meta name="description" content="Muse plans from the overhead camera once a Meta Model API key is set (this notebook's numbers do not use it); in these simulated runs SAM 2.1 cuts each clicked object out of the frame, depth turns the cut into a 3D grasp, and a simulated SO-101 arm closes its jaws on it. MuJoCo simulation of the official SO-101 model." />
     <meta name="theme-color" content="#1b1622" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b1622'/%3E%3Cg fill='none' stroke='%2338f2c4' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='9' cy='9' r='4'/%3E%3Ccircle cx='9' cy='23' r='4'/%3E%3Cpath d='M12.4 11.2 27 21M12.4 20.8 27 11'/%3E%3C/g%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -406,7 +406,7 @@
           <div class="entries">
             <article class="entry">
               <span class="no">01 · say it</span>
-              <h3>Muse plans (once keyed)</h3>
+              <h3>Muse plans (needs a key)</h3>
               <p>muse-spark-1.3 reads the instruction and the overhead frame and returns a plan the server validates.</p>
               <pre>[{ <b>"pick"</b>: "red cube",
    <b>"point"</b>: [u, v],
@@ -702,7 +702,7 @@
               <li><b>SO-101 arm (simulated)</b><span>Official SO-101 MuJoCo model (TheRobotStudio, Apache-2.0) with force-limited STS3215 position servos, so it sags under load and the controller corrects for it.</span><span class="stamp stamp-ok">running</span></li>
               <li><b>SAM 2.1 hiera-tiny</b><span>Local, open weights, point prompts. Every number above comes from it.</span><span class="stamp stamp-ok">running</span></li>
               <li><b>Muse planner</b><span>muse-spark-1.3 on the Meta Model API. Without a key the API answers setup_required, never a canned plan.</span><span class="stamp stamp-setup">Setup required: MODEL_API_KEY</span></li>
-              <li><b>SAM 3.1</b><span>Text-prompted segmentation on the Meta Model API. Its mask decoding is unverified until a key exists.</span><span class="stamp stamp-setup">Setup required: MODEL_API_KEY</span></li>
+              <li><b>SAM 3.1</b><span>Text-prompted segmentation on the Meta Model API. Its mask decoding was verified live on Nov 1 2026; this notebook's runs do not use it.</span><span class="stamp stamp-setup">Setup required: MODEL_API_KEY</span></li>
               <li><b>Check and retry</b><span>After every attempt: the gripper's reading and the camera (pick spot clear, object at the place spot). On a miss the object is re-found and the step retried, up to twice.</span><span class="stamp stamp-ok">running</span></li>
               <li><b>MCP server</b><span>look, find, pick_place and status for an agent, over stdio.</span><span class="stamp stamp-ok">running</span></li>
               <li><b>Digital twin</b><span>One desk photo with an A4 sheet becomes a MuJoCo scene; the simulated arm works in it. Measured on rendered photos only.</span><span class="stamp stamp-pend">pending · a real photo</span></li>
@@ -713,7 +713,7 @@
               <h3 id="notes-h">Margin notes</h3>
               <dl>
                 <dt>Is this a real robot?</dt>
-                <dd>No. It is a MuJoCo simulation of the official SO-101 model; a pick only counts if the jaws actually hold the cube.</dd>
+                <dd>Not on this page. It is a MuJoCo simulation of the official SO-101 model; a pick only counts if the jaws actually hold the cube. The physical rover's glue stick fetch is in the <a href="https://www.youtube.com/watch?v=VF5VMHTNchs">demo video</a>.</dd>
                 <dt>How is success decided?</dt>
                 <dd>From the physics state: the cube's centre inside the tray walls and resting low. Perception is scored separately against MuJoCo's segmentation.</dd>
                 <dt>What works with no key?</dt>
