@@ -93,7 +93,7 @@ def _approach_target(grid: dict) -> tuple[float, float]:
     return float(pixels[:, 0].mean()), float(pixels[:, 1].mean())
 
 
-def approach_step(foot: tuple[float, float], target: tuple[float, float], tol_px: float = 40.0) -> dict | None:
+def approach_step(foot: tuple[float, float], target: tuple[float, float], tol_px: float = float(os.environ.get("HASAMI_APPROACH_TOL_PX", "40"))) -> dict | None:
     """One wheel nudge from the item's image position, or None when it is where the arm was taught to reach.
     Turn first (image right = robot right), then drive (image up = farther away). Not odometry: the next photo decides."""
     ex, ey = foot[0] - target[0], foot[1] - target[1]

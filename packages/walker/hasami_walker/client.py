@@ -11,6 +11,7 @@ hangs or the network drops. Camera frames come from `GET http://<robot>/snap.jpg
 from __future__ import annotations
 
 import asyncio
+import os
 import json
 import math
 import time
@@ -301,11 +302,24 @@ class Walker:
     def _reader_done(self) -> bool:
         return bool(self._tasks and self._tasks[0].done())
 
+    async def _ramp(self, q: list[float]) -> None:
+        """Optional brain-side speed limit, HASAMI_ARM_DPS degrees per second: the runtime's 120 deg/s threw a held item."""
+        dps = float(os.environ.get("HASAMI_ARM_DPS", "0") or 0)
+        if dps <= 0 or not self.tele.at or self.tele.on_mask != 63:
+            return
+        start = list(self.tele.q)
+        steps = int(max(abs(a - b) for a, b in zip(start, q)) / dps / 0.05)
+        for k in range(1, steps):
+            self._check_control()
+            await self.pose([a + (b - a) * k / steps for a, b in zip(start, q)])
+            await asyncio.sleep(0.05)
+
     async def go(self, q: list[float], tol: float = 1.5, timeout: float = 8.0,
                  fail_on_manual: bool = False) -> bool:
         """Move to q. While the operator uses the phone the robot refuses ("E manual"): wait out the operator's hold
         and send again (the brain often learns of a hold only from the refusal of its own command). A phone STOP
         raises PhoneHasControl. Fetch uses fail_on_manual=True to stop on any manual hold instead of waiting."""
+        await self._ramp(q)
         end = time.monotonic() + timeout
         while time.monotonic() < end:
             if self._refresh_state() == "manual":
