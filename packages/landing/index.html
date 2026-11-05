@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hasami — SAM cuts it out, the arm picks it up</title>
-    <meta name="description" content="Muse plans from the overhead camera once a Meta Model API key is set (Setup required, never called yet); today SAM 2.1 cuts each clicked object out of the frame, depth turns the cut into a 3D grasp, and a simulated SO-101 arm closes its jaws on it. MuJoCo simulation of the official SO-101 model." />
+    <meta name="description" content="Muse plans from the overhead camera once a Meta Model API key is set (this page's numbers do not use it); in these simulated runs SAM 2.1 cuts each clicked object out of the frame, depth turns the cut into a 3D grasp, and a simulated SO-101 arm closes its jaws on it. MuJoCo simulation of the official SO-101 model." />
     <meta name="theme-color" content="#1b1622" />
     <meta property="og:title" content="Hasami — SAM cuts it out, the arm picks it up" />
     <meta property="og:description" content="Bring me the juice from the fridge: Meta's SAM and Muse as the brain of a printed rover with a six-joint arm. Runs end to end in MuJoCo today." />
@@ -541,16 +541,16 @@
             </figure>
             <ul class="parts">
               <li><b>Base</b><span>Printed PETG tub, four 370 gear motors, MDD10A driver</span></li>
-              <li><b>Arm</b><span>Six MG996R servos on a PCA9685, SO-ARM100 family</span></li>
-              <li><b>Runtime</b><span>The Pi runs the phone page, the safety rules and a channel for Hasami. The phone always outranks it.</span><span class="stamp stamp-ok">Tested over sockets, not on hardware</span></li>
-              <li><b>Find</b><span><code>hasami_walker look</code> cuts the item out of a robot frame with SAM.</span><span class="stamp stamp-ok">Tested with real SAM 2.1</span></li>
-              <li><b>Reach</b><span>Moving the arm to the item needs the camera mounted and calibrated to the arm.</span><span class="stamp stamp-pend">Not built yet</span></li>
+              <li><b>Arm</b><span>Six 25 kg·cm digital servos and a rotary claw on a PCA9685, SO-ARM100 family</span></li>
+              <li><b>Runtime</b><span>The Pi runs the phone page, the safety rules and a channel for Hasami. The phone always outranks it.</span><span class="stamp stamp-ok">Ran on the real robot, 5 Nov 2026</span></li>
+              <li><b>Find</b><span><code>hasami_walker look</code> cuts the item out of a robot frame with SAM.</span><span class="stamp stamp-ok">Ran with SAM 3.1 on the wrist camera</span></li>
+              <li><b>Reach</b><span>One hand-taught floor grasp, with wheel nudges lining the item up. Calculated reach and fridge shelves are future work.</span><span class="stamp stamp-ok">Ran on the real robot, one grasp</span></li>
             </ul>
           </div>
           <section id="live" aria-labelledby="live-h">
           <h3 class="today" id="live-h">What runs today</h3>
           <div class="status">
-            <div><h4><i></i>Live</h4><p>SAM 2.1 and the MuJoCo arm on the <a href="https://hasami-api.201-18-198-162.sslip.io/">hosted dashboard</a>.</p></div>
+            <div><h4><i></i>Live</h4><p>SAM 2.1 and the MuJoCo arm on the <a href="https://hasami-api.201-18-198-162.sslip.io/">hosted dashboard</a>. On the physical rover, a glue stick fetch ran on 5 Nov 2026: <a href="https://www.youtube.com/watch?v=VF5VMHTNchs">watch the demo video</a>.</p></div>
             <div class="wait"><h4><i></i>Setup required</h4><p>Muse planning and SAM 3.1 need <code>MODEL_API_KEY</code>; the real SO-101 arm needs <code>HASAMI_SO101_PORT</code>.</p></div>
           </div>
           </section>

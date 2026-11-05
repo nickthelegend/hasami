@@ -114,15 +114,18 @@ has not been measured yet.
 
 ## Meta Model API: what is confirmed and what is not
 
-Checked against dev.meta.ai on 2026-10-21 (no key, so no call has been made):
+Checked against dev.meta.ai on 2026-10-21, before there was a key. Since then both models have been called live: see the notes in the table and the 5 Nov 2026 run in the top-level README.
 
 | | Confirmed in the docs | Unverified until a key exists |
 |---|---|---|
 | Muse | model id `muse-spark-1.3` (also `-contributor`, 1.2, 1.1); base URL `https://api.meta.ai/v1`; `POST /v1/chat/completions` exists; image input to Muse Spark | image parts as `image_url` data URLs on Chat Completions, and forcing `tool_choice` to a named function (the Chat Completions page defers both to other pages). Checked live Nov 1 2026: image parts work; only `tool_choice="auto"` is accepted |
-| SAM 3.1 | model id `sam-3.1`; `POST /v1/responses` with an `input_text` prompt and an `input_image`; output is special-token text `<|box;x1;y1;x2;y2;w;h[;c]|><|mask;x;y;data=H,W,<enc>payload|>` with boxes in source pixels; `metadata.mask_encoding: "one_bit"` | the base85 mask payload (decoded only through Meta's `meta-sam-parser` package, not installed here) and whether a mask is relative to its box. Without it the box centre prompts SAM 2.1 |
+| SAM 3.1 | model id `sam-3.1`; `POST /v1/responses` with an `input_text` prompt and an `input_image`; output is special-token text `<|box;x1;y1;x2;y2;w;h[;c]|><|mask;x;y;data=H,W,<enc>payload|>` with boxes in source pixels; `metadata.mask_encoding: "one_bit"` | the base85 mask payload (decoded only through Meta's `meta-sam-parser` package, not installed here) and whether a mask is relative to its box. Checked live Nov 1 2026: a Python port of the decoder works on real responses. In simulation the box centre can still prompt SAM 2.1 |
 
 ## Sim to real
 
+- **The physical rover** runs a different, simpler path from everything below: on 5 Nov 2026, Muse Spark, SAM 3.1 on a
+  wrist webcam, wheel nudges, one hand-taught floor grasp, a camera grab check and a release into a box. See the
+  top-level README. The items below remain simulation or future work.
 - `hasami_robot` maps the five arm joints and the gripper to LeRobot's SO-101 follower keys
   (`shoulder_pan.pos` … in degrees, gripper 0–100). Calibration offsets come from LeRobot's calibration
   file for the specific arm.
@@ -155,6 +158,6 @@ Checked against dev.meta.ai on 2026-10-21 (no key, so no call has been made):
 
 ## Limits
 
-Simulation only so far; rigid objects on a table; top-down grasps only; the Muse and SAM 3.1 paths need a
-Meta Model API key; the real arm, the real camera and the twin from a real photo are untested against the
-physical world. Not safety-audited.
+This document covers the simulation: rigid objects on a table; top-down grasps only; the Muse and SAM 3.1 paths need a
+Meta Model API key. Future: the SO-101 mirror mode, the dashboard's real-camera path and the twin from a real photo are
+untested against the physical world. Not safety-audited.

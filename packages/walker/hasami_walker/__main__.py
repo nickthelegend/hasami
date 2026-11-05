@@ -44,7 +44,7 @@ async def run(a: argparse.Namespace) -> int:
         async with w:
             await asyncio.sleep(0.2)
             result = await fetch(w, instruction, item=a.item, grid_name=a.grid, point=_point(a.point),
-                                 drive_back=a.drive_back, dry_plan=a.dry_plan,
+                                 drive_back=a.drive_back, dry_plan=a.dry_plan, approach=a.approach,
                                  callback=lambda e: print(f"{e['step']}: {e['status']}"))
         import json
         print(json.dumps({"verdict": result["verdict"], "error": result["error"],
@@ -193,11 +193,23 @@ async def _teach_grid(w, a):
     width = float(await asyncio.to_thread(input, "Measure this item's width across the jaws in mm: "))
     if width <= 0:
         raise ValueError("item width must be positive")
+    wrist = a.camera == "wrist"
+    look = poses.get("look_shelf") if wrist else None
     spots = []
     resolution = None
+    jaw_reuse = None
     for i in range(a.spots):
-        await asyncio.to_thread(input, f"Spot {i+1}/{a.spots}: put item there, place OPEN jaws around it with phone; Enter to capture grasp: ")
-        await asyncio.sleep(0.15)
+        if wrist:
+            await asyncio.to_thread(input, f"Spot {i+1}/{a.spots}: put item there, hands clear of the arm; Enter: the arm "
+                                           "moves to look_shelf and takes the photo: ")
+            await asyncio.sleep(2.5)                   # the phone keeps control for 2 s after its last input
+            if not await w.go(look, timeout=15):
+                raise RobotError("arm did not reach look_shelf")
+            await asyncio.sleep(0.6)
+            await asyncio.to_thread(w.snapshot)        # discard a frame buffered before the move
+        else:
+            await asyncio.to_thread(input, f"Spot {i+1}/{a.spots}: put item there, place OPEN jaws around it with phone; Enter to capture grasp: ")
+            await asyncio.sleep(0.15)
         rgb = decode_jpeg(await asyncio.to_thread(w.snapshot))
         current_resolution = [rgb.shape[1], rgb.shape[0]]
         if resolution is not None and current_resolution != resolution:
@@ -212,27 +224,51 @@ async def _teach_grid(w, a):
         image = f"grid-{name}-{i+1}-grasp.png"
         with open(image, "wb") as out:
             out.write(annotate(rgb, f, label))
+        if wrist:
+            print(f"  photo saved ({image}); item foot at {list(_foot(f))}")
+            await asyncio.to_thread(input, "Arm only, wheels must not move. Open the claw (J6 to claw_open) and bring it around "
+                                           "the item with the phone, tips just on the floor, don't move the item; "
+                                           "Enter to capture grasp: ")
+            await asyncio.sleep(0.15)
         grasp = list(w.tele.q)
-        await asyncio.to_thread(input, "Back jaws straight out about 5 cm with phone; Enter to capture pre-grasp: ")
+        await asyncio.to_thread(input, ("Raise the claw straight up about 5 cm with phone" if wrist else
+                                        "Back jaws straight out about 5 cm with phone") + "; Enter to capture pre-grasp: ")
         await asyncio.sleep(0.15)
         pre = list(w.tele.q)
-        await asyncio.to_thread(input, "Move jaws to a safe lifted pose with phone; Enter to capture lift: ")
+        await asyncio.to_thread(input, ("Leave the item on the floor. Move the claw to a safe lifted pose with phone, hands off; Enter: "
+                                        "the claw closes on nothing for the empty-claw photo: " if wrist else
+                                        "Move jaws to a safe lifted pose with phone; Enter to capture lift: "))
         await asyncio.sleep(0.15)
         lift = list(w.tele.q)
+        if wrist:
+            await asyncio.sleep(2.5)                   # the phone keeps control for 2 s after its last input
+            if not await w.go(lift[:5] + [w._claw("claw_grip")], timeout=12):
+                raise RobotError("arm did not hold the lift pose with the claw at claw_grip")
+            await asyncio.sleep(0.6)
+            await asyncio.to_thread(w.snapshot)        # discard a frame buffered before the move
         jaw_rgb = decode_jpeg(await asyncio.to_thread(w.snapshot))
         with open(f"grid-{name}-{i+1}-lift.png", "wb") as out:
             from .fetch import _raw_png
             out.write(_raw_png(jaw_rgb))
-        jaw_text = await asyncio.to_thread(input, "In lift photo, type jaw region x0,y0,x1,y1 (must contain held item): ")
-        jaw = [float(x) for x in jaw_text.split(",")]
+        if wrist and jaw_reuse is not None:
+            jaw = jaw_reuse   # the camera rides on the claw: the jaw region is the same in every lift photo
+        else:
+            prompt = ("In this lift photo, type the region BETWEEN the jaws where a held item would show, x0,y0,x1,y1: "
+                      if wrist else "In lift photo, type jaw region x0,y0,x1,y1 (must contain held item): ")
+            jaw_text = await asyncio.to_thread(input, prompt)
+            jaw = [float(x) for x in jaw_text.split(",")]
+            jaw_reuse = jaw
         if len(jaw) != 4 or not (0 <= jaw[0] < jaw[2] < resolution[0] and 0 <= jaw[1] < jaw[3] < resolution[1]):
             raise ValueError("jaw region must be four in-frame coordinates x0,y0,x1,y1")
         pixel_width = f.bbox[2] - f.bbox[0] + 1
         spots.append({"pixel": list(_foot(f)), "pixel_width": pixel_width, "item_width_mm": width,
                       "mm_per_px": width / pixel_width, "grasp": grasp, "pre_grasp": pre, "lift": lift,
                       "jaw_region": jaw})
+        if wrist:
+            from .fetch import jaw_thumbnail
+            spots[-1]["empty_lift"] = jaw_thumbnail(jaw_rgb, jaw)
         print(f"spot {i+1}: foot {spots[-1]['pixel']}, scale {width/pixel_width:.3f} mm/px; photos {image} and lift")
-    grid = {"version": 1, "name": name, "resolution": resolution, "spots": spots,
+    grid = {"version": 1, "name": name, "resolution": resolution, "spots": spots, "camera": a.camera,
             "note": "Joint targets are commanded telemetry, not measured physical servo angles or gaps."}
     path = save_grid(name, grid)
     print(f"saved {path}; inspect all grid photos and dry-plan before moving the arm autonomously")
@@ -256,8 +292,12 @@ def main() -> None:
     ap.add_argument("--item", help="fetch without Muse: explicit item phrase; teach-grid: visible item phrase")
     ap.add_argument("--grid", default="fridge", help="fetch: taught shelf grid name")
     ap.add_argument("--spots", type=int, default=6, help="teach-grid: number of spots, 3 to 12 (default 6)")
+    ap.add_argument("--approach", action="store_true",
+                    help="fetch, wrist camera: nudge the wheels until the item sits in the taught area, then use the arm")
     ap.add_argument("--drive-back", type=float, default=0, help="fetch: reverse at low throttle for up to 5 s")
     ap.add_argument("--dry-plan", action="store_true", help="fetch: look and print joint targets, do not command motion")
+    ap.add_argument("--camera", choices=("body", "wrist"), default=os.environ.get("HASAMI_CAMERA", "body"),
+                    help="teach-grid: camera fixed to the body, or riding on the wrist/claw (photos from look_shelf)")
     a = ap.parse_args()
     try:
         sys.exit(asyncio.run(run(a)))
