@@ -4,6 +4,8 @@
 
 > **5 Nov 2026: the real fetch ran on the physical rover.** Typed request → Muse Spark → SAM 3.1 on the wrist webcam → wheel nudges → one hand-taught floor grasp → camera grab check → release into a box. Run settings: `HASAMI_ARM_DPS=35`, `HASAMI_APPROACH_TOL_PX=60`, `HASAMI_APPROACH_TURN_S_PER_PX=0.0035`; grasp taught with `scripts/teach_one_grasp.py`. Early attempts needed a hand on a sagging shoulder and once threw the stick at full arm speed. Muse's second opinion on the blurred wrist photo said "not held" on runs where the grab worked, so it is recorded but cannot override the camera check. The real build uses a rotary claw, not the parallel gripper described below, and its runtime fixes are at [YOGESH9139/thenar-walker](https://github.com/YOGESH9139/thenar-walker). Parts of this guide below describe the earlier plan. Limits: no room search, item near the taught spot, no force sensing, delivery not camera-verified.
 
+**Demo video:** [Hasami: a home robot built on Muse Spark and SAM 3.1](https://www.youtube.com/watch?v=VF5VMHTNchs)
+
 **Share this guide:** [github.com/nickthelegend/hasami](https://github.com/nickthelegend/hasami). [Live landing](https://hasami-landing.vercel.app) · [recorded simulation evidence](https://hasami-landing.vercel.app/evidence.html).
 
 **Build in this order:** [parts](#1-bill-of-materials) → [assembly](#2-mechanical-assembly) → [wiring](#3-electrical-and-power) → [Pi setup](#4-raspberry-pi-setup-and-first-boot) → [servo calibration](#5-calibrate-all-six-new-servos) → [laptop commands](#6-run-hasami-on-a-laptop) → [Meta integration](#7-meta-models-and-apis). Then follow the [friend checklist](#8-friend-checklist), [recording plan](#9-record-a-truthful-3-minute-video) and [submission checklist](#10-submission).
